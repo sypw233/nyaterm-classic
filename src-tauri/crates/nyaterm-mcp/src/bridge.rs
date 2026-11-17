@@ -284,7 +284,7 @@ fn discovery_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
     }
     Ok(dirs::home_dir()
         .ok_or("Cannot resolve home directory")?
-        .join(".nyaterm")
+        .join(".nyaterm-classic")
         .join("mcp")
         .join("discovery.json"))
 }

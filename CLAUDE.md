@@ -275,8 +275,10 @@ Web currently supports a more limited AI capability set than Desktop. Do not exp
 Desktop data normally lives under:
 
 ```text
-~/.nyaterm/
+~/.nyaterm-classic/
 ```
+
+(the `nyaterm-classic` fork uses an isolated data directory so it can coexist with other NyaTerm builds)
 
 The primary store is `nyaterm.redb`.
 
@@ -290,7 +292,7 @@ When changing persistence, consider:
 - cloud-sync snapshots
 - existing legacy migration paths
 
-Web uses its own data directory configured through `NYATERM_WEB_DATA_DIR`. Do not assume Web data lives under the Desktop user's `~/.nyaterm/`.
+Web uses its own data directory configured through `NYATERM_WEB_DATA_DIR`. Do not assume Web data lives under the Desktop user's `~/.nyaterm-classic/`.
 
 Security-sensitive code must not:
 

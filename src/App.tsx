@@ -514,7 +514,7 @@ function App() {
   const activeTabName = activeTab
     ? getActiveSessionTabDisplayName(activeTab, getDynamicTitle).trim()
     : "";
-  const windowTitle = activeTabName ? `${activeTabName} - NyaTerm` : "NyaTerm";
+  const windowTitle = activeTabName ? `${activeTabName} - NyaTerm Classic` : "NyaTerm Classic";
   const activePane = activeTab ? resolveWorkspaceActivePane(tabs, activeTab) : null;
   const activeSessionId =
     activePane &&

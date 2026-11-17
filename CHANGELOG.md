@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 This changelog is inferred from release bump commits in git history (for example `chore: bump version to vX.Y.Z`) and grouped by Conventional Commit type.
 
+## [Unreleased]
+
+### Changed
+
+- **branding:** Rename the application to `nyaterm-classic` (display name "NyaTerm Classic", Tauri identifier `com.kang.nyaterm.classic`) so the 1.x line can coexist with the 2.x GPUI build.
+- **storage:** Move the Desktop data directory to `~/.nyaterm-classic` (previously `~/.nyaterm`) so classic does not contend for the same `nyaterm.redb` file lock as other NyaTerm builds. Existing `~/.nyaterm` data is left untouched; migrate it manually if needed. Internal crate names, MCP sidecar name, and `nyaterm://` deep-link scheme are unchanged.
+- **build:** Add the `custom-protocol` Cargo feature (standard Tauri template entry) so release builds embed the frontend assets instead of falling back to the `localhost:1420` dev URL. Required when building with plain `cargo build` rather than `tauri build`.
+
 ## [1.2.12] - 2026-09-29
 
 ### Added

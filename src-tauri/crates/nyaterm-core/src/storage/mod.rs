@@ -388,7 +388,7 @@ fn default_config_dir() -> AppResult<PathBuf> {
     {
         let home = dirs::home_dir()
             .ok_or_else(|| AppError::Config("cannot determine home directory".to_string()))?;
-        Ok(home.join(".nyaterm"))
+        Ok(home.join(".nyaterm-classic"))
     }
 }
 

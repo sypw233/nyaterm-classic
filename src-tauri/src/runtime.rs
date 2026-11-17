@@ -6,7 +6,7 @@ use tauri::Manager;
 
 use crate::error::{AppError, AppResult};
 
-const DEFAULT_IDENTIFIER: &str = "com.kang.nyaterm";
+const DEFAULT_IDENTIFIER: &str = "com.kang.nyaterm.classic";
 const PORTABLE_MARKER_FILE: &str = "portable.flag";
 const PORTABLE_KEY_FILE: &str = "portable.key";
 #[cfg(all(windows, target_vendor = "win7"))]
@@ -215,7 +215,7 @@ fn resolve_portable(
 fn resolve_installed(executable_dir: PathBuf) -> AppResult<AppRuntime> {
     let home = dirs::home_dir()
         .ok_or_else(|| AppError::Config("cannot determine home directory".to_string()))?;
-    let config_dir = home.join(".nyaterm");
+    let config_dir = home.join(".nyaterm-classic");
     let log_dir = installed_log_dir()?;
     let webview_data_dir = installed_webview_data_dir()?;
 

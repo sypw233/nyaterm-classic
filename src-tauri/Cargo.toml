@@ -1,5 +1,5 @@
 [package]
-name = "nyaterm"
+name = "nyaterm-classic"
 version = "1.3.2"
 description = "A modern remote terminal workspace built with Tauri, React, and Rust."
 authors = ["Kang"]
@@ -191,6 +191,11 @@ opendal = { version = "0.58", default-features = false, features = [
 redb = "4.1.0"
 zmodem2 = { path = "vendor/zmodem2" }
 vnc-rs = { path = "vendor/vnc-rs" }
+
+[features]
+# Enables Tauri's custom protocol so the frontend assets are embedded into the
+# binary (required for release builds that do not run via `tauri build`).
+custom-protocol = ["tauri/custom-protocol"]
 
 [patch.crates-io]
 picky = { path = "vendor/picky" }

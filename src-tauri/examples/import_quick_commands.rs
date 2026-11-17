@@ -219,7 +219,7 @@ fn parse_args() -> AnyResult<Args> {
 
 fn print_usage() {
     println!(
-        "Usage:\n  cargo run --manifest-path src-tauri/Cargo.toml --example import_quick_commands -- <commands.json> [--db <nyaterm.redb>] [--replace] [--dry-run] [--no-backup]\n\nClose NyaTerm before writing the database. Without --db, the script writes to ~/.nyaterm/nyaterm.redb."
+        "Usage:\n  cargo run --manifest-path src-tauri/Cargo.toml --example import_quick_commands -- <commands.json> [--db <nyaterm.redb>] [--replace] [--dry-run] [--no-backup]\n\nClose NyaTerm before writing the database. Without --db, the script writes to ~/.nyaterm-classic/nyaterm.redb."
     );
 }
 
@@ -228,7 +228,7 @@ fn default_db_path() -> AnyResult<PathBuf> {
         .or_else(|| env::var_os("HOME"))
         .map(PathBuf::from)
         .ok_or_else(|| input_error("cannot determine home directory; pass --db explicitly"))?;
-    Ok(home.join(".nyaterm").join(DATABASE_FILE))
+    Ok(home.join(".nyaterm-classic").join(DATABASE_FILE))
 }
 
 fn read_import_file(path: &Path) -> AnyResult<ImportFile> {

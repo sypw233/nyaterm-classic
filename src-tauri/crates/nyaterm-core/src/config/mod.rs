@@ -1,6 +1,6 @@
 //! Config persistence for sessions, UI, and quick commands.
 //!
-//! Stores typed entities and small singleton documents in `~/.nyaterm/nyaterm.redb`.
+//! Stores typed entities and small singleton documents in `~/.nyaterm-classic/nyaterm.redb`.
 //! Credentials are AES-256-GCM encrypted in-place.
 
 mod cloud_sync;

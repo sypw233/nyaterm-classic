@@ -100,7 +100,7 @@ fn default_db_path() -> PathBuf {
         .or_else(|| std::env::var_os("HOME"))
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."))
-        .join(".nyaterm")
+        .join(".nyaterm-classic")
         .join("nyaterm.redb")
 }
 
