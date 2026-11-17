@@ -1052,6 +1052,180 @@ const oneLight = {
   },
 } as const satisfies Theme;
 
+// ── Dracula Light ──────────────────────────────────────────────────────────
+const draculaLight = {
+  id: "dracula-light",
+  name: "Dracula Light",
+  label: "Dracula Light",
+  swatch: "#fffbeb",
+  colors: {
+    bg: "#fffbeb",
+    bgPanel: "#f5f1e2",
+    bgTerminal: "#fffbeb",
+    bgHover: "#ebe7d8",
+    bgInput: "#ffffff",
+    bgSectionHeader: "#f0ecdc",
+    border: "#cfcfde",
+    text: "#1f1f1f",
+    textMuted: "#6c664b",
+    textDimmed: "#8a8468",
+    primary: "#644ac9",
+    primaryHover: "#5238b0",
+    onPrimary: "#ffffff",
+    focusRing: "#644ac9",
+    danger: "#cb3a2a",
+    dangerHover: "#a82c1f",
+    success: "#14710a",
+    warning: "#846e15",
+    link: "#036a96",
+    shadow: "rgb(31 31 31 / 0.15)",
+    scrollThumb: "#b9b9cc",
+    accent: "#a3144d",
+    terminal: {
+      background: "#fffbeb",
+      foreground: "#1f1f1f",
+      foregroundIntense: "#000000",
+      cursor: "#1f1f1f",
+      selectionBackground: "#cfcfde",
+      lineHighlight: "#f5f1e2",
+      findMatchBackground: "rgba(163, 77, 20, 0.28)",
+      findMatchBorder: "#a34d14",
+      black: "#1f1f1f",
+      red: "#cb3a2a",
+      green: "#14710a",
+      yellow: "#846e15",
+      blue: "#644ac9",
+      magenta: "#a3144d",
+      cyan: "#036a96",
+      white: "#6c664b",
+      brightBlack: "#6c664b",
+      brightRed: "#d74c3d",
+      brightGreen: "#198d0c",
+      brightYellow: "#9e841a",
+      brightBlue: "#7862d0",
+      brightMagenta: "#bf185a",
+      brightCyan: "#047fb4",
+      brightWhite: "#2c2b31",
+    },
+  },
+} as const satisfies Theme;
+
+// ── WindTerm Dark ──────────────────────────────────────────────────────────
+const windtermDark = {
+  id: "windterm-dark",
+  name: "WindTerm Dark",
+  label: "WindTerm Dark",
+  swatch: "#1c1c1c",
+  colors: {
+    bg: "#1c1c1c",
+    bgPanel: "#1c1c1c",
+    bgTerminal: "#1c1c1c",
+    bgHover: "#333333",
+    bgInput: "#333333",
+    bgSectionHeader: "#262626",
+    border: "#444444",
+    text: "#bbbbbb",
+    textMuted: "#909090",
+    textDimmed: "#555555",
+    primary: "#007acc",
+    primaryHover: "#0183ea",
+    onPrimary: "#ffffff",
+    focusRing: "#007acc",
+    danger: "#ff1493",
+    dangerHover: "#f92672",
+    success: "#3cb371",
+    warning: "#ff8c00",
+    link: "#007acc",
+    shadow: "rgb(0 0 0 / 0.45)",
+    scrollThumb: "#444444",
+    accent: "#ff1493",
+    terminal: {
+      background: "#1c1c1c",
+      foreground: "#f8f8f2",
+      foregroundIntense: "#ffffff",
+      cursor: "#ffffff",
+      selectionBackground: "#36368e",
+      lineHighlight: "#282833",
+      findMatchBackground: "rgba(0, 101, 224, 0.35)",
+      findMatchBorder: "#0065e0",
+      black: "#333333",
+      red: "#c4265e",
+      green: "#86b42b",
+      yellow: "#d0a500",
+      blue: "#3465a4",
+      magenta: "#8c6bc8",
+      cyan: "#56adbc",
+      white: "#e3e3dd",
+      brightBlack: "#666666",
+      brightRed: "#f92672",
+      brightGreen: "#a6e22e",
+      brightYellow: "#9e862f",
+      brightBlue: "#819aff",
+      brightMagenta: "#ae81ff",
+      brightCyan: "#66d9ef",
+      brightWhite: "#f8f8f2",
+    },
+  },
+} as const satisfies Theme;
+
+// ── WindTerm Light ─────────────────────────────────────────────────────────
+const windtermLight = {
+  id: "windterm-light",
+  name: "WindTerm Light",
+  label: "WindTerm Light",
+  swatch: "#f5f5f5",
+  colors: {
+    bg: "#f5f5f5",
+    bgPanel: "#ffffff",
+    bgTerminal: "#ffffff",
+    bgHover: "#dcdcdc",
+    bgInput: "#ffffff",
+    bgSectionHeader: "#f0f0f0",
+    border: "#c0c0c0",
+    text: "#333333",
+    textMuted: "#606060",
+    textDimmed: "#808080",
+    primary: "#007acc",
+    primaryHover: "#0069af",
+    onPrimary: "#ffffff",
+    focusRing: "#007acc",
+    danger: "#ff1493",
+    dangerHover: "#d71178",
+    success: "#3cb371",
+    warning: "#d2691e",
+    link: "#007acc",
+    shadow: "rgb(0 0 0 / 0.15)",
+    scrollThumb: "#aaaaaa",
+    accent: "#ff1493",
+    terminal: {
+      background: "#ffffff",
+      foreground: "#333333",
+      foregroundIntense: "#0d0d0d",
+      cursor: "#000000",
+      selectionBackground: "#d3d3ff",
+      lineHighlight: "#f0f8ff",
+      findMatchBackground: "rgba(255, 204, 0, 0.5)",
+      findMatchBorder: "#ffcc00",
+      black: "#272822",
+      red: "#dc322f",
+      green: "#32cd32",
+      yellow: "#ffd700",
+      blue: "#3465a4",
+      magenta: "#d33682",
+      cyan: "#3a96dd",
+      white: "#d3d3d3",
+      brightBlack: "#333333",
+      brightRed: "#ff7882",
+      brightGreen: "#3cb371",
+      brightYellow: "#d2691e",
+      brightBlue: "#80baff",
+      brightMagenta: "#d778ff",
+      brightCyan: "#78ffff",
+      brightWhite: "#708090",
+    },
+  },
+} as const satisfies Theme;
+
 // ── Exports ────────────────────────────────────────────────────────────────
 
 export const themeList = [
@@ -1072,15 +1246,16 @@ export const themeList = [
   rosePineDawn,
   nordLight,
   oneLight,
+  draculaLight,
+  windtermDark,
+  windtermLight,
 ] as const satisfies readonly Theme[];
 
 export type ThemeId = (typeof themeList)[number]["id"];
 
-export const themes = Object.fromEntries(themeList.map((theme) => [theme.id, theme])) as Record<
-  ThemeId,
-  Theme
-> &
-  Record<string, Theme | undefined>;
+export const themes = Object.fromEntries(
+  themeList.map((theme) => [theme.id, theme]),
+) as Record<ThemeId, Theme> & Record<string, Theme | undefined>;
 
 export const DEFAULT_THEME_ID = "github-dark" satisfies ThemeId;
 
@@ -1088,7 +1263,9 @@ export function isBuiltinThemeId(id: string) {
   return !!themes[id];
 }
 
-export function getAvailableThemes(customThemes: readonly Theme[] = []): Theme[] {
+export function getAvailableThemes(
+  customThemes: readonly Theme[] = [],
+): Theme[] {
   const seen = new Set<string>(themeList.map((theme) => theme.id));
   const custom = customThemes.filter((theme) => {
     if (!theme?.id || seen.has(theme.id)) return false;
@@ -1098,7 +1275,10 @@ export function getAvailableThemes(customThemes: readonly Theme[] = []): Theme[]
   return [...themeList, ...custom];
 }
 
-export function resolveTheme(id: string | null | undefined, customThemes: readonly Theme[] = []) {
+export function resolveTheme(
+  id: string | null | undefined,
+  customThemes: readonly Theme[] = [],
+) {
   if (id) {
     const customTheme = customThemes.find(
       (theme) => theme.id === id && !isBuiltinThemeId(theme.id),

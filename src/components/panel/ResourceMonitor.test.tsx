@@ -1,6 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { NetworkHistorySeries, NetworkHistoryStore } from "@/hooks/useNetworkHistory";
+import type {
+  NetworkHistorySeries,
+  NetworkHistoryStore,
+} from "@/hooks/useNetworkHistory";
 import type { RemoteStatsState } from "@/hooks/useRemoteStats";
 import type { RemoteStats } from "@/types/global";
 import ResourceMonitor from "./ResourceMonitor";
@@ -17,8 +20,14 @@ vi.mock("react-i18next", () => ({
         "resourceMonitor.upload": "Upload",
         "resourceMonitor.nic": "NIC",
         "resourceMonitor.network": "Network",
+        "resourceMonitor.users": "Users",
+        "resourceMonitor.usersUnavailable": "Not available",
+        "resourceMonitor.usersFailed": "Collection failed",
       };
-      if (key === "resourceMonitor.recentMinutes") return `Recent ${options?.count} min`;
+      if (key === "resourceMonitor.recentMinutes")
+        return `Recent ${options?.count} min`;
+      if (key === "resourceMonitor.userSessions")
+        return `${options?.count} sessions`;
       return labels[key] ?? key;
     },
   }),
@@ -34,16 +43,25 @@ vi.mock("@/components/ui/select", () => ({
     onValueChange: (value: string) => void;
     children: React.ReactNode;
   }) => (
-    <select value={value} onChange={(event) => onValueChange(event.target.value)}>
+    <select
+      value={value}
+      onChange={(event) => onValueChange(event.target.value)}
+    >
       {children}
     </select>
   ),
   SelectTrigger: () => null,
   SelectValue: () => null,
-  SelectContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  SelectItem: ({ value, children }: { value: string; children: React.ReactNode }) => (
-    <option value={value}>{children}</option>
+  SelectContent: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
   ),
+  SelectItem: ({
+    value,
+    children,
+  }: {
+    value: string;
+    children: React.ReactNode;
+  }) => <option value={value}>{children}</option>,
 }));
 
 vi.mock("./NetworkTrafficChart", () => ({
@@ -62,22 +80,36 @@ describe("ResourceMonitor network selector", () => {
       summary,
       interfaces: { eth0, docker0: historyPoints(300, 400) },
     };
-    const { rerender } = renderMonitor("session-a", statsWithNetworks(["eth0", "docker0"]), history);
+    const { rerender } = renderMonitor(
+      "session-a",
+      statsWithNetworks(["eth0", "docker0"]),
+      history,
+    );
 
     expect(selectValue()).toBe("__all__");
     expect(screen.queryByText("1000 B/s")).not.toBeNull();
     expect(screen.queryByText("2000 B/s")).not.toBeNull();
     expect(mocks.chart).toHaveBeenLastCalledWith({ points: summary });
 
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "eth0" } });
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "eth0" },
+    });
     expect(screen.queryByText("100 B/s")).not.toBeNull();
     expect(screen.queryByText("200 B/s")).not.toBeNull();
     expect(mocks.chart).toHaveBeenLastCalledWith({ points: eth0 });
 
-    rerender(resourceMonitor("session-a", statsWithNetworks(["docker0"]), history));
+    rerender(
+      resourceMonitor("session-a", statsWithNetworks(["docker0"]), history),
+    );
     await waitFor(() => expect(selectValue()).toBe("__all__"));
 
-    rerender(resourceMonitor("session-a", statsWithNetworks(["eth0", "docker0"]), history));
+    rerender(
+      resourceMonitor(
+        "session-a",
+        statsWithNetworks(["eth0", "docker0"]),
+        history,
+      ),
+    );
     expect(selectValue()).toBe("__all__");
     expect(mocks.chart).toHaveBeenLastCalledWith({ points: summary });
   });
@@ -90,20 +122,93 @@ describe("ResourceMonitor network selector", () => {
         docker0: historyPoints(300, 400),
       },
     };
-    const { rerender } = renderMonitor("session-a", statsWithNetworks(["eth0", "docker0"]), history);
+    const { rerender } = renderMonitor(
+      "session-a",
+      statsWithNetworks(["eth0", "docker0"]),
+      history,
+    );
 
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "eth0" } });
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "eth0" },
+    });
     expect(selectValue()).toBe("eth0");
 
-    rerender(resourceMonitor("session-b", statsWithNetworks(["eth0", "docker0"]), history));
+    rerender(
+      resourceMonitor(
+        "session-b",
+        statsWithNetworks(["eth0", "docker0"]),
+        history,
+      ),
+    );
     expect(selectValue()).toBe("__all__");
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "docker0" } });
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "docker0" },
+    });
     expect(selectValue()).toBe("docker0");
 
-    rerender(resourceMonitor("session-a", statsWithNetworks(["eth0", "docker0"]), history));
+    rerender(
+      resourceMonitor(
+        "session-a",
+        statsWithNetworks(["eth0", "docker0"]),
+        history,
+      ),
+    );
     expect(selectValue()).toBe("eth0");
   });
 });
+
+describe("ResourceMonitor logged-in users", () => {
+  it("lists accounts with their session counts", () => {
+    renderMonitor(
+      "session-a",
+      statsWithUsers([{ name: "alice", sessions: 2 }]),
+      emptyHistory(),
+    );
+
+    expect(screen.getByText("alice")).not.toBeNull();
+    expect(screen.getByText("2 sessions")).not.toBeNull();
+  });
+
+  it("explains why the list is empty instead of showing a bare placeholder", () => {
+    renderMonitor(
+      "session-a",
+      statsWithUsers([], "unavailable"),
+      emptyHistory(),
+    );
+    expect(screen.getByText("Not available")).not.toBeNull();
+
+    renderMonitor("session-a", statsWithUsers([], "failed"), emptyHistory());
+    expect(screen.getByText("Collection failed")).not.toBeNull();
+  });
+});
+
+function emptyHistory(): NetworkHistorySeries {
+  return { summary: [], interfaces: {} };
+}
+
+function statsWithUsers(
+  users: RemoteStats["users"],
+  status: RemoteStats["users_status"] = "available",
+): RemoteStats {
+  return {
+    system: { hostname: "host", uptime_sec: 100, os: "Linux", arch: "x86_64" },
+    load: { load1: 0.1, load5: 0.2, load15: 0.3 },
+    cpu: {
+      model: "CPU",
+      cores: 8,
+      usage: 10,
+      per_core: [],
+      sample_window_ms: 1000,
+      usage_source: "aggregate",
+    },
+    memory: { used: 1024, available: 1024, cached: 0 },
+    networks: [],
+    network_summary: { rx_bytes_per_sec: 0, tx_bytes_per_sec: 0 },
+    disks: [],
+    users,
+    users_status: status,
+  };
+}
 
 function selectValue() {
   return (screen.getByRole("combobox") as HTMLSelectElement).value;
@@ -139,7 +244,9 @@ function resourceMonitor(
   );
 }
 
-function historyStore(networkHistory: NetworkHistorySeries): NetworkHistoryStore {
+function historyStore(
+  networkHistory: NetworkHistorySeries,
+): NetworkHistoryStore {
   return {
     getSeries: () => networkHistory,
     subscribe: () => () => {},
@@ -178,5 +285,7 @@ function statsWithNetworks(nics: string[]): RemoteStats {
     })),
     network_summary: { rx_bytes_per_sec: 1000, tx_bytes_per_sec: 2000 },
     disks: [],
+    users: [],
+    users_status: "not_collected",
   };
 }

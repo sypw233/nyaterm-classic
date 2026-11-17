@@ -198,5 +198,7 @@ function remoteStats(
       tx_bytes_per_sec: summaryTx,
     },
     disks: [],
+    users: [],
+    users_status: "not_collected",
   };
 }

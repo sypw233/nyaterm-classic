@@ -1984,7 +1984,13 @@
     "upload": "Загрузить",
     "uptime": "Время работы",
     "usagePercent": "Использование",
-    "used": "Б/у"
+    "used": "Б/у",
+    "userSessions_few": "Сеанса: {{count}}",
+    "userSessions_many": "Сеансов: {{count}}",
+    "userSessions_one": "Сеанс: {{count}}",
+    "users": "Пользователи",
+    "usersFailed": "Ошибка сбора",
+    "usersUnavailable": "Недоступно"
   },
   "savedConnections": {
     "auth": "Аутентификация",

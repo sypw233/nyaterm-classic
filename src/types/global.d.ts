@@ -985,6 +985,17 @@ export interface RemoteStatsDisk {
   use_percent: number;
 }
 
+export interface RemoteStatsUser {
+  name: string;
+  sessions: number;
+}
+
+export type RemoteStatsUsersStatus =
+  | "not_collected"
+  | "available"
+  | "unavailable"
+  | "failed";
+
 export interface RemoteStats {
   system: RemoteStatsSystem;
   load: RemoteStatsLoad;
@@ -993,6 +1004,8 @@ export interface RemoteStats {
   networks: RemoteStatsNetwork[];
   network_summary: RemoteStatsNetworkSummary;
   disks: RemoteStatsDisk[];
+  users: RemoteStatsUser[];
+  users_status: RemoteStatsUsersStatus;
 }
 
 export interface RemoteProcess {

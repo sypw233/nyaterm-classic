@@ -1982,7 +1982,11 @@
     "upload": "업로드",
     "uptime": "가동 시간",
     "usagePercent": "사용률",
-    "used": "사용됨"
+    "used": "사용됨",
+    "userSessions": "세션 {{count}}개",
+    "users": "로그인 사용자",
+    "usersFailed": "수집 실패",
+    "usersUnavailable": "사용할 수 없음"
   },
   "savedConnections": {
     "auth": "인증",

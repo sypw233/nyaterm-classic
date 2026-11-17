@@ -6,6 +6,7 @@ import {
   MdComputer,
   MdExpandMore,
   MdMonitorHeart,
+  MdPeople,
   MdRefresh,
   MdStorage,
   MdSwapVert,
@@ -19,8 +20,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { type NetworkHistoryStore, useNetworkHistorySeries } from "@/hooks/useNetworkHistory";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  type NetworkHistoryStore,
+  useNetworkHistorySeries,
+} from "@/hooks/useNetworkHistory";
 import type { RemoteStatsState } from "@/hooks/useRemoteStats";
 import NetworkTrafficChart, { formatNetworkRate } from "./NetworkTrafficChart";
 
@@ -29,7 +37,10 @@ const ALL_NETWORK_INTERFACES = "__all__";
 function formatBytes(bytes: number): string {
   if (bytes <= 0) return "0 B";
   const units = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const i = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    units.length - 1,
+  );
   const val = bytes / 1024 ** i;
   return `${val < 10 ? val.toFixed(2) : val < 100 ? val.toFixed(1) : val.toFixed(0)} ${units[i]}`;
 }
@@ -39,7 +50,9 @@ function formatUptime(
   t: (key: string, opts?: Record<string, unknown>) => string,
 ): string {
   const days = Math.floor(seconds / 86400);
-  return t(days === 1 ? "resourceMonitor.day" : "resourceMonitor.days", { count: days });
+  return t(days === 1 ? "resourceMonitor.day" : "resourceMonitor.days", {
+    count: days,
+  });
 }
 
 function formatPct(value: number | null): string {
@@ -54,19 +67,30 @@ function usageColor(pct: number | null): string {
   return "var(--df-primary)";
 }
 
-function ProgressBar({ value, color }: { value: number | null; color: string }) {
+function ProgressBar({
+  value,
+  color,
+}: {
+  value: number | null;
+  color: string;
+}) {
   const pct = value == null ? 0 : Math.min(100, Math.max(0, value));
   const isHigh = pct >= 80;
   return (
     <div
       className="relative h-1.5 w-full rounded-full overflow-hidden"
-      style={{ backgroundColor: "color-mix(in srgb, var(--df-border) 60%, transparent)" }}
+      style={{
+        backgroundColor:
+          "color-mix(in srgb, var(--df-border) 60%, transparent)",
+      }}
     >
       <div
         className="absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out"
         style={{
           width: `${pct}%`,
-          background: isHigh ? `linear-gradient(90deg, ${color}cc, ${color})` : color,
+          background: isHigh
+            ? `linear-gradient(90deg, ${color}cc, ${color})`
+            : color,
           boxShadow: isHigh ? `0 0 8px ${color}66` : "none",
         }}
       />
@@ -92,7 +116,12 @@ function RingGauge({
 
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="rotate-[-90deg]" aria-hidden="true">
+      <svg
+        width={size}
+        height={size}
+        className="rotate-[-90deg]"
+        aria-hidden="true"
+      >
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -115,7 +144,10 @@ function RingGauge({
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-xs font-bold font-mono tabular-nums leading-none" style={{ color }}>
+        <span
+          className="text-xs font-bold font-mono tabular-nums leading-none"
+          style={{ color }}
+        >
           {value == null ? (
             "--"
           ) : (
@@ -159,7 +191,9 @@ function SectionCard({
         <div className="flex min-w-0 items-center gap-1.5">
           <span
             className="text-sm"
-            style={{ color: accent ? "var(--df-primary)" : "var(--df-text-muted)" }}
+            style={{
+              color: accent ? "var(--df-primary)" : "var(--df-text-muted)",
+            }}
           >
             {icon}
           </span>
@@ -191,7 +225,10 @@ export default function ResourceMonitor({
   networkHistoryStore,
 }: ResourceMonitorProps) {
   const { t } = useTranslation();
-  const networkHistory = useNetworkHistorySeries(networkHistoryStore, activeSessionId);
+  const networkHistory = useNetworkHistorySeries(
+    networkHistoryStore,
+    activeSessionId,
+  );
   const [cpuExpanded, setCpuExpanded] = useState(false);
   const [selectedNetworkInterfaces, setSelectedNetworkInterfaces] = useState<
     Record<string, string>
@@ -204,7 +241,9 @@ export default function ResourceMonitor({
   const selectedNetwork =
     selectedNetworkInterface === ALL_NETWORK_INTERFACES
       ? null
-      : (stats?.networks.find((network) => network.nic === selectedNetworkInterface) ?? null);
+      : (stats?.networks.find(
+          (network) => network.nic === selectedNetworkInterface,
+        ) ?? null);
   const effectiveNetworkInterface =
     selectedNetworkInterface === ALL_NETWORK_INTERFACES || selectedNetwork
       ? selectedNetworkInterface
@@ -226,7 +265,9 @@ export default function ResourceMonitor({
   }, [activeSessionId, selectedNetwork, selectedNetworkInterface, stats]);
 
   const currentTraffic =
-    effectiveNetworkInterface === ALL_NETWORK_INTERFACES ? stats?.network_summary : selectedNetwork;
+    effectiveNetworkInterface === ALL_NETWORK_INTERFACES
+      ? stats?.network_summary
+      : selectedNetwork;
   const networkHistoryPoints =
     effectiveNetworkInterface === ALL_NETWORK_INTERFACES
       ? networkHistory.summary
@@ -236,7 +277,8 @@ export default function ResourceMonitor({
       ? Math.max(
           0.1,
           Math.round(
-            ((networkHistoryPoints[networkHistoryPoints.length - 1]?.timestamp ?? 0) -
+            ((networkHistoryPoints[networkHistoryPoints.length - 1]
+              ?.timestamp ?? 0) -
               networkHistoryPoints[0].timestamp) /
               6000,
           ) / 10,
@@ -264,32 +306,57 @@ export default function ResourceMonitor({
                 disabled={!enabled || !activeSessionId || isManualRefreshing}
                 aria-label={t("resourceMonitor.refresh")}
               >
-                <MdRefresh className={`h-4 w-4 ${isManualRefreshing ? "animate-spin" : ""}`} />
+                <MdRefresh
+                  className={`h-4 w-4 ${isManualRefreshing ? "animate-spin" : ""}`}
+                />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="top">{t("resourceMonitor.refresh")}</TooltipContent>
+            <TooltipContent side="top">
+              {t("resourceMonitor.refresh")}
+            </TooltipContent>
           </Tooltip>
         }
       />
 
       <div className="flex-1 overflow-y-auto p-2.5 terminal-scroll">
         {!activeSessionId ? (
-          <EmptyState icon={<MdMonitorHeart />} text={t("panel.resourceMonitorNoSession")} />
+          <EmptyState
+            icon={<MdMonitorHeart />}
+            text={t("panel.resourceMonitorNoSession")}
+          />
         ) : !enabled ? (
-          <EmptyState icon={<MdMonitorHeart />} text={t("panel.resourceMonitorDisabled")} />
+          <EmptyState
+            icon={<MdMonitorHeart />}
+            text={t("panel.resourceMonitorDisabled")}
+          />
         ) : error && !stats ? (
-          <EmptyState icon={<MdMonitorHeart />} text={t("panel.resourceMonitorError")} />
+          <EmptyState
+            icon={<MdMonitorHeart />}
+            text={t("panel.resourceMonitorError")}
+          />
         ) : stats ? (
           <div className="space-y-2">
             {/* System */}
-            <SectionCard icon={<MdComputer />} title={t("resourceMonitor.system")}>
+            <SectionCard
+              icon={<MdComputer />}
+              title={t("resourceMonitor.system")}
+            >
               <div
                 className="grid gap-x-4 gap-y-1"
                 style={{ gridTemplateColumns: "minmax(0, 1fr) max-content" }}
               >
-                <InfoCell label={t("resourceMonitor.hostname")} value={stats.system.hostname} />
-                <InfoCell label={t("resourceMonitor.arch")} value={stats.system.arch} />
-                <InfoCell label={t("resourceMonitor.os")} value={stats.system.os} />
+                <InfoCell
+                  label={t("resourceMonitor.hostname")}
+                  value={stats.system.hostname}
+                />
+                <InfoCell
+                  label={t("resourceMonitor.arch")}
+                  value={stats.system.arch}
+                />
+                <InfoCell
+                  label={t("resourceMonitor.os")}
+                  value={stats.system.os}
+                />
                 <InfoCell
                   label={t("resourceMonitor.uptime")}
                   value={formatUptime(stats.system.uptime_sec, t)}
@@ -310,7 +377,10 @@ export default function ResourceMonitor({
                   />
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-baseline justify-between">
-                      <span className="text-[0.6875rem]" style={{ color: "var(--df-text-muted)" }}>
+                      <span
+                        className="text-[0.6875rem]"
+                        style={{ color: "var(--df-text-muted)" }}
+                      >
                         {t("resourceMonitor.cpuAvgUsage")}
                       </span>
                       <span
@@ -320,13 +390,18 @@ export default function ResourceMonitor({
                         {cpuUsage == null ? "--" : `${cpuUsage.toFixed(1)}%`}
                       </span>
                     </div>
-                    <ProgressBar value={cpuUsage} color={usageColor(cpuUsage)} />
+                    <ProgressBar
+                      value={cpuUsage}
+                      color={usageColor(cpuUsage)}
+                    />
                     <div className="text-right">
                       <span
                         className="text-[0.625rem] font-mono"
                         style={{ color: "var(--df-text-dimmed)" }}
                       >
-                        {cpuUsage == null ? t("resourceMonitor.sampling") : `${stats.cpu.cores}C`}
+                        {cpuUsage == null
+                          ? t("resourceMonitor.sampling")
+                          : `${stats.cpu.cores}C`}
                       </span>
                     </div>
                   </div>
@@ -334,9 +409,18 @@ export default function ResourceMonitor({
 
                 {/* Load badges */}
                 <div className="grid grid-cols-3 gap-1.5">
-                  <LoadBadge label={t("resourceMonitor.Load1")} value={stats.load.load1} />
-                  <LoadBadge label={t("resourceMonitor.Load5")} value={stats.load.load5} />
-                  <LoadBadge label={t("resourceMonitor.Load15")} value={stats.load.load15} />
+                  <LoadBadge
+                    label={t("resourceMonitor.Load1")}
+                    value={stats.load.load1}
+                  />
+                  <LoadBadge
+                    label={t("resourceMonitor.Load5")}
+                    value={stats.load.load5}
+                  />
+                  <LoadBadge
+                    label={t("resourceMonitor.Load15")}
+                    value={stats.load.load15}
+                  />
                 </div>
 
                 {/* Expand toggle for per-core */}
@@ -359,7 +443,9 @@ export default function ResourceMonitor({
                       <MdExpandMore
                         className="transition-transform duration-200"
                         style={{
-                          transform: cpuExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                          transform: cpuExpanded
+                            ? "rotate(180deg)"
+                            : "rotate(0deg)",
                         }}
                       />
                       <span>
@@ -395,7 +481,10 @@ export default function ResourceMonitor({
             </SectionCard>
 
             {/* Memory */}
-            <SectionCard icon={<FaMemory />} title={t("resourceMonitor.memory")}>
+            <SectionCard
+              icon={<FaMemory />}
+              title={t("resourceMonitor.memory")}
+            >
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
                   <RingGauge
@@ -406,7 +495,10 @@ export default function ResourceMonitor({
                   />
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-baseline justify-between">
-                      <span className="text-[0.6875rem]" style={{ color: "var(--df-text-muted)" }}>
+                      <span
+                        className="text-[0.6875rem]"
+                        style={{ color: "var(--df-text-muted)" }}
+                      >
                         RAM
                       </span>
                       <span
@@ -416,13 +508,19 @@ export default function ResourceMonitor({
                         {formatPct(memUsedPct)}
                       </span>
                     </div>
-                    <ProgressBar value={memUsedPct} color={usageColor(memUsedPct)} />
+                    <ProgressBar
+                      value={memUsedPct}
+                      color={usageColor(memUsedPct)}
+                    />
                     <div
                       className="text-[0.625rem] font-mono tabular-nums"
                       style={{ color: "var(--df-text-muted)" }}
                     >
                       {formatBytes(stats.memory.used)}
-                      <span style={{ color: "var(--df-text-dimmed)" }}> / </span>
+                      <span style={{ color: "var(--df-text-dimmed)" }}>
+                        {" "}
+                        /{" "}
+                      </span>
                       {formatBytes(memTotal)}
                     </div>
                   </div>
@@ -482,13 +580,17 @@ export default function ResourceMonitor({
                   <div className="grid grid-cols-2 gap-2">
                     <NetworkMetric
                       label={t("resourceMonitor.download")}
-                      value={formatNetworkRate(currentTraffic?.rx_bytes_per_sec ?? 0)}
+                      value={formatNetworkRate(
+                        currentTraffic?.rx_bytes_per_sec ?? 0,
+                      )}
                       arrow="↓"
                       color="#3b82f6"
                     />
                     <NetworkMetric
                       label={t("resourceMonitor.upload")}
-                      value={formatNetworkRate(currentTraffic?.tx_bytes_per_sec ?? 0)}
+                      value={formatNetworkRate(
+                        currentTraffic?.tx_bytes_per_sec ?? 0,
+                      )}
                       arrow="↑"
                       color="#22c55e"
                     />
@@ -499,12 +601,17 @@ export default function ResourceMonitor({
                       className="text-right text-[0.625rem]"
                       style={{ color: "var(--df-text-dimmed)" }}
                     >
-                      {t("resourceMonitor.recentMinutes", { count: networkHistoryMinutes })}
+                      {t("resourceMonitor.recentMinutes", {
+                        count: networkHistoryMinutes,
+                      })}
                     </div>
                   )}
                 </div>
               ) : (
-                <span className="text-xs" style={{ color: "var(--df-text-dimmed)" }}>
+                <span
+                  className="text-xs"
+                  style={{ color: "var(--df-text-dimmed)" }}
+                >
                   -
                 </span>
               )}
@@ -526,8 +633,52 @@ export default function ResourceMonitor({
                   ))}
                 </div>
               ) : (
-                <span className="text-xs" style={{ color: "var(--df-text-dimmed)" }}>
+                <span
+                  className="text-xs"
+                  style={{ color: "var(--df-text-dimmed)" }}
+                >
                   -
+                </span>
+              )}
+            </SectionCard>
+
+            {/* Logged-in users */}
+            <SectionCard icon={<MdPeople />} title={t("resourceMonitor.users")}>
+              {stats.users_status === "available" && stats.users.length > 0 ? (
+                <div className="space-y-0.5">
+                  {stats.users.map((user) => (
+                    <div
+                      key={user.name}
+                      className="flex items-center justify-between gap-2 text-xs"
+                    >
+                      <span
+                        className="truncate font-mono"
+                        style={{ color: "var(--df-text)" }}
+                        title={user.name}
+                      >
+                        {user.name}
+                      </span>
+                      <span
+                        className="shrink-0 font-mono tabular-nums text-[0.6875rem]"
+                        style={{ color: "var(--df-text-muted)" }}
+                      >
+                        {t("resourceMonitor.userSessions", {
+                          count: user.sessions,
+                        })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <span
+                  className="text-xs"
+                  style={{ color: "var(--df-text-dimmed)" }}
+                >
+                  {stats.users_status === "unavailable"
+                    ? t("resourceMonitor.usersUnavailable")
+                    : stats.users_status === "failed"
+                      ? t("resourceMonitor.usersFailed")
+                      : "-"}
                 </span>
               )}
             </SectionCard>
@@ -585,7 +736,10 @@ function LoadingSpinner({ label }: { label: string }) {
 function InfoCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <div className="text-[0.625rem]" style={{ color: "var(--df-text-dimmed)" }}>
+      <div
+        className="text-[0.625rem]"
+        style={{ color: "var(--df-text-dimmed)" }}
+      >
         {label}
       </div>
       <div
@@ -604,7 +758,8 @@ function LoadBadge({ label, value }: { label: string; value: number }) {
     <div
       className="min-w-0 rounded-md border px-2 py-1.5 text-center"
       style={{
-        backgroundColor: "color-mix(in srgb, var(--df-border) 18%, var(--df-bg))",
+        backgroundColor:
+          "color-mix(in srgb, var(--df-border) 18%, var(--df-bg))",
         borderColor: "color-mix(in srgb, var(--df-border) 75%, transparent)",
       }}
     >
@@ -656,7 +811,10 @@ function CoreRow({ id, usage }: { id: number; usage: number }) {
 function MetricChip({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center gap-1">
-      <span className="text-[0.625rem]" style={{ color: "var(--df-text-dimmed)" }}>
+      <span
+        className="text-[0.625rem]"
+        style={{ color: "var(--df-text-dimmed)" }}
+      >
         {label}
       </span>
       <span
@@ -685,7 +843,9 @@ function DiskRow({
   return (
     <div
       className="space-y-1.5 border-b py-2 first:pt-0 last:border-b-0 last:pb-0"
-      style={{ borderColor: "color-mix(in srgb, var(--df-border) 60%, transparent)" }}
+      style={{
+        borderColor: "color-mix(in srgb, var(--df-border) 60%, transparent)",
+      }}
     >
       <div className="flex items-baseline justify-between gap-2">
         <span
@@ -704,7 +864,10 @@ function DiskRow({
       </div>
       <ProgressBar value={usePercent} color={usageColor(usePercent)} />
       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-        <span className="text-[0.625rem] font-mono" style={{ color: "var(--df-text-dimmed)" }}>
+        <span
+          className="text-[0.625rem] font-mono"
+          style={{ color: "var(--df-text-dimmed)" }}
+        >
           {formatBytes(total)}
         </span>
         <MetricChip label={availableLabel} value={formatBytes(available)} />
@@ -728,11 +891,15 @@ function NetworkMetric({
     <div
       className="min-w-0 rounded-md border px-2 py-1.5"
       style={{
-        backgroundColor: "color-mix(in srgb, var(--df-border) 18%, var(--df-bg))",
+        backgroundColor:
+          "color-mix(in srgb, var(--df-border) 18%, var(--df-bg))",
         borderColor: "color-mix(in srgb, var(--df-border) 70%, transparent)",
       }}
     >
-      <div className="text-[0.625rem]" style={{ color: "var(--df-text-dimmed)" }}>
+      <div
+        className="text-[0.625rem]"
+        style={{ color: "var(--df-text-dimmed)" }}
+      >
         <span className="mr-1" style={{ color }}>
           {arrow}
         </span>

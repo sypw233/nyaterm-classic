@@ -11,6 +11,8 @@ This changelog is inferred from release bump commits in git history (for example
 - **ai:** Per-credential custom HTTP request headers (name/value, up to 32 per provider). Values are encrypted at rest, masked in the settings API, and applied to chat, agent, and model-discovery requests; managed transport headers such as `Host` and `Content-Length` are rejected.
 - **themes:** Import Windows Terminal color schemes, including JSONC files with comments and trailing commas. Every scheme in the file becomes a custom NyaTerm theme.
 - **files:** Add a read-only, virtualized HEX viewer for binary files, reachable from the preview's "View as HEX" action; it supports offset jump and warns when the file is truncated.
+- **themes:** Add the missing Dracula Light, WindTerm Dark, and WindTerm Light built-in themes.
+- **monitoring:** Show logged-in users (account plus session count) on the remote resource panel. The `who` probe is time-bounded, runs on its own 30-second cadence, and reports "unavailable"/"failed" instead of silently showing an empty list.
 
 ### Changed
 

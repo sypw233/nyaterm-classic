@@ -1984,7 +1984,12 @@
     "upload": "Upload",
     "uptime": "Uptime",
     "usagePercent": "Usage",
-    "used": "Used"
+    "used": "Used",
+    "userSessions_one": "{{count}} session",
+    "userSessions_other": "{{count}} sessions",
+    "users": "Users",
+    "usersFailed": "Collection failed",
+    "usersUnavailable": "Not available"
   },
   "savedConnections": {
     "auth": "Auth",

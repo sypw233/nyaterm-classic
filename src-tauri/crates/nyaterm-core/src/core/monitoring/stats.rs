@@ -10,6 +10,9 @@ use tokio::sync::{Mutex, OwnedMutexGuard};
 const MAX_SAMPLE_WINDOW: Duration = Duration::from_secs(5 * 60);
 const SAMPLE_TTL: Duration = Duration::from_secs(10 * 60);
 const DISK_REFRESH_INTERVAL: Duration = Duration::from_secs(30);
+/// `who` is comparatively expensive and login sessions change slowly, so the
+/// optional user probe runs far less often than the fast counters.
+const USERS_REFRESH_INTERVAL: Duration = Duration::from_secs(30);
 const CPU_USAGE_DIFF_THRESHOLD: f64 = 5.0;
 const CPU_TOTAL_GAP_RATIO_THRESHOLD: f64 = 0.02;
 
@@ -74,6 +77,28 @@ pub struct NetworkSummaryInfo {
     pub tx_bytes_per_sec: f64,
 }
 
+/// One account with at least one interactive login session on the host.
+#[derive(serde::Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct LoggedInUser {
+    pub name: String,
+    pub sessions: u32,
+}
+
+/// Whether the optional `who` probe ran and produced a trustworthy result.
+#[derive(serde::Serialize, Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum LoggedInUsersStatus {
+    /// The probe was not requested for this sample.
+    #[default]
+    NotCollected,
+    /// `who` ran and every record parsed cleanly.
+    Available,
+    /// `who` is not installed on the host.
+    Unavailable,
+    /// `who` exists but timed out, failed, or emitted unparsable output.
+    Failed,
+}
+
 #[derive(serde::Serialize, Clone, Debug, PartialEq, Eq)]
 pub struct DiskInfo {
     pub device: String,
@@ -92,6 +117,8 @@ pub struct RemoteStats {
     pub networks: Vec<NetworkInfo>,
     pub network_summary: NetworkSummaryInfo,
     pub disks: Vec<DiskInfo>,
+    pub users: Vec<LoggedInUser>,
+    pub users_status: LoggedInUsersStatus,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -136,6 +163,7 @@ pub struct ParsedRemoteStats {
     static_info: Option<StaticRemoteStats>,
     disks: Option<Vec<DiskInfo>>,
     disk_probe_attempted: bool,
+    users_probe_attempted: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -155,6 +183,9 @@ struct CachedRemoteSample {
     static_info: Option<StaticRemoteStats>,
     disks: Option<CachedDisks>,
     disk_attempted_at: Option<Instant>,
+    users: Vec<LoggedInUser>,
+    users_status: LoggedInUsersStatus,
+    users_attempted_at: Option<Instant>,
     cpu_snapshot: Option<CpuSnapshot>,
     networks: BTreeMap<String, NetworkCounters>,
     updated_at: Instant,
@@ -187,6 +218,9 @@ impl RemoteStatsProbeLease {
 pub struct StatsProbePlan {
     pub include_static: bool,
     pub include_disk: bool,
+    /// Run `who` to collect interactive login sessions. Throttled by
+    /// `USERS_REFRESH_INTERVAL` because it costs an extra remote command.
+    pub include_users: bool,
 }
 
 impl RemoteStatsSampler {
@@ -222,6 +256,11 @@ impl RemoteStatsSampler {
                 .and_then(|sample| sample.disk_attempted_at)
                 .is_none_or(|attempted_at| {
                     now.saturating_duration_since(attempted_at) >= DISK_REFRESH_INTERVAL
+                }),
+            include_users: sample
+                .and_then(|sample| sample.users_attempted_at)
+                .is_none_or(|attempted_at| {
+                    now.saturating_duration_since(attempted_at) >= USERS_REFRESH_INTERVAL
                 }),
         }
     }
@@ -284,6 +323,23 @@ impl RemoteStatsSampler {
             stats.disks.clone_from(&disks.values);
         }
 
+        // Login sessions are refreshed on their own slower cadence. When this
+        // sample did not run `who`, keep the previously collected list instead
+        // of reporting a spurious empty result.
+        let users_attempted_at = if parsed.users_probe_attempted {
+            Some(now)
+        } else {
+            previous
+                .as_ref()
+                .and_then(|sample| sample.users_attempted_at)
+        };
+        if stats.users_status == LoggedInUsersStatus::NotCollected {
+            if let Some(previous) = previous.as_ref() {
+                stats.users.clone_from(&previous.users);
+                stats.users_status = previous.users_status;
+            }
+        }
+
         if let Some(previous) = previous.as_ref() {
             let sample_window = now.saturating_duration_since(previous.updated_at);
             if let (Some(previous_cpu), Some(current_cpu)) =
@@ -301,6 +357,8 @@ impl RemoteStatsSampler {
             apply_network_rates(previous, sample_window, &parsed.networks, &mut stats);
         }
 
+        let users = stats.users.clone();
+        let users_status = stats.users_status;
         if lease.is_current() {
             samples.insert(
                 session_id.to_string(),
@@ -308,6 +366,9 @@ impl RemoteStatsSampler {
                     static_info,
                     disks,
                     disk_attempted_at,
+                    users: users.clone(),
+                    users_status,
+                    users_attempted_at,
                     cpu_snapshot: parsed.cpu_snapshot,
                     networks: parsed.networks,
                     updated_at: now,
@@ -472,14 +533,15 @@ fn usage_percent(delta: CpuDelta) -> f64 {
 }
 
 pub fn build_stats_script(plan: StatsProbePlan) -> String {
-    if !plan.include_static && !plan.include_disk {
+    if !plan.include_static && !plan.include_disk && !plan.include_users {
         return FAST_STATS_SCRIPT.to_string();
     }
 
     format!(
-        "NYATERM_STATIC={} NYATERM_DISK={} {SYSINFO_SCRIPT}",
+        "NYATERM_STATIC={} NYATERM_DISK={} NYATERM_USERS={} {SYSINFO_SCRIPT}",
         u8::from(plan.include_static),
         u8::from(plan.include_disk),
+        u8::from(plan.include_users),
     )
 }
 
@@ -607,7 +669,7 @@ const SYSINFO_SCRIPT: &str = r#"sh -c '
 LC_ALL=C
 export LC_ALL
 
-if [ "$NYATERM_STATIC" = 1 ] || [ "$NYATERM_DISK" = 1 ]; then
+if [ "$NYATERM_STATIC" = 1 ] || [ "$NYATERM_DISK" = 1 ] || [ "$NYATERM_USERS" = 1 ]; then
   base=${TMPDIR:-/tmp}/sysinfo.$$;
   hostf=$base.host;
   archf=$base.arch;
@@ -615,6 +677,7 @@ if [ "$NYATERM_STATIC" = 1 ] || [ "$NYATERM_DISK" = 1 ]; then
   diskf=$base.disk;
   diskraw=$base.diskraw;
   dfraw=$base.dfraw;
+  whof=$base.who;
   trap "rm -f \"$base\".*" 0 HUP INT TERM;
 fi;
 
@@ -866,6 +929,21 @@ fi;
 
 printf "MEMORY\t%s\t%s\t%s\n" "$mem_used" "$mem_avail" "$mem_cache";
 
+if [ "$NYATERM_USERS" = 1 ]; then
+  if ! command -v who >/dev/null 2>&1; then
+    printf "USERS_STATUS\tunavailable\n";
+  elif run_limited "$whof" 1 who; then
+    if awk '"'"'
+NF { printf "LOGIN_SESSION\t%s\n", $0 }
+END { print "USERS_STATUS\tavailable" }
+'"'"' "$whof" 2>/dev/null; then :; else
+      printf "USERS_STATUS\tfailed\n";
+    fi;
+  else
+    printf "USERS_STATUS\tfailed\n";
+  fi;
+fi;
+
 if [ -r /proc/net/dev ]; then
   while IFS=: read -r nic_fields counter_fields; do
     set -- $nic_fields;
@@ -925,6 +1003,10 @@ pub fn parse_stats_output(output: &str) -> AppResult<ParsedRemoteStats> {
     let mut static_cpu = None;
     let mut saw_disk_line = false;
     let mut disk_probe_succeeded = None;
+    let mut users = BTreeMap::<String, u32>::new();
+    let mut login_sessions = BTreeMap::<String, u32>::new();
+    let mut invalid_users = false;
+    let mut saw_users_status = false;
 
     for line in output.lines() {
         let cols: Vec<&str> = line.split('\t').collect();
@@ -1000,6 +1082,57 @@ pub fn parse_stats_output(output: &str) -> AppResult<ParsedRemoteStats> {
                 };
             }
 
+            "USERS_STATUS" => {
+                saw_users_status = true;
+                if stats.users_status != LoggedInUsersStatus::NotCollected {
+                    invalid_users = true;
+                }
+                stats.users_status = match cols.as_slice() {
+                    [_, "available"] => LoggedInUsersStatus::Available,
+                    [_, "unavailable"] => LoggedInUsersStatus::Unavailable,
+                    _ => LoggedInUsersStatus::Failed,
+                };
+            }
+
+            "USER" => {
+                // Legacy name+session-count records. Detailed LOGIN_SESSION rows
+                // take precedence when both are present, so these are only a
+                // fallback for older probes.
+                let valid = (|| {
+                    if cols.len() != 3
+                        || cols[1].is_empty()
+                        || cols[1].chars().any(char::is_control)
+                        || !cols[2].bytes().all(|byte| byte.is_ascii_digit())
+                    {
+                        return None;
+                    }
+                    let count = cols[2].parse::<u32>().ok().filter(|count| *count > 0)?;
+                    let total = users.entry(cols[1].to_string()).or_default();
+                    *total = total.checked_add(count)?;
+                    Some(())
+                })();
+                invalid_users |= valid.is_none();
+            }
+
+            "LOGIN_SESSION" => {
+                // `who` output: "<name> <terminal> <date> <time> [(<source>)]".
+                let record = line.split_once('\t').map(|(_, rest)| rest).unwrap_or("");
+                let mut parts = record.split_whitespace();
+                match parts.next() {
+                    Some(name) if !name.is_empty() && !name.chars().any(char::is_control) => {
+                        let total = login_sessions.entry(name.to_string()).or_default();
+                        *total = match total.checked_add(1) {
+                            Some(total) => total,
+                            None => {
+                                invalid_users = true;
+                                *total
+                            }
+                        };
+                    }
+                    _ => invalid_users = true,
+                }
+            }
+
             "NETDEV" if cols.len() >= 5 => {
                 if cols[1] != "-" {
                     let rx_bytes = parse_u64_field(cols[3], "NETDEV rx bytes")?;
@@ -1073,6 +1206,23 @@ pub fn parse_stats_output(output: &str) -> AppResult<ParsedRemoteStats> {
         None => None,
     };
 
+    if !login_sessions.is_empty() {
+        // Detailed records are authoritative; legacy USER summaries must not
+        // double-count the same sessions when both record types are present.
+        users.clear();
+        users.extend(login_sessions.iter().map(|(name, n)| (name.clone(), *n)));
+    }
+    if invalid_users || (!users.is_empty() && stats.users_status != LoggedInUsersStatus::Available)
+    {
+        stats.users_status = LoggedInUsersStatus::Failed;
+    }
+    if stats.users_status == LoggedInUsersStatus::Available {
+        stats.users = users
+            .into_iter()
+            .map(|(name, sessions)| LoggedInUser { name, sessions })
+            .collect();
+    }
+
     Ok(ParsedRemoteStats {
         stats,
         cpu_snapshot: has_cpu_snapshot.then_some(cpu_snapshot),
@@ -1080,6 +1230,7 @@ pub fn parse_stats_output(output: &str) -> AppResult<ParsedRemoteStats> {
         static_info,
         disks,
         disk_probe_attempted: disk_probe_succeeded.is_some() || saw_disk_line,
+        users_probe_attempted: saw_users_status,
     })
 }
 
@@ -1107,8 +1258,8 @@ fn parse_u64_field(value: &str, field: &str) -> AppResult<u64> {
 #[cfg(test)]
 mod tests {
     use super::{
-        CpuTicks, CpuUsageSource, DISK_REFRESH_INTERVAL, RemoteStatsSampler, StatsProbePlan,
-        build_stats_script, calculate_delta, parse_stats_output, usage_percent,
+        CpuTicks, CpuUsageSource, DISK_REFRESH_INTERVAL, LoggedInUsersStatus, RemoteStatsSampler,
+        StatsProbePlan, build_stats_script, calculate_delta, parse_stats_output, usage_percent,
     };
     use std::time::{Duration, Instant};
 
@@ -1146,8 +1297,77 @@ mod tests {
     }
 
     #[test]
-    fn parse_stats_output_parses_complete_snapshot() {
-        let parsed = parse_stats_output(
+    fn parse_stats_output_collects_logged_in_users_sorted_by_name() {
+        let stats = parse_stats_output(
+            "USERS_STATUS\tavailable\n\
+             LOGIN_SESSION\troot     pts/0        2026-11-17 09:12 (10.0.0.5)\n\
+             LOGIN_SESSION\talice    pts/1        2026-11-17 09:30 (10.0.0.6)\n\
+             LOGIN_SESSION\talice    tty1         2026-11-17 08:00\n\
+             MEMORY\t1\t2\t3\n",
+        )
+        .unwrap()
+        .stats;
+
+        assert_eq!(stats.users_status, LoggedInUsersStatus::Available);
+        assert_eq!(
+            stats
+                .users
+                .iter()
+                .map(|user| (user.name.as_str(), user.sessions))
+                .collect::<Vec<_>>(),
+            vec![("alice", 2), ("root", 1)]
+        );
+    }
+
+    #[test]
+    fn user_probe_failure_modes_never_expose_partial_lists() {
+        let outside_probe = parse_stats_output("MEMORY\t1\t2\t3\n").unwrap().stats;
+        assert_eq!(
+            outside_probe.users_status,
+            LoggedInUsersStatus::NotCollected
+        );
+        assert!(outside_probe.users.is_empty());
+
+        let unavailable = parse_stats_output(
+            "USERS_STATUS\tunavailable\nLOGIN_SESSION\troot     pts/0  2026-11-17 09:12\n",
+        )
+        .unwrap()
+        .stats;
+        assert_eq!(unavailable.users_status, LoggedInUsersStatus::Failed);
+        assert!(unavailable.users.is_empty());
+
+        let unparsable = parse_stats_output("USERS_STATUS\tavailable\nLOGIN_SESSION\t\n")
+            .unwrap()
+            .stats;
+        assert_eq!(unparsable.users_status, LoggedInUsersStatus::Failed);
+        assert!(unparsable.users.is_empty());
+
+        let empty = parse_stats_output("USERS_STATUS\tavailable\n").unwrap().stats;
+        assert_eq!(empty.users_status, LoggedInUsersStatus::Available);
+        assert!(empty.users.is_empty());
+    }
+
+    #[test]
+    fn user_probe_is_opt_in_and_uses_bounded_who() {
+        let without = build_stats_script(StatsProbePlan {
+            include_static: false,
+            include_disk: false,
+            include_users: false,
+        });
+        assert!(!without.contains("who"));
+        assert!(!without.contains("NYATERM_USERS"));
+
+        let with = build_stats_script(StatsProbePlan {
+            include_static: false,
+            include_disk: false,
+            include_users: true,
+        });
+        assert!(with.contains("NYATERM_USERS=1"));
+        assert!(with.contains("run_limited \"$whof\" 1 who"));
+    }
+
+    #[test]
+    fn parse_stats_output_parses_complete_snapshot() {        let parsed = parse_stats_output(
             "SYSTEM\tnode-1\t12345\tUbuntu 24.04\tx86_64\n\
              LOAD\t0.10\t0.20\t0.30\n\
              CPU\tAMD Ryzen\t8\n\
@@ -1241,6 +1461,7 @@ mod tests {
         let script = build_stats_script(StatsProbePlan {
             include_static: false,
             include_disk: false,
+            include_users: false,
         });
 
         for forbidden in [
@@ -1268,10 +1489,12 @@ mod tests {
             StatsProbePlan {
                 include_static: false,
                 include_disk: false,
+                include_users: false,
             },
             StatsProbePlan {
                 include_static: true,
                 include_disk: true,
+                include_users: false,
             },
         ] {
             let script = build_stats_script(plan);
@@ -1294,6 +1517,7 @@ mod tests {
         let script = build_stats_script(StatsProbePlan {
             include_static: true,
             include_disk: true,
+            include_users: false,
         });
         let static_probe = script.find("/proc/cpuinfo").unwrap();
         let disk_probe = script.find("findmnt -b").unwrap();
@@ -1338,6 +1562,7 @@ mod tests {
             StatsProbePlan {
                 include_static: true,
                 include_disk: true,
+                include_users: true,
             }
         );
 
@@ -1350,6 +1575,9 @@ mod tests {
             StatsProbePlan {
                 include_static: false,
                 include_disk: false,
+                // `snapshot_output` carries no USERS_STATUS line, so the user
+                // probe has not yet been attempted and stays scheduled.
+                include_users: true,
             }
         );
         assert_eq!(
@@ -1357,6 +1585,7 @@ mod tests {
             StatsProbePlan {
                 include_static: true,
                 include_disk: true,
+                include_users: true,
             }
         );
 
@@ -1379,6 +1608,7 @@ mod tests {
             StatsProbePlan {
                 include_static: true,
                 include_disk: true,
+                include_users: true,
             }
         );
     }
@@ -1404,6 +1634,7 @@ mod tests {
             StatsProbePlan {
                 include_static: true,
                 include_disk: true,
+                include_users: true,
             }
         );
 
@@ -1419,6 +1650,7 @@ mod tests {
             StatsProbePlan {
                 include_static: false,
                 include_disk: false,
+                include_users: true,
             }
         );
     }

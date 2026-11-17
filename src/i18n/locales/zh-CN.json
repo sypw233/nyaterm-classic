@@ -1982,7 +1982,11 @@
     "upload": "上传",
     "uptime": "运行时长",
     "usagePercent": "使用占比",
-    "used": "已使用"
+    "used": "已使用",
+    "userSessions": "{{count}} 个会话",
+    "users": "登录用户",
+    "usersFailed": "采集失败",
+    "usersUnavailable": "不可用"
   },
   "savedConnections": {
     "auth": "认证",

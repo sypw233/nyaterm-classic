@@ -1982,7 +1982,11 @@
     "upload": "上傳",
     "uptime": "執行時長",
     "usagePercent": "使用佔比",
-    "used": "已使用"
+    "used": "已使用",
+    "userSessions": "{{count}} 個工作階段",
+    "users": "登入使用者",
+    "usersFailed": "擷取失敗",
+    "usersUnavailable": "不可用"
   },
   "savedConnections": {
     "auth": "身分驗證",

@@ -193,6 +193,8 @@ function remoteStats(): RemoteStats {
         use_percent: 50,
       },
     ],
+    users: [],
+    users_status: "not_collected",
   };
 }
 

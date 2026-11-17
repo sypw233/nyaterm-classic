@@ -367,5 +367,7 @@ function remoteStats(os: string, usageSource: RemoteStats["cpu"]["usage_source"]
     networks: [],
     network_summary: { rx_bytes_per_sec: 0, tx_bytes_per_sec: 0 },
     disks: [],
+    users: [],
+    users_status: "not_collected",
   };
 }
