@@ -119,27 +119,27 @@ fn validates_proxy_host_port_and_credentials_without_exposing_secrets() {
         "localhost:7890",
     ] {
         settings.proxy.host = host.to_string();
-        let error = build_http_client(&settings).unwrap_err().to_string();
+        let error = build_http_client(&settings, None).unwrap_err().to_string();
         assert!(error.contains("Invalid AI proxy"));
         assert!(!error.contains("secret"));
     }
     settings.proxy.host = "127.0.0.1".to_string();
     settings.proxy.port = 0;
-    assert!(build_http_client(&settings).is_err());
+    assert!(build_http_client(&settings, None).is_err());
     settings.proxy.port = 7890;
     settings.proxy.password = Some("private-password".to_string());
-    let error = build_http_client(&settings).unwrap_err().to_string();
+    let error = build_http_client(&settings, None).unwrap_err().to_string();
     assert!(error.contains("requires a username"));
     assert!(!error.contains("private-password"));
     settings.proxy.username = Some("user".to_string());
     settings.proxy.protocol = AiProxyProtocol::Socks5;
     settings.proxy.password = Some("x".repeat(256));
-    assert!(build_http_client(&settings).is_err());
+    assert!(build_http_client(&settings, None).is_err());
     for mode in [AiProxyMode::Direct, AiProxyMode::System] {
         settings.proxy.mode = mode;
         settings.proxy.host.clear();
         assert!(
-            build_http_client(&settings).is_ok(),
+            build_http_client(&settings, None).is_ok(),
             "inactive fields must not affect routing"
         );
     }
@@ -332,7 +332,7 @@ async fn local_bypass_connects_directly_and_never_sends_proxy_auth_to_origin() {
         settings.proxy.no_proxy = AiProxySettings::default().no_proxy;
         settings.proxy.username = Some("user".to_string());
         settings.proxy.password = Some("pass".to_string());
-        let response = build_http_client(&settings)
+        let response = build_http_client(&settings, None)
             .unwrap()
             .get(format!("http://{host}:{port}/local"))
             .timeout(WAIT)
@@ -361,7 +361,7 @@ async fn ipv6_loopback_bypasses_proxy() {
     });
     let mut settings = settings(1);
     settings.proxy.no_proxy = AiProxySettings::default().no_proxy;
-    let response = build_http_client(&settings)
+    let response = build_http_client(&settings, None)
         .unwrap()
         .get(format!("http://[::1]:{port}/"))
         .timeout(WAIT)
@@ -375,7 +375,7 @@ async fn ipv6_loopback_bypasses_proxy() {
 #[tokio::test]
 async fn clearing_bypass_routes_local_targets_through_proxy() {
     let (port, task) = server("text/plain", "proxied").await;
-    let response = build_http_client(&settings(port))
+    let response = build_http_client(&settings(port), None)
         .unwrap()
         .get("http://localhost:1/")
         .timeout(WAIT)
@@ -401,7 +401,7 @@ async fn https_uses_connect_with_proxy_auth_and_sanitizes_failure() {
         stream.write_all(b"HTTP/1.1 407 Proxy Authentication Required\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").await.unwrap();
         request
     });
-    let error = build_http_client(&settings)
+    let error = build_http_client(&settings, None)
         .unwrap()
         .get("https://ai-proxy-test.invalid/")
         .timeout(WAIT)
@@ -461,7 +461,7 @@ async fn failed_proxy_does_not_fall_back_to_reachable_origin() {
     let unavailable = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let settings = settings(unavailable.local_addr().unwrap().port());
     drop(unavailable);
-    let response = build_http_client(&settings)
+    let response = build_http_client(&settings, None)
         .unwrap()
         .get(format!(
             "http://127.0.0.1:{}/",

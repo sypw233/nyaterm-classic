@@ -59,7 +59,11 @@ import {
   supportsApiFormatSelection,
 } from "@/lib/aiSettings";
 import { writeClipboardText } from "@/lib/clipboard";
-import { isCloudSecretMasked, secretInputValue, secretPlaceholder } from "@/lib/cloudSync";
+import {
+  isCloudSecretMasked,
+  secretInputValue,
+  secretPlaceholder,
+} from "@/lib/cloudSync";
 import { getErrorMessage } from "@/lib/errors";
 import { invoke } from "@/lib/invoke";
 import { getOwnerMainWindowLabel } from "@/lib/windowManager";
@@ -135,7 +139,8 @@ function availableProviderName(
 ): string {
   if (!providerNameTaken(baseName, credentials, excludeId)) return baseName;
   let suffix = 2;
-  while (providerNameTaken(`${baseName}-${suffix}`, credentials, excludeId)) suffix += 1;
+  while (providerNameTaken(`${baseName}-${suffix}`, credentials, excludeId))
+    suffix += 1;
   return `${baseName}-${suffix}`;
 }
 
@@ -150,7 +155,9 @@ function defaultProviderName(
   return availableProviderName(baseName, credentials, credential.id);
 }
 
-function providerApiProtocol(credential: AIProviderCredential): AIProviderApiProtocol {
+function providerApiProtocol(
+  credential: AIProviderCredential,
+): AIProviderApiProtocol {
   if (credential.api_protocol) return credential.api_protocol;
   switch (credential.provider_kind) {
     case "anthropic":
@@ -167,7 +174,9 @@ function providerApiProtocol(credential: AIProviderCredential): AIProviderApiPro
 function providerProtocolSelectValue(credential: AIProviderCredential): string {
   const protocol = providerApiProtocol(credential);
   if (protocol !== "openai_compatible") return protocol;
-  return credential.api_format === "responses" ? "responses" : "chat_completions";
+  return credential.api_format === "responses"
+    ? "responses"
+    : "chat_completions";
 }
 
 function newAction(prefix: string): AICustomActionConfig {
@@ -263,7 +272,8 @@ function normalizeCodexSettings(
     permission_mode: value?.permission_mode ?? "confirm",
     tool_integration_mode: value?.tool_integration_mode ?? "nyaterm_mcp",
     thread_mode: value?.thread_mode ?? "persistent",
-    remote_terminal_agent_enabled: value?.remote_terminal_agent_enabled ?? false,
+    remote_terminal_agent_enabled:
+      value?.remote_terminal_agent_enabled ?? false,
   };
 }
 
@@ -285,7 +295,8 @@ export function AiGeneralTab() {
   const { t } = useTranslation();
   const { appSettings, updateAppSettings } = useApp();
   const ai = appSettings.ai;
-  const update = (patch: Partial<AISettings>) => updateAppSettings({ ai: { ...ai, ...patch } });
+  const update = (patch: Partial<AISettings>) =>
+    updateAppSettings({ ai: { ...ai, ...patch } });
   const proxy = { ...DEFAULT_AI_SETTINGS.proxy, ...ai.proxy };
   const updateProxy = (patch: Partial<AIProxySettings>) =>
     update({ proxy: { ...proxy, ...patch } });
@@ -294,7 +305,10 @@ export function AiGeneralTab() {
     <div className="space-y-5">
       <SettingSection title={t("ai.general")}>
         <SettingRow label={t("ai.enabled")}>
-          <SettingSwitch checked={ai.enabled} onChange={(enabled) => update({ enabled })} />
+          <SettingSwitch
+            checked={ai.enabled}
+            onChange={(enabled) => update({ enabled })}
+          />
         </SettingRow>
         <SettingRow label={t("ai.redaction")}>
           <SettingSwitch
@@ -319,7 +333,9 @@ export function AiGeneralTab() {
             label={t("ai.requestUserAgent")}
             desc={t("ai.requestUserAgentDesc")}
             value={ai.request_user_agent}
-            onChange={(event) => update({ request_user_agent: event.target.value })}
+            onChange={(event) =>
+              update({ request_user_agent: event.target.value })
+            }
             fieldClassName="lg:col-span-2"
           />
           <SettingNumberInput
@@ -341,11 +357,16 @@ export function AiGeneralTab() {
         </SettingFieldGrid>
       </SettingSection>
 
-      <SettingSection title={t("ai.proxyTitle")} desc={t("ai.proxyDescription")}>
+      <SettingSection
+        title={t("ai.proxyTitle")}
+        desc={t("ai.proxyDescription")}
+      >
         <SettingSelect
           label={t("ai.proxyMode")}
           value={proxy.mode}
-          onValueChange={(mode) => updateProxy({ mode: mode as AIProxySettings["mode"] })}
+          onValueChange={(mode) =>
+            updateProxy({ mode: mode as AIProxySettings["mode"] })
+          }
         >
           <SelectItem value="system">{t("ai.proxySystem")}</SelectItem>
           <SelectItem value="direct">{t("ai.proxyDirect")}</SelectItem>
@@ -385,17 +406,27 @@ export function AiGeneralTab() {
                 aria-label={t("ai.proxyUsername")}
                 autoComplete="off"
                 value={proxy.username ?? ""}
-                onChange={(event) => updateProxy({ username: event.target.value })}
+                onChange={(event) =>
+                  updateProxy({ username: event.target.value })
+                }
               />
             </SettingFieldGrid>
-            <SettingRow label={t("ai.proxyPassword")} desc={t("ai.proxyPasswordDescription")}>
+            <SettingRow
+              label={t("ai.proxyPassword")}
+              desc={t("ai.proxyPasswordDescription")}
+            >
               <Input
                 type="password"
                 aria-label={t("ai.proxyPassword")}
                 autoComplete="new-password"
                 value={secretInputValue(proxy.password)}
-                placeholder={secretPlaceholder(proxy.password, t("ai.proxyPassword"))}
-                onChange={(event) => updateProxy({ password: event.target.value })}
+                placeholder={secretPlaceholder(
+                  proxy.password,
+                  t("ai.proxyPassword"),
+                )}
+                onChange={(event) =>
+                  updateProxy({ password: event.target.value })
+                }
               />
               <Button
                 type="button"
@@ -411,7 +442,9 @@ export function AiGeneralTab() {
               aria-label={t("ai.proxyBypass")}
               desc={t("ai.proxyBypassDescription")}
               value={proxy.no_proxy}
-              onChange={(event) => updateProxy({ no_proxy: event.target.value })}
+              onChange={(event) =>
+                updateProxy({ no_proxy: event.target.value })
+              }
             />
           </>
         )}
@@ -452,7 +485,9 @@ export function AiGeneralTab() {
             max={120000}
             step={1000}
             value={ai.agent_step_timeout_ms ?? 30000}
-            onChange={(agent_step_timeout_ms) => update({ agent_step_timeout_ms })}
+            onChange={(agent_step_timeout_ms) =>
+              update({ agent_step_timeout_ms })
+            }
           />
           <SettingNumberInput
             label={t("ai.terminalOutputLines")}
@@ -460,22 +495,35 @@ export function AiGeneralTab() {
             max={100}
             step={1}
             value={ai.terminal_output_lines}
-            onChange={(terminal_output_lines) => update({ terminal_output_lines })}
+            onChange={(terminal_output_lines) =>
+              update({ terminal_output_lines })
+            }
           />
         </SettingFieldGrid>
-        <div className="text-xs text-muted-foreground">{t("ai.agentMaxStepsDesc")}</div>
-        <div className="text-xs text-muted-foreground">{t("ai.terminalOutputLinesDesc")}</div>
+        <div className="text-xs text-muted-foreground">
+          {t("ai.agentMaxStepsDesc")}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {t("ai.terminalOutputLinesDesc")}
+        </div>
         {runtime === "desktop" && (
           <div className="space-y-3">
-            <Label htmlFor="agent-custom-instructions">{t("ai.agentCustomInstructions")}</Label>
+            <Label htmlFor="agent-custom-instructions">
+              {t("ai.agentCustomInstructions")}
+            </Label>
             <Textarea
               id="agent-custom-instructions"
               aria-describedby="agent-custom-instructions-desc"
               rows={5}
               value={ai.agent_custom_instructions ?? ""}
-              onChange={(event) => update({ agent_custom_instructions: event.target.value })}
+              onChange={(event) =>
+                update({ agent_custom_instructions: event.target.value })
+              }
             />
-            <p id="agent-custom-instructions-desc" className="text-xs text-muted-foreground">
+            <p
+              id="agent-custom-instructions-desc"
+              className="text-xs text-muted-foreground"
+            >
               {t("ai.agentCustomInstructionsDesc")}
             </p>
           </div>
@@ -507,16 +555,19 @@ export function AiAgentsTab() {
   };
   const [mcpStatus, setMcpStatus] = useState<McpRuntimeStatus | null>(null);
   const [cliStatus, setCliStatus] = useState<CodexCliStatus | null>(null);
-  const [accountStatus, setAccountStatus] = useState<CodexAccountStatus | null>(null);
-  const [claudeCliStatus, setClaudeCliStatus] = useState<ClaudeCodeCliStatus | null>(null);
-  const [claudeAccountStatus, setClaudeAccountStatus] = useState<ClaudeCodeAccountStatus | null>(
+  const [accountStatus, setAccountStatus] = useState<CodexAccountStatus | null>(
     null,
   );
+  const [claudeCliStatus, setClaudeCliStatus] =
+    useState<ClaudeCodeCliStatus | null>(null);
+  const [claudeAccountStatus, setClaudeAccountStatus] =
+    useState<ClaudeCodeAccountStatus | null>(null);
   const [deviceLogin, setDeviceLogin] = useState<CodexLoginStart | null>(null);
   const [busy, setBusy] = useState(false);
 
   const codexModels = useMemo(
-    () => ai.models.filter((model) => model.backend === "codex" && model.enabled),
+    () =>
+      ai.models.filter((model) => model.backend === "codex" && model.enabled),
     [ai.models],
   );
 
@@ -545,10 +596,13 @@ export function AiAgentsTab() {
   const setExternalMcpEnabled = useCallback(
     async (enabled: boolean) => {
       try {
-        const status = await invoke<McpRuntimeStatus>("set_external_mcp_enabled", {
-          enabled,
-          ownerWindowLabel: getOwnerMainWindowLabel(),
-        });
+        const status = await invoke<McpRuntimeStatus>(
+          "set_external_mcp_enabled",
+          {
+            enabled,
+            ownerWindowLabel: getOwnerMainWindowLabel(),
+          },
+        );
         setMcpStatus(status);
         updateExternalMcp({ enabled });
       } catch (error) {
@@ -579,7 +633,9 @@ export function AiAgentsTab() {
   const copyMcpConfig = useCallback(
     async (client: "codex" | "claudeCode" | "cursor") => {
       try {
-        const configs = await invoke<McpClientConfigs>("get_external_mcp_client_configs");
+        const configs = await invoke<McpClientConfigs>(
+          "get_external_mcp_client_configs",
+        );
         await writeClipboardText(JSON.stringify(configs[client], null, 2));
         toast.success(t("ai.externalMcpConfigCopied"));
       } catch (error) {
@@ -622,7 +678,9 @@ export function AiAgentsTab() {
     async (options?: { silent?: boolean }) => {
       setBusy(true);
       try {
-        const status = await invoke<ClaudeCodeCliStatus>("detect_claude_code_cli");
+        const status = await invoke<ClaudeCodeCliStatus>(
+          "detect_claude_code_cli",
+        );
         setClaudeCliStatus(status);
         if (
           status.installed &&
@@ -651,7 +709,9 @@ export function AiAgentsTab() {
     async (options?: { silent?: boolean }) => {
       setBusy(true);
       try {
-        const status = await invoke<CodexAccountStatus>("get_codex_account_status");
+        const status = await invoke<CodexAccountStatus>(
+          "get_codex_account_status",
+        );
         setAccountStatus(status);
         if (!options?.silent) {
           toast.success(t("ai.codexStatusRefreshed"));
@@ -671,7 +731,9 @@ export function AiAgentsTab() {
     async (options?: { silent?: boolean }) => {
       setBusy(true);
       try {
-        const status = await invoke<ClaudeCodeAccountStatus>("get_claude_code_account_status");
+        const status = await invoke<ClaudeCodeAccountStatus>(
+          "get_claude_code_account_status",
+        );
         setClaudeAccountStatus(status);
         if (!options?.silent) {
           toast.success(t("ai.claudeCodeStatusRefreshed"));
@@ -747,7 +809,12 @@ export function AiAgentsTab() {
       <SettingSection
         title={t("ai.localAgents")}
         action={
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => void detect()}>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy}
+            onClick={() => void detect()}
+          >
             <MdRefresh className={busy ? "animate-spin" : ""} />
             {t("ai.detect")}
           </Button>
@@ -758,11 +825,15 @@ export function AiAgentsTab() {
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium">OpenAI Codex</div>
-              <div className="mt-1 text-xs text-muted-foreground">{t("ai.codexDesc")}</div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {t("ai.codexDesc")}
+              </div>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
               <Badge variant={cliStatus?.installed ? "default" : "outline"}>
-                {cliStatus?.installed ? t("ai.installed") : t("ai.notInstalled")}
+                {cliStatus?.installed
+                  ? t("ai.installed")
+                  : t("ai.notInstalled")}
               </Badge>
               <Badge variant={accountStatus?.connected ? "default" : "outline"}>
                 {connectedLabel}
@@ -781,7 +852,9 @@ export function AiAgentsTab() {
                 label={t("ai.codexPath")}
                 value={codex.executable_path ?? ""}
                 placeholder="codex"
-                onChange={(event) => updateCodex({ executable_path: event.target.value || null })}
+                onChange={(event) =>
+                  updateCodex({ executable_path: event.target.value || null })
+                }
                 fieldClassName="lg:col-span-2"
               />
               <SettingSelect
@@ -789,12 +862,17 @@ export function AiAgentsTab() {
                 value={codex.thread_mode}
                 onValueChange={(thread_mode) =>
                   updateCodex({
-                    thread_mode: thread_mode as CodexIntegrationSettings["thread_mode"],
+                    thread_mode:
+                      thread_mode as CodexIntegrationSettings["thread_mode"],
                   })
                 }
               >
-                <SelectItem value="persistent">{t("ai.codexThreadPersistent")}</SelectItem>
-                <SelectItem value="ephemeral">{t("ai.codexThreadEphemeral")}</SelectItem>
+                <SelectItem value="persistent">
+                  {t("ai.codexThreadPersistent")}
+                </SelectItem>
+                <SelectItem value="ephemeral">
+                  {t("ai.codexThreadEphemeral")}
+                </SelectItem>
               </SettingSelect>
               <SettingSelect
                 label={t("ai.codexDefaultModel")}
@@ -805,7 +883,9 @@ export function AiAgentsTab() {
                   })
                 }
               >
-                <SelectItem value="__none__">{t("ai.useCodexDefaultModel")}</SelectItem>
+                <SelectItem value="__none__">
+                  {t("ai.useCodexDefaultModel")}
+                </SelectItem>
                 {codexModels.map((model) => (
                   <SelectItem key={model.id} value={model.name}>
                     {model.name}
@@ -841,8 +921,12 @@ export function AiAgentsTab() {
             {deviceLogin?.verificationUrl && deviceLogin.userCode ? (
               <div className="rounded-md border border-border/70 bg-muted/20 p-3 text-xs">
                 <div className="font-medium">{t("ai.codexDeviceLogin")}</div>
-                <div className="mt-2 font-mono">{deviceLogin.verificationUrl}</div>
-                <div className="mt-1 font-mono text-sm">{deviceLogin.userCode}</div>
+                <div className="mt-2 font-mono">
+                  {deviceLogin.verificationUrl}
+                </div>
+                <div className="mt-1 font-mono text-sm">
+                  {deviceLogin.userCode}
+                </div>
               </div>
             ) : null}
 
@@ -856,7 +940,11 @@ export function AiAgentsTab() {
                 <MdRefresh className={busy ? "animate-spin" : ""} />
                 {t("ai.refreshStatus")}
               </Button>
-              <Button size="sm" disabled={busy} onClick={() => void startLogin("browser")}>
+              <Button
+                size="sm"
+                disabled={busy}
+                onClick={() => void startLogin("browser")}
+              >
                 <MdLogin />
                 {t("ai.codexLogin")}
               </Button>
@@ -869,7 +957,12 @@ export function AiAgentsTab() {
                 <MdOpenInNew />
                 {t("ai.codexDeviceCodeLogin")}
               </Button>
-              <Button size="sm" variant="outline" disabled={busy} onClick={() => void logout()}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void logout()}
+              >
                 <MdLogout />
                 {t("ai.codexLogout")}
               </Button>
@@ -881,13 +974,21 @@ export function AiAgentsTab() {
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium">Claude Code</div>
-              <div className="mt-1 text-xs text-muted-foreground">{t("ai.claudeCodeDesc")}</div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {t("ai.claudeCodeDesc")}
+              </div>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
-              <Badge variant={claudeCliStatus?.installed ? "default" : "outline"}>
-                {claudeCliStatus?.installed ? t("ai.installed") : t("ai.notInstalled")}
+              <Badge
+                variant={claudeCliStatus?.installed ? "default" : "outline"}
+              >
+                {claudeCliStatus?.installed
+                  ? t("ai.installed")
+                  : t("ai.notInstalled")}
               </Badge>
-              <Badge variant={claudeAccountStatus?.connected ? "default" : "outline"}>
+              <Badge
+                variant={claudeAccountStatus?.connected ? "default" : "outline"}
+              >
                 {claudeAccountStatus?.connected
                   ? t("ai.claudeCodeConnected")
                   : t("ai.claudeCodeNotLoggedIn")}
@@ -949,7 +1050,8 @@ export function AiAgentsTab() {
                 {t("ai.claudeCodeVersion")}: {claudeCliStatus?.version || "-"}
               </div>
               <div>
-                {t("ai.claudeCodeAuthMode")}: {claudeAccountStatus?.authMode || "-"}
+                {t("ai.claudeCodeAuthMode")}:{" "}
+                {claudeAccountStatus?.authMode || "-"}
               </div>
             </div>
 
@@ -978,7 +1080,10 @@ export function AiAgentsTab() {
       </SettingSection>
 
       <SettingSection title={t("ai.externalMcp")} contentClassName="space-y-4">
-        <SettingRow label={t("ai.externalMcpEnabled")} desc={t("ai.externalMcpDesc")}>
+        <SettingRow
+          label={t("ai.externalMcpEnabled")}
+          desc={t("ai.externalMcpDesc")}
+        >
           <div className="flex items-center gap-2">
             <Badge variant={mcpStatus?.running ? "default" : "outline"}>
               {mcpStatus?.error
@@ -1011,12 +1116,17 @@ export function AiAgentsTab() {
             value={externalMcp.session_scope}
             onValueChange={(session_scope) =>
               updateExternalMcp({
-                session_scope: session_scope as ExternalMcpSettings["session_scope"],
+                session_scope:
+                  session_scope as ExternalMcpSettings["session_scope"],
               })
             }
           >
-            <SelectItem value="current_window">{t("ai.externalMcpCurrentWindow")}</SelectItem>
-            <SelectItem value="all_sessions">{t("ai.externalMcpAllSessions")}</SelectItem>
+            <SelectItem value="current_window">
+              {t("ai.externalMcpCurrentWindow")}
+            </SelectItem>
+            <SelectItem value="all_sessions">
+              {t("ai.externalMcpAllSessions")}
+            </SelectItem>
           </SettingSelect>
           <SettingSelect
             label={t("ai.externalMcpTerminalDisplay")}
@@ -1045,9 +1155,16 @@ export function AiAgentsTab() {
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           {(["codex", "claudeCode", "cursor"] as const).map((client) => (
-            <div key={client} className="rounded-md border border-border/70 p-3">
+            <div
+              key={client}
+              className="rounded-md border border-border/70 p-3"
+            >
               <div className="text-sm font-medium">
-                {client === "codex" ? "Codex" : client === "claudeCode" ? "Claude Code" : "Cursor"}
+                {client === "codex"
+                  ? "Codex"
+                  : client === "claudeCode"
+                    ? "Claude Code"
+                    : "Cursor"}
               </div>
               <Button
                 className="mt-3 w-full"
@@ -1066,7 +1183,9 @@ export function AiAgentsTab() {
 }
 
 function groupKeyForCredential(credential: AIProviderCredential) {
-  return isBuiltinProvider(credential.id) ? credential.provider_kind : credential.id;
+  return isBuiltinProvider(credential.id)
+    ? credential.provider_kind
+    : credential.id;
 }
 
 function groupModels(
@@ -1128,7 +1247,10 @@ function reconcileProviderModels(
   }
   const now = new Date().toISOString();
   const nextModels = models.map((model) => {
-    if (model.backend !== "genai" || (model.credential_id ?? model.provider_kind) !== groupKey) {
+    if (
+      model.backend !== "genai" ||
+      (model.credential_id ?? model.provider_kind) !== groupKey
+    ) {
       return model;
     }
     return {
@@ -1157,9 +1279,8 @@ export function AiModelsTab() {
   const { t } = useTranslation();
   const { appSettings, updateAppSettings } = useApp();
   const ai = appSettings.ai;
-  const [selectedProviderCredentialId, setSelectedProviderCredentialId] = useState<string | null>(
-    null,
-  );
+  const [selectedProviderCredentialId, setSelectedProviderCredentialId] =
+    useState<string | null>(null);
   const [showProviderChoices, setShowProviderChoices] = useState(false);
   const [providerDraft, setProviderDraft] = useState<{
     credential: AIProviderCredential;
@@ -1181,8 +1302,12 @@ export function AiModelsTab() {
     value: string;
   } | null>(null);
   const [showProviderValidation, setShowProviderValidation] = useState(false);
-  const [testingProviderId, setTestingProviderId] = useState<string | null>(null);
-  const [providerModelCount, setProviderModelCount] = useState<number | null>(null);
+  const [testingProviderId, setTestingProviderId] = useState<string | null>(
+    null,
+  );
+  const [providerModelCount, setProviderModelCount] = useState<number | null>(
+    null,
+  );
   const [testedDraftModels, setTestedDraftModels] = useState<{
     credentialId: string;
     names: string[];
@@ -1195,12 +1320,16 @@ export function AiModelsTab() {
   >({});
   const providerConnectionTestGeneration = useRef(0);
   const providerListRefreshGeneration = useRef(0);
-  const [manualModelNames, setManualModelNames] = useState<Record<string, string>>({});
+  const [manualModelNames, setManualModelNames] = useState<
+    Record<string, string>
+  >({});
   const [editingModelId, setEditingModelId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshingCurrentModels, setRefreshingCurrentModels] = useState(false);
   const [testingModelId, setTestingModelId] = useState<string | null>(null);
-  const [modelTestResults, setModelTestResults] = useState<Record<string, "success" | "error">>({});
+  const [modelTestResults, setModelTestResults] = useState<
+    Record<string, "success" | "error">
+  >({});
   const modelTestGeneration = useRef(0);
   const proxySignature = JSON.stringify(ai.proxy);
   const cancelProviderConnectionTest = () => {
@@ -1251,7 +1380,8 @@ export function AiModelsTab() {
     setProviderModelCount(null);
     setTestedDraftModels(null);
   }, [proxySignature]);
-  const update = (patch: Partial<AISettings>) => updateAppSettings({ ai: { ...ai, ...patch } });
+  const update = (patch: Partial<AISettings>) =>
+    updateAppSettings({ ai: { ...ai, ...patch } });
 
   const enabledCredentials = useMemo(
     () => ai.provider_credentials.filter((credential) => credential.enabled),
@@ -1270,7 +1400,9 @@ export function AiModelsTab() {
   }, [enabledCredentials.length, providerDraft]);
   const selectedProviderCredential =
     providerDraft?.credential ??
-    enabledCredentials.find((credential) => credential.id === selectedProviderCredentialId) ??
+    enabledCredentials.find(
+      (credential) => credential.id === selectedProviderCredentialId,
+    ) ??
     enabledCredentials[0];
   const selectedProviderConnectionStatus =
     selectedProviderCredential && !providerDraft
@@ -1285,19 +1417,22 @@ export function AiModelsTab() {
   const selectedProviderDefaultName = selectedProviderCredential
     ? defaultProviderName(selectedProviderCredential, enabledCredentials)
     : "my-provider";
-  const selectedProviderTitle = selectedProviderName.trim() || selectedProviderDefaultName;
+  const selectedProviderTitle =
+    selectedProviderName.trim() || selectedProviderDefaultName;
   const selectedProviderNameTaken = providerNameTaken(
     selectedProviderName,
     enabledCredentials,
     selectedProviderCredential?.id,
   );
-  const selectedProviderEndpointMissing = !selectedProviderCredential?.base_url?.trim();
+  const selectedProviderEndpointMissing =
+    !selectedProviderCredential?.base_url?.trim();
   const selectedProviderApiKeyRequired =
     !!selectedProviderCredential &&
     selectedProviderCredential.provider_kind !== "ollama" &&
     selectedProviderCredential.provider_kind !== "openai_compatible";
   const selectedProviderApiKeyMissing =
-    selectedProviderApiKeyRequired && !selectedProviderCredential?.api_key?.trim();
+    selectedProviderApiKeyRequired &&
+    !selectedProviderCredential?.api_key?.trim();
   // biome-ignore lint/correctness/useExhaustiveDependencies: These transient fields belong to the selected account.
   useEffect(() => {
     setProviderNameInput(null);
@@ -1355,13 +1490,18 @@ export function AiModelsTab() {
     if (!selectedProviderCredential) return [];
     if (providerDraft) {
       return testedDraftModels?.credentialId === selectedProviderCredential.id
-        ? reconcileProviderModels([], selectedProviderCredential, testedDraftModels.names)
+        ? reconcileProviderModels(
+            [],
+            selectedProviderCredential,
+            testedDraftModels.names,
+          )
         : [];
     }
     const groupKey = groupKeyForCredential(selectedProviderCredential);
     return ai.models.filter(
       (model) =>
-        model.backend !== "codex" && (model.credential_id ?? model.provider_kind) === groupKey,
+        model.backend !== "codex" &&
+        (model.credential_id ?? model.provider_kind) === groupKey,
     );
   }, [ai.models, selectedProviderCredential, providerDraft, testedDraftModels]);
 
@@ -1372,13 +1512,17 @@ export function AiModelsTab() {
         ? ai.codex.enabled
         : enabledCredentials.some(
             (credential) =>
-              groupKeyForCredential(credential) === (model.credential_id ?? model.provider_kind),
+              groupKeyForCredential(credential) ===
+              (model.credential_id ?? model.provider_kind),
           )),
   );
 
   const rawGroupedModels = useMemo(
     () =>
-      groupModels(visibleModels, selectedProviderCredential ? [selectedProviderCredential] : []),
+      groupModels(
+        visibleModels,
+        selectedProviderCredential ? [selectedProviderCredential] : [],
+      ),
     [visibleModels, selectedProviderCredential],
   );
 
@@ -1406,7 +1550,9 @@ export function AiModelsTab() {
         return { ...group, models: orderedModels };
       }
 
-      const freshSorted = [...group.models].sort((a, b) => Number(b.enabled) - Number(a.enabled));
+      const freshSorted = [...group.models].sort(
+        (a, b) => Number(b.enabled) - Number(a.enabled),
+      );
       nextOrder.set(
         group.groupKey,
         freshSorted.map((m) => m.id),
@@ -1429,17 +1575,21 @@ export function AiModelsTab() {
     setProviderModelCount(null);
     setProviderStatuses((current) => {
       const next = { ...current };
-      for (const credential of enabledCredentials) next[credential.id] = "testing";
+      for (const credential of enabledCredentials)
+        next[credential.id] = "testing";
       return next;
     });
     try {
       const results = await Promise.all(
         enabledCredentials.map(async (credential) => {
           try {
-            const names = await invoke<string[]>("test_ai_provider_connection", {
-              aiSettings: ai,
-              credentialId: credential.id,
-            });
+            const names = await invoke<string[]>(
+              "test_ai_provider_connection",
+              {
+                aiSettings: ai,
+                credentialId: credential.id,
+              },
+            );
             if (providerListRefreshGeneration.current === generation) {
               setProviderStatuses((current) => ({
                 ...current,
@@ -1485,7 +1635,8 @@ export function AiModelsTab() {
         });
       }
     } finally {
-      if (providerListRefreshGeneration.current === generation) setRefreshing(false);
+      if (providerListRefreshGeneration.current === generation)
+        setRefreshing(false);
     }
   };
 
@@ -1527,19 +1678,29 @@ export function AiModelsTab() {
       if (next.source === "manual") {
         next.id = next.credential_id
           ? aiModelIdForCredential(next.credential_id, next.name)
-          : aiModelIdForProvider(next.provider_kind ?? "openai_compatible", next.name);
+          : aiModelIdForProvider(
+              next.provider_kind ?? "openai_compatible",
+              next.name,
+            );
       }
       return next;
     });
     updateModels(models);
   };
 
-  const toggleModelReasoningEffort = (model: AIModelConfigItem, effort: AIModelReasoningEffort) => {
-    const selected = new Set(model.supported_reasoning_efforts ?? DEFAULT_MODEL_REASONING_EFFORTS);
+  const toggleModelReasoningEffort = (
+    model: AIModelConfigItem,
+    effort: AIModelReasoningEffort,
+  ) => {
+    const selected = new Set(
+      model.supported_reasoning_efforts ?? DEFAULT_MODEL_REASONING_EFFORTS,
+    );
     if (selected.has(effort)) selected.delete(effort);
     else selected.add(effort);
     updateModel(model.id, {
-      supported_reasoning_efforts: MODEL_REASONING_EFFORTS.filter((value) => selected.has(value)),
+      supported_reasoning_efforts: MODEL_REASONING_EFFORTS.filter((value) =>
+        selected.has(value),
+      ),
     });
   };
 
@@ -1612,8 +1773,14 @@ export function AiModelsTab() {
     toast.success(t("ai.manualModelDeleted", { model: model.name }));
   };
 
-  const updateCredential = (id: string, patch: Partial<AIProviderCredential>) => {
-    if (typeof patch.name === "string" && providerNameTaken(patch.name, enabledCredentials, id)) {
+  const updateCredential = (
+    id: string,
+    patch: Partial<AIProviderCredential>,
+  ) => {
+    if (
+      typeof patch.name === "string" &&
+      providerNameTaken(patch.name, enabledCredentials, id)
+    ) {
       return;
     }
     invalidateProviderListRefresh();
@@ -1633,7 +1800,9 @@ export function AiModelsTab() {
     const nextCredentials = ai.provider_credentials.map((credential) =>
       credential.id === id ? { ...credential, ...patch } : credential,
     );
-    const nextCredential = nextCredentials.find((credential) => credential.id === id);
+    const nextCredential = nextCredentials.find(
+      (credential) => credential.id === id,
+    );
     let nextModels = ai.models.map((model) =>
       model.credential_id === id && nextCredential
         ? { ...model, provider_kind: nextCredential.provider_kind }
@@ -1676,7 +1845,10 @@ export function AiModelsTab() {
     });
   };
 
-  const updateSelectedProviderCredential = (id: string, patch: Partial<AIProviderCredential>) => {
+  const updateSelectedProviderCredential = (
+    id: string,
+    patch: Partial<AIProviderCredential>,
+  ) => {
     if (providerDraft?.credential.id !== id) {
       updateCredential(id, patch);
       return;
@@ -1764,7 +1936,11 @@ export function AiModelsTab() {
     });
     if (
       value.trim() &&
-      !providerNameTaken(value, enabledCredentials, selectedProviderCredential.id)
+      !providerNameTaken(
+        value,
+        enabledCredentials,
+        selectedProviderCredential.id,
+      )
     ) {
       updateSelectedProviderCredential(selectedProviderCredential.id, {
         name: value,
@@ -1778,7 +1954,13 @@ export function AiModelsTab() {
       providerNameInput?.credentialId === selectedProviderCredential.id
         ? providerNameInput.value
         : selectedProviderCredential.name;
-    if (providerNameTaken(value, enabledCredentials, selectedProviderCredential.id)) {
+    if (
+      providerNameTaken(
+        value,
+        enabledCredentials,
+        selectedProviderCredential.id,
+      )
+    ) {
       toast.error(t("ai.providerNameDuplicate"));
     } else if (!value.trim()) {
       updateSelectedProviderCredential(selectedProviderCredential.id, {
@@ -1788,7 +1970,10 @@ export function AiModelsTab() {
     setProviderNameInput(null);
   };
 
-  const updateSelectedProviderProtocol = (credential: AIProviderCredential, value: string) => {
+  const updateSelectedProviderProtocol = (
+    credential: AIProviderCredential,
+    value: string,
+  ) => {
     const previousProtocol = providerApiProtocol(credential);
     const api_protocol: AIProviderApiProtocol =
       value === "chat_completions" || value === "responses"
@@ -1800,15 +1985,22 @@ export function AiModelsTab() {
     };
     if (!credential.base_url?.trim()) {
       patch.base_url =
-        BUILTIN_PROVIDERS[credential.provider_kind]?.defaultBaseUrl ?? credential.base_url;
+        BUILTIN_PROVIDERS[credential.provider_kind]?.defaultBaseUrl ??
+        credential.base_url;
     }
     if (credential.provider_kind === "ollama") {
       const baseUrl = credential.base_url?.trim();
-      if (previousProtocol === "ollama" && api_protocol === "openai_compatible") {
+      if (
+        previousProtocol === "ollama" &&
+        api_protocol === "openai_compatible"
+      ) {
         if (baseUrl === "http://localhost:11434/") {
           patch.base_url = "http://localhost:11434/v1/";
         }
-      } else if (previousProtocol === "openai_compatible" && api_protocol === "ollama") {
+      } else if (
+        previousProtocol === "openai_compatible" &&
+        api_protocol === "ollama"
+      ) {
         if (baseUrl === "http://localhost:11434/v1/") {
           patch.base_url = "http://localhost:11434/";
         }
@@ -1826,7 +2018,9 @@ export function AiModelsTab() {
     const providerInfo = BUILTIN_PROVIDERS[providerKind];
     const providerLabel = getProviderLabel(providerKind);
     const existingBuiltin = providerInfo
-      ? ai.provider_credentials.find((credential) => credential.id === providerKind)
+      ? ai.provider_credentials.find(
+          (credential) => credential.id === providerKind,
+        )
       : undefined;
     let credential: AIProviderCredential;
     if (providerInfo && existingBuiltin && !existingBuiltin.enabled) {
@@ -1844,7 +2038,10 @@ export function AiModelsTab() {
     } else {
       credential = {
         ...newCredential(),
-        id: providerInfo && !existingBuiltin ? providerKind : `credential-${randomUUID()}`,
+        id:
+          providerInfo && !existingBuiltin
+            ? providerKind
+            : `credential-${randomUUID()}`,
         name: availableProviderName(providerLabel, enabledCredentials),
         provider_kind: providerKind,
         base_url: providerInfo ? providerInfo.defaultBaseUrl : "",
@@ -1865,7 +2062,8 @@ export function AiModelsTab() {
   const addProviderCredential = (draftCredential: AIProviderCredential) => {
     const credentialId = draftCredential.id;
     const name = availableProviderName(
-      draftCredential.name.trim() || defaultProviderName(draftCredential, enabledCredentials),
+      draftCredential.name.trim() ||
+        defaultProviderName(draftCredential, enabledCredentials),
       enabledCredentials,
       credentialId,
     );
@@ -1878,7 +2076,9 @@ export function AiModelsTab() {
       api_key: draftCredential.api_key?.trim() ?? "",
       enabled: true,
     };
-    const existingIndex = ai.provider_credentials.findIndex((item) => item.id === credentialId);
+    const existingIndex = ai.provider_credentials.findIndex(
+      (item) => item.id === credentialId,
+    );
     const providerCredentials = [...ai.provider_credentials];
     if (existingIndex >= 0) providerCredentials[existingIndex] = credential;
     else providerCredentials.unshift(credential);
@@ -1898,7 +2098,8 @@ export function AiModelsTab() {
           name,
           backend: "genai",
           provider_kind: credential.provider_kind,
-          credential_id: credentialId === credential.provider_kind ? null : credentialId,
+          credential_id:
+            credentialId === credential.provider_kind ? null : credentialId,
           enabled: false,
           source: "rust-genai",
           last_seen_at: null,
@@ -1906,7 +2107,11 @@ export function AiModelsTab() {
       }
     }
     if (testedDraftModels?.credentialId === draftCredential.id) {
-      models = reconcileProviderModels(models, credential, testedDraftModels.names);
+      models = reconcileProviderModels(
+        models,
+        credential,
+        testedDraftModels.names,
+      );
     }
 
     update({
@@ -1918,7 +2123,8 @@ export function AiModelsTab() {
     setProviderStatuses((current) => ({
       ...current,
       [credentialId]:
-        providerDraft?.credential.id === credentialId && providerConnectionStatus === "success"
+        providerDraft?.credential.id === credentialId &&
+        providerConnectionStatus === "success"
           ? "success"
           : "idle",
     }));
@@ -1949,7 +2155,9 @@ export function AiModelsTab() {
     });
     const models = ai.models.filter((model) => model.credential_id !== id);
     update({
-      provider_credentials: ai.provider_credentials.filter((credential) => credential.id !== id),
+      provider_credentials: ai.provider_credentials.filter(
+        (credential) => credential.id !== id,
+      ),
       models,
       default_model_id: updateDefaultModelId(ai, models),
     });
@@ -1962,7 +2170,9 @@ export function AiModelsTab() {
       setTestedDraftModels(null);
     } else {
       const id = selectedProviderCredential.id;
-      const nextCredential = enabledCredentials.find((credential) => credential.id !== id);
+      const nextCredential = enabledCredentials.find(
+        (credential) => credential.id !== id,
+      );
       if (isBuiltinProvider(id)) {
         updateCredential(id, { enabled: false });
       } else {
@@ -1994,7 +2204,10 @@ export function AiModelsTab() {
       const aiSettings = providerDraft
         ? {
             ...ai,
-            provider_credentials: [...ai.provider_credentials, selectedProviderCredential],
+            provider_credentials: [
+              ...ai.provider_credentials,
+              selectedProviderCredential,
+            ],
           }
         : ai;
       const modelNames = await invoke<string[]>("test_ai_provider_connection", {
@@ -2028,7 +2241,11 @@ export function AiModelsTab() {
             };
           });
         }
-        toast.success(t(fromModelList ? "ai.modelsRefreshed" : "ai.connectionTestSucceeded"));
+        toast.success(
+          t(
+            fromModelList ? "ai.modelsRefreshed" : "ai.connectionTestSucceeded",
+          ),
+        );
       }
     } catch (error) {
       if (providerConnectionTestGeneration.current === requestGeneration) {
@@ -2051,9 +2268,15 @@ export function AiModelsTab() {
 
   const protocolOptions = (credential: AIProviderCredential) => (
     <>
-      <SelectItem value="chat_completions">{t("ai.providerProtocolChatCompletions")}</SelectItem>
-      <SelectItem value="responses">{t("ai.providerProtocolResponses")}</SelectItem>
-      <SelectItem value="anthropic">{t("ai.providerProtocolAnthropic")}</SelectItem>
+      <SelectItem value="chat_completions">
+        {t("ai.providerProtocolChatCompletions")}
+      </SelectItem>
+      <SelectItem value="responses">
+        {t("ai.providerProtocolResponses")}
+      </SelectItem>
+      <SelectItem value="anthropic">
+        {t("ai.providerProtocolAnthropic")}
+      </SelectItem>
       {(credential.provider_kind === "gemini" ||
         credential.provider_kind === "openai_compatible") && (
         <SelectItem value="gemini">{t("ai.providerProtocolGemini")}</SelectItem>
@@ -2085,7 +2308,9 @@ export function AiModelsTab() {
           title={t("ai.refreshModels")}
           aria-label={t("ai.refreshModels")}
         >
-          <MdRefresh className={refreshingCurrentModels ? "animate-spin" : ""} />
+          <MdRefresh
+            className={refreshingCurrentModels ? "animate-spin" : ""}
+          />
         </Button>
       }
     >
@@ -2123,7 +2348,9 @@ export function AiModelsTab() {
                       disabled={!manualModelNames[group.groupKey]?.trim()}
                       title={t("common.add")}
                       className="h-full rounded-none border-l border-border/60 px-3 text-xs text-muted-foreground hover:bg-primary/10 hover:text-primary disabled:opacity-35"
-                      onClick={() => group.credential && addManualModel(group.credential)}
+                      onClick={() =>
+                        group.credential && addManualModel(group.credential)
+                      }
                     >
                       <MdAdd />
                       {t("common.add")}
@@ -2132,10 +2359,15 @@ export function AiModelsTab() {
                 </div>
               ) : null}
               {group.models.map((model) => (
-                <div key={model.id} className="border-b border-border/60 last:border-b-0">
+                <div
+                  key={model.id}
+                  className="border-b border-border/60 last:border-b-0"
+                >
                   <div className="flex items-center gap-3 px-3 py-2">
                     <div className="flex min-w-0 flex-1 items-center gap-2">
-                      <div className="min-w-0 truncate text-xs">{model.name}</div>
+                      <div className="min-w-0 truncate text-xs">
+                        {model.name}
+                      </div>
                       {model.backend === "genai" && model.last_seen_at ? (
                         <Badge
                           variant="outline"
@@ -2176,7 +2408,9 @@ export function AiModelsTab() {
                               : undefined
                         }
                         disabled={
-                          !!providerDraft || model.backend !== "genai" || testingModelId !== null
+                          !!providerDraft ||
+                          model.backend !== "genai" ||
+                          testingModelId !== null
                         }
                         onClick={() => void testModel(model)}
                       >
@@ -2196,7 +2430,9 @@ export function AiModelsTab() {
                         aria-controls={`model-config-${encodeURIComponent(model.id)}`}
                         disabled={!!providerDraft}
                         onClick={() =>
-                          setEditingModelId((current) => (current === model.id ? null : model.id))
+                          setEditingModelId((current) =>
+                            current === model.id ? null : model.id,
+                          )
                         }
                       >
                         <MdEdit className="text-[0.95rem]" />
@@ -2218,14 +2454,17 @@ export function AiModelsTab() {
                       id={`model-config-${encodeURIComponent(model.id)}`}
                       className="border-t border-border/60 bg-muted/10 px-3 py-3"
                     >
-                      <div className="text-xs font-medium">{t("ai.supportedReasoningEfforts")}</div>
+                      <div className="text-xs font-medium">
+                        {t("ai.supportedReasoningEfforts")}
+                      </div>
                       <fieldset
                         aria-label={t("ai.supportedReasoningEfforts")}
                         className="mt-2 flex flex-wrap gap-2"
                       >
                         {MODEL_REASONING_EFFORTS.map((effort) => {
                           const selected = (
-                            model.supported_reasoning_efforts ?? DEFAULT_MODEL_REASONING_EFFORTS
+                            model.supported_reasoning_efforts ??
+                            DEFAULT_MODEL_REASONING_EFFORTS
                           ).includes(effort);
                           return (
                             <Button
@@ -2235,9 +2474,13 @@ export function AiModelsTab() {
                               variant="outline"
                               aria-pressed={!!selected}
                               className={`h-7 px-2.5 text-xs font-normal ${
-                                selected ? "border-primary bg-primary/10 text-primary" : ""
+                                selected
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : ""
                               }`}
-                              onClick={() => toggleModelReasoningEffort(model, effort)}
+                              onClick={() =>
+                                toggleModelReasoningEffort(model, effort)
+                              }
                             >
                               {effort}
                             </Button>
@@ -2253,10 +2496,14 @@ export function AiModelsTab() {
         )}
       </div>
       {enabledCredentials.length === 0 ? (
-        <div className="text-xs text-muted-foreground">{t("ai.manualModelNoProvider")}</div>
+        <div className="text-xs text-muted-foreground">
+          {t("ai.manualModelNoProvider")}
+        </div>
       ) : null}
       {!hasEnabledModel ? (
-        <div className="text-xs text-amber-600">{t("ai.enableOneModelHint")}</div>
+        <div className="text-xs text-amber-600">
+          {t("ai.enableOneModelHint")}
+        </div>
       ) : null}
     </SettingSection>
   );
@@ -2267,7 +2514,9 @@ export function AiModelsTab() {
         title={t("ai.providerList")}
         headerRowClassName="flex-row flex-wrap items-center justify-between sm:items-center"
         contentClassName={
-          enabledCredentials.length === 0 && !showProviderChoices ? "hidden" : undefined
+          enabledCredentials.length === 0 && !showProviderChoices
+            ? "hidden"
+            : undefined
         }
         action={
           <div className="flex items-center gap-2">
@@ -2276,7 +2525,11 @@ export function AiModelsTab() {
               size="icon-sm"
               variant="outline"
               className="rounded-lg border-border/70"
-              disabled={refreshing || testingProviderId !== null || enabledCredentials.length === 0}
+              disabled={
+                refreshing ||
+                testingProviderId !== null ||
+                enabledCredentials.length === 0
+              }
               onClick={() => void refreshProviders()}
               title={t("ai.refreshProviders")}
               aria-label={t("ai.refreshProviders")}
@@ -2314,7 +2567,10 @@ export function AiModelsTab() {
                     : "border-border/70"
                 }`}
                 aria-pressed={selectedProviderCredential?.id === credential.id}
-                title={credential.name.trim() || getProviderLabel(credential.provider_kind)}
+                title={
+                  credential.name.trim() ||
+                  getProviderLabel(credential.provider_kind)
+                }
                 onClick={() => {
                   cancelProviderConnectionTest();
                   setProviderDraft(null);
@@ -2330,7 +2586,8 @@ export function AiModelsTab() {
                   iconDataUrl={credential.icon_data_url}
                 />
                 <span className="min-w-0 max-w-40 truncate">
-                  {credential.name.trim() || getProviderLabel(credential.provider_kind)}
+                  {credential.name.trim() ||
+                    getProviderLabel(credential.provider_kind)}
                 </span>
                 <span
                   role="img"
@@ -2343,44 +2600,54 @@ export function AiModelsTab() {
                           ? "bg-destructive"
                           : "bg-muted-foreground/30"
                   }`}
-                  title={t(`ai.connectionStatus.${providerStatuses[credential.id] ?? "idle"}`)}
-                  aria-label={t(`ai.connectionStatus.${providerStatuses[credential.id] ?? "idle"}`)}
+                  title={t(
+                    `ai.connectionStatus.${providerStatuses[credential.id] ?? "idle"}`,
+                  )}
+                  aria-label={t(
+                    `ai.connectionStatus.${providerStatuses[credential.id] ?? "idle"}`,
+                  )}
                 />
               </Button>
             ))}
           </div>
           {showProviderChoices ? (
             <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
-              {AI_PROVIDERS.filter((provider) => BUILTIN_PROVIDERS[provider.value]).map(
-                (provider) => (
-                  <Button
-                    key={provider.value}
-                    type="button"
-                    size="default"
-                    variant="outline"
-                    className={`h-10 rounded-lg border-border/70 px-3 text-sm font-normal ${
-                      providerDraft?.credential.provider_kind === provider.value
-                        ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                        : ""
-                    }`}
-                    aria-pressed={providerDraft?.credential.provider_kind === provider.value}
-                    onClick={() => selectProviderPreset(provider.value)}
-                  >
-                    <ProviderBadge kind={provider.value} />
-                    {provider.label}
-                  </Button>
-                ),
-              )}
+              {AI_PROVIDERS.filter(
+                (provider) => BUILTIN_PROVIDERS[provider.value],
+              ).map((provider) => (
+                <Button
+                  key={provider.value}
+                  type="button"
+                  size="default"
+                  variant="outline"
+                  className={`h-10 rounded-lg border-border/70 px-3 text-sm font-normal ${
+                    providerDraft?.credential.provider_kind === provider.value
+                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                      : ""
+                  }`}
+                  aria-pressed={
+                    providerDraft?.credential.provider_kind === provider.value
+                  }
+                  onClick={() => selectProviderPreset(provider.value)}
+                >
+                  <ProviderBadge kind={provider.value} />
+                  {provider.label}
+                </Button>
+              ))}
               <Button
                 type="button"
                 size="default"
                 variant="outline"
                 className={`h-10 rounded-lg border-border/70 px-3 text-sm font-normal ${
-                  providerDraft?.credential.provider_kind === "openai_compatible"
+                  providerDraft?.credential.provider_kind ===
+                  "openai_compatible"
                     ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                     : ""
                 }`}
-                aria-pressed={providerDraft?.credential.provider_kind === "openai_compatible"}
+                aria-pressed={
+                  providerDraft?.credential.provider_kind ===
+                  "openai_compatible"
+                }
                 onClick={addCustomProvider}
               >
                 <MdAdd />
@@ -2396,7 +2663,8 @@ export function AiModelsTab() {
           title={
             selectedProviderCredential ? (
               <span className="flex min-w-0 items-center gap-2">
-                {selectedProviderCredential.provider_kind === "openai_compatible" ? (
+                {selectedProviderCredential.provider_kind ===
+                "openai_compatible" ? (
                   <button
                     type="button"
                     className="group relative size-6 shrink-0 cursor-pointer rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
@@ -2443,17 +2711,26 @@ export function AiModelsTab() {
                   </AlertDialogTrigger>
                   <AlertDialogContent size="sm">
                     <AlertDialogHeader>
-                      <AlertDialogTitle>{t("ai.deleteProvider")}</AlertDialogTitle>
+                      <AlertDialogTitle>
+                        {t("ai.deleteProvider")}
+                      </AlertDialogTitle>
                       <AlertDialogDescription>
                         {t(
-                          providerDraft ? "ai.discardProviderConfirm" : "ai.deleteProviderConfirm",
+                          providerDraft
+                            ? "ai.discardProviderConfirm"
+                            : "ai.deleteProviderConfirm",
                           { name: selectedProviderTitle },
                         )}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-                      <AlertDialogAction variant="destructive" onClick={deleteSelectedProvider}>
+                      <AlertDialogCancel>
+                        {t("common.cancel")}
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        onClick={deleteSelectedProvider}
+                      >
                         {t("common.delete")}
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -2466,18 +2743,24 @@ export function AiModelsTab() {
           {selectedProviderCredential ? (
             <div>
               <div className="grid gap-2 border-b border-border/60 py-2.5 first:pt-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2.2fr)] sm:items-center">
-                <Label className="text-xs font-normal">{t("ai.profileName")}</Label>
+                <Label className="text-xs font-normal">
+                  {t("ai.profileName")}
+                </Label>
                 <div className="space-y-1">
                   <Input
                     value={selectedProviderName}
                     placeholder={selectedProviderDefaultName}
                     className="h-9 rounded-lg text-sm"
                     aria-invalid={selectedProviderNameTaken}
-                    onChange={(event) => changeSelectedProviderName(event.target.value)}
+                    onChange={(event) =>
+                      changeSelectedProviderName(event.target.value)
+                    }
                     onBlur={finishSelectedProviderName}
                   />
                   {selectedProviderNameTaken ? (
-                    <p className="text-xs text-destructive">{t("ai.providerNameDuplicate")}</p>
+                    <p className="text-xs text-destructive">
+                      {t("ai.providerNameDuplicate")}
+                    </p>
                   ) : null}
                 </div>
               </div>
@@ -2493,37 +2776,55 @@ export function AiModelsTab() {
                     )}
                     className="h-9 rounded-lg text-sm"
                     required
-                    aria-invalid={showProviderValidation && selectedProviderEndpointMissing}
+                    aria-invalid={
+                      showProviderValidation && selectedProviderEndpointMissing
+                    }
                     onBlur={() => setShowProviderValidation(true)}
                     onChange={(event) =>
-                      updateSelectedProviderCredential(selectedProviderCredential.id, {
-                        base_url: event.target.value,
-                      })
+                      updateSelectedProviderCredential(
+                        selectedProviderCredential.id,
+                        {
+                          base_url: event.target.value,
+                        },
+                      )
                     }
                   />
                   {showProviderValidation && selectedProviderEndpointMissing ? (
-                    <p className="text-xs text-destructive">{t("ai.providerEndpointRequired")}</p>
+                    <p className="text-xs text-destructive">
+                      {t("ai.providerEndpointRequired")}
+                    </p>
                   ) : null}
                 </div>
               </div>
               <div className="grid gap-2 border-b border-border/60 py-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,2.2fr)] sm:items-center">
-                <Label className="text-xs font-normal">{t("ai.providerProtocol")}</Label>
+                <Label className="text-xs font-normal">
+                  {t("ai.providerProtocol")}
+                </Label>
                 <Select
-                  value={providerProtocolSelectValue(selectedProviderCredential)}
+                  value={providerProtocolSelectValue(
+                    selectedProviderCredential,
+                  )}
                   onValueChange={(value) =>
-                    updateSelectedProviderProtocol(selectedProviderCredential, value)
+                    updateSelectedProviderProtocol(
+                      selectedProviderCredential,
+                      value,
+                    )
                   }
                 >
                   <SelectTrigger className="h-9 w-full rounded-lg text-left text-sm">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>{protocolOptions(selectedProviderCredential)}</SelectContent>
+                  <SelectContent>
+                    {protocolOptions(selectedProviderCredential)}
+                  </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2 border-b border-border/60 py-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,2.2fr)] sm:items-center">
                 <Label className="text-xs font-normal">
                   {t("settings.apiKey")}
-                  {selectedProviderApiKeyRequired ? <span aria-hidden="true"> *</span> : null}
+                  {selectedProviderApiKeyRequired ? (
+                    <span aria-hidden="true"> *</span>
+                  ) : null}
                 </Label>
                 <div className="space-y-1">
                   <div className="relative">
@@ -2532,7 +2833,8 @@ export function AiModelsTab() {
                       type={showProviderApiKey ? "text" : "password"}
                       value={
                         showProviderApiKey &&
-                        revealedProviderApiKey?.credentialId === selectedProviderCredential.id &&
+                        revealedProviderApiKey?.credentialId ===
+                          selectedProviderCredential.id &&
                         isCloudSecretMasked(selectedProviderCredential.api_key)
                           ? revealedProviderApiKey.value
                           : secretInputValue(selectedProviderCredential.api_key)
@@ -2543,13 +2845,18 @@ export function AiModelsTab() {
                       )}
                       className="h-9 rounded-lg pr-10 text-sm"
                       required={selectedProviderApiKeyRequired}
-                      aria-invalid={showProviderValidation && selectedProviderApiKeyMissing}
+                      aria-invalid={
+                        showProviderValidation && selectedProviderApiKeyMissing
+                      }
                       onBlur={() => setShowProviderValidation(true)}
                       onChange={(event) => {
                         setRevealedProviderApiKey(null);
-                        updateSelectedProviderCredential(selectedProviderCredential.id, {
-                          api_key: event.target.value,
-                        });
+                        updateSelectedProviderCredential(
+                          selectedProviderCredential.id,
+                          {
+                            api_key: event.target.value,
+                          },
+                        );
                       }}
                     />
                     <Button
@@ -2557,8 +2864,12 @@ export function AiModelsTab() {
                       size="icon-sm"
                       variant="ghost"
                       className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-                      title={t(showProviderApiKey ? "ai.hideApiKey" : "ai.showApiKey")}
-                      aria-label={t(showProviderApiKey ? "ai.hideApiKey" : "ai.showApiKey")}
+                      title={t(
+                        showProviderApiKey ? "ai.hideApiKey" : "ai.showApiKey",
+                      )}
+                      aria-label={t(
+                        showProviderApiKey ? "ai.hideApiKey" : "ai.showApiKey",
+                      )}
                       disabled={revealingProviderApiKey}
                       onClick={() => void toggleProviderApiKeyVisibility()}
                     >
@@ -2570,12 +2881,118 @@ export function AiModelsTab() {
                     </Button>
                   </div>
                   {showProviderValidation && selectedProviderApiKeyMissing ? (
-                    <p className="text-xs text-destructive">{t("ai.providerApiKeyRequired")}</p>
+                    <p className="text-xs text-destructive">
+                      {t("ai.providerApiKeyRequired")}
+                    </p>
                   ) : null}
                 </div>
               </div>
+              <div className="grid gap-2 border-b border-border/60 py-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,2.2fr)] sm:items-start">
+                <div className="space-y-1">
+                  <Label className="text-xs font-normal">
+                    {t("ai.customHeaders")}
+                  </Label>
+                  <p className="text-[11px] leading-snug text-muted-foreground">
+                    {t("ai.customHeadersHint")}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {(selectedProviderCredential.extra_headers ?? []).map(
+                    (header, index) => (
+                      <div
+                        key={header.id || index}
+                        className="flex items-center gap-2"
+                      >
+                        <Input
+                          value={header.name}
+                          placeholder={t("ai.customHeaderName")}
+                          className="h-9 flex-1 rounded-lg font-mono text-xs"
+                          onChange={(event) => {
+                            const headers = (
+                              selectedProviderCredential.extra_headers ?? []
+                            ).map((item) =>
+                              item.id === header.id
+                                ? { ...item, name: event.target.value }
+                                : item,
+                            );
+                            updateSelectedProviderCredential(
+                              selectedProviderCredential.id,
+                              {
+                                extra_headers: headers,
+                              },
+                            );
+                          }}
+                        />
+                        <Input
+                          value={header.value}
+                          placeholder={t("ai.customHeaderValue")}
+                          className="h-9 flex-[1.4] rounded-lg font-mono text-xs"
+                          onChange={(event) => {
+                            const headers = (
+                              selectedProviderCredential.extra_headers ?? []
+                            ).map((item) =>
+                              item.id === header.id
+                                ? { ...item, value: event.target.value }
+                                : item,
+                            );
+                            updateSelectedProviderCredential(
+                              selectedProviderCredential.id,
+                              {
+                                extra_headers: headers,
+                              },
+                            );
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          size="icon-sm"
+                          variant="ghost"
+                          className="shrink-0 text-muted-foreground"
+                          title={t("common.delete")}
+                          aria-label={t("common.delete")}
+                          onClick={() => {
+                            const headers = (
+                              selectedProviderCredential.extra_headers ?? []
+                            ).filter((item) => item.id !== header.id);
+                            updateSelectedProviderCredential(
+                              selectedProviderCredential.id,
+                              {
+                                extra_headers: headers,
+                              },
+                            );
+                          }}
+                        >
+                          <MdDelete />
+                        </Button>
+                      </div>
+                    ),
+                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const headers = [
+                        ...(selectedProviderCredential.extra_headers ?? []),
+                        { id: `hdr-${randomUUID()}`, name: "", value: "" },
+                      ];
+                      updateSelectedProviderCredential(
+                        selectedProviderCredential.id,
+                        {
+                          extra_headers: headers,
+                        },
+                      );
+                    }}
+                  >
+                    <MdAdd />
+                    {t("ai.addCustomHeader")}
+                  </Button>
+                </div>
+              </div>
               <div className="grid gap-2 py-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,2.2fr)] sm:items-center">
-                <Label className="text-xs font-normal">{t("ai.connectionTest")}</Label>
+                <Label className="text-xs font-normal">
+                  {t("ai.connectionTest")}
+                </Label>
                 <div className="flex items-center justify-end gap-2">
                   {providerModelCount !== null ? (
                     <span className="text-xs text-muted-foreground">
@@ -2595,8 +3012,12 @@ export function AiModelsTab() {
                             ? "bg-destructive"
                             : "bg-muted-foreground/30"
                     }`}
-                    title={t(`ai.connectionStatus.${selectedProviderConnectionStatus}`)}
-                    aria-label={t(`ai.connectionStatus.${selectedProviderConnectionStatus}`)}
+                    title={t(
+                      `ai.connectionStatus.${selectedProviderConnectionStatus}`,
+                    )}
+                    aria-label={t(
+                      `ai.connectionStatus.${selectedProviderConnectionStatus}`,
+                    )}
                   />
                   <Button
                     type="button"
@@ -2635,7 +3056,11 @@ function ActionListEditor({
   const { t } = useTranslation();
 
   const updateAction = (id: string, patch: Partial<AICustomActionConfig>) => {
-    onChange(actions.map((action) => (action.id === id ? { ...action, ...patch } : action)));
+    onChange(
+      actions.map((action) =>
+        action.id === id ? { ...action, ...patch } : action,
+      ),
+    );
   };
   const localizedActions = actions.map((action) =>
     localizeDefaultAiAction(action, (key) => t(key)),
@@ -2657,9 +3082,14 @@ function ActionListEditor({
       contentClassName="space-y-4"
     >
       {localizedActions.map((action) => (
-        <div key={action.id} className="rounded-md border border-border/70 bg-background/75 p-4">
+        <div
+          key={action.id}
+          className="rounded-md border border-border/70 bg-background/75 p-4"
+        >
           <div className="mb-3 flex items-center justify-between gap-3">
-            <div className="min-w-0 truncate text-sm font-medium">{action.name}</div>
+            <div className="min-w-0 truncate text-sm font-medium">
+              {action.name}
+            </div>
             <div className="flex items-center gap-2">
               <SettingSwitch
                 checked={action.enabled}
@@ -2667,7 +3097,9 @@ function ActionListEditor({
               />
               <DeleteIconButton
                 title={t("common.delete")}
-                onDelete={() => onChange(actions.filter((item) => item.id !== action.id))}
+                onDelete={() =>
+                  onChange(actions.filter((item) => item.id !== action.id))
+                }
               />
             </div>
           </div>
@@ -2676,13 +3108,17 @@ function ActionListEditor({
               value={action.name}
               className="text-sm"
               placeholder={t("ai.actionName")}
-              onChange={(event) => updateAction(action.id, { name: event.target.value })}
+              onChange={(event) =>
+                updateAction(action.id, { name: event.target.value })
+              }
             />
             <Textarea
               value={action.prompt}
               className="min-h-20 resize-y text-sm"
               placeholder={t("ai.actionPrompt")}
-              onChange={(event) => updateAction(action.id, { prompt: event.target.value })}
+              onChange={(event) =>
+                updateAction(action.id, { prompt: event.target.value })
+              }
             />
           </div>
         </div>
@@ -2695,7 +3131,8 @@ export function AiRulesTab() {
   const { t } = useTranslation();
   const { appSettings, updateAppSettings } = useApp();
   const ai = appSettings.ai;
-  const update = (patch: Partial<AISettings>) => updateAppSettings({ ai: { ...ai, ...patch } });
+  const update = (patch: Partial<AISettings>) =>
+    updateAppSettings({ ai: { ...ai, ...patch } });
   const MB = 1024 * 1024;
 
   return (

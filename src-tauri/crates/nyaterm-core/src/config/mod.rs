@@ -84,18 +84,20 @@ pub use quick_command::{
 #[allow(unused_imports)]
 pub use settings::{
     AI_REQUEST_USER_AGENT_DEFAULT, ActionLinksMatcherSettings, AgentCommandExecutionMode,
-    AiAgentKind, AiApiFormat, AiBackendKind, AiCustomActionConfig, AiMode, AiModelConfigItem,
-    AiModelSource, AiPermissionMode, AiProviderApiProtocol, AiProviderCredential, AiProviderKind,
-    AiProviderProfile, AiProxyMode, AiProxyProtocol, AiProxySettings, AiReasoningEffort,
-    AiSettings, AppSettings, AppearanceSettings, ClaudeCodeIntegrationSettings,
-    CodexIntegrationSettings, CodexThreadMode, DiagnosticsLogLevel, DiagnosticsSettings,
-    ExternalMcpSessionScope, ExternalMcpSettings, GeneralSettings, InteractionSettings,
-    KeywordHighlightRule, McpTerminalDisplayMode, ProxySettings, RecordingSettings, RiskLevel,
-    SearchEngine, SearchSettings, SecuritySettings, TerminalColorsConfig, TerminalSettings,
-    ThemeColorsConfig, ThemeConfig, TransferSettings, TranslationSettings,
-    ai_model_id_for_credential, ai_model_id_for_provider, decrypt_ai_settings, encrypt_ai_settings,
+    AiAgentKind, AiApiFormat, AiBackendKind, AiCustomActionConfig, AiHttpHeader, AiMode,
+    AiModelConfigItem, AiModelSource, AiPermissionMode, AiProviderApiProtocol, AiProviderCredential,
+    AiProviderKind, AiProviderProfile, AiProxyMode, AiProxyProtocol, AiProxySettings,
+    AiReasoningEffort, AiSettings, AppSettings, AppearanceSettings, ClaudeCodeIntegrationSettings,
+    CodexIntegrationSettings, CodexThreadMode, CustomHeaderError, DiagnosticsLogLevel,
+    DiagnosticsSettings, ExternalMcpSessionScope, ExternalMcpSettings, GeneralSettings,
+    InteractionSettings, KeywordHighlightRule, MAX_AI_CUSTOM_HEADERS, MAX_AI_CUSTOM_HEADER_NAME_LEN,
+    MAX_AI_CUSTOM_HEADER_VALUE_LEN, McpTerminalDisplayMode, ProxySettings, RecordingSettings,
+    RiskLevel, SearchEngine, SearchSettings, SecuritySettings, TerminalColorsConfig,
+    TerminalSettings, ThemeColorsConfig, ThemeConfig, TransferSettings, TranslationSettings,
+    ai_model_id_for_credential, ai_model_id_for_provider, custom_header_pairs, decrypt_ai_settings,
+    encrypt_ai_settings, is_valid_custom_header_name, is_valid_custom_header_value,
     load_app_settings, mask_ai_settings, merge_masked_ai_settings, normalize_ai_settings,
-    save_app_settings,
+    normalize_custom_headers, save_app_settings, validate_custom_header,
 };
 #[allow(unused_imports)]
 pub use tunnel::{

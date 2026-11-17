@@ -554,7 +554,7 @@ pub fn responses_request(
     model: &ResolvedAiModel,
     body: &Value,
 ) -> AppResult<reqwest::RequestBuilder> {
-    let mut request = build_http_client(settings)?
+    let mut request = build_http_client(settings, model.credential.as_ref())?
         .post(responses_url(model)?)
         .json(body);
     if let Some(key) = model
@@ -613,6 +613,7 @@ mod tests {
                 api_format: AiApiFormat::Responses,
                 base_url: base_url.map(str::to_string),
                 api_key: Some("key".to_string()),
+                extra_headers: Vec::new(),
                 enabled: true,
             }),
         }

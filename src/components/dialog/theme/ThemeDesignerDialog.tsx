@@ -28,8 +28,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { downloadJson, pickBrowserFile, readBrowserJson } from "@/lib/backend/browserArtifacts";
-import { open as openFileDialog, save as saveFileDialog } from "@/lib/backend/platform/dialog";
+import {
+  downloadJson,
+  pickBrowserFile,
+  readBrowserJson,
+} from "@/lib/backend/browserArtifacts";
+import {
+  open as openFileDialog,
+  save as saveFileDialog,
+} from "@/lib/backend/platform/dialog";
 import { runtime } from "@/lib/backend/runtime";
 import {
   ALL_THEME_COLOR_FIELDS,
@@ -47,7 +54,13 @@ import {
 } from "@/lib/customThemes";
 import { invoke } from "@/lib/invoke";
 import { logger } from "@/lib/logger";
-import { DEFAULT_THEME_ID, isBuiltinThemeId, resolveTheme, type Theme } from "@/lib/themes";
+import {
+  DEFAULT_THEME_ID,
+  isBuiltinThemeId,
+  resolveTheme,
+  type Theme,
+} from "@/lib/themes";
+import { parseWindowsTerminalThemes } from "@/lib/themeImport";
 import type { AppearanceSettings } from "@/types/global";
 
 interface ThemeDesignerDialogProps {
@@ -99,7 +112,9 @@ function contrastRatio(left: string, right: string) {
 }
 
 function terminalAnsiFields() {
-  return ALL_THEME_COLOR_FIELDS.filter((field) => field.path.startsWith("terminal.")).slice(8);
+  return ALL_THEME_COLOR_FIELDS.filter((field) =>
+    field.path.startsWith("terminal."),
+  ).slice(8);
 }
 
 export function ThemeDesignerDialog({
@@ -113,16 +128,26 @@ export function ThemeDesignerDialog({
   const fileInFlight = useRef(false);
   const [fileBusy, setFileBusy] = useState(false);
   const customThemes = appearance.custom_themes ?? [];
-  const [sourceThemeId, setSourceThemeId] = useState(appearance.theme || DEFAULT_THEME_ID);
+  const [sourceThemeId, setSourceThemeId] = useState(
+    appearance.theme || DEFAULT_THEME_ID,
+  );
   const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Theme | null>(null);
   const [activeTab, setActiveTab] = useState("ui");
 
   const sourceTheme = resolveTheme(sourceThemeId, customThemes);
-  const validationErrors = useMemo(() => (draft ? validateTheme(draft) : []), [draft]);
-  const uiContrast = draft ? contrastRatio(draft.colors.text, draft.colors.bg) : null;
+  const validationErrors = useMemo(
+    () => (draft ? validateTheme(draft) : []),
+    [draft],
+  );
+  const uiContrast = draft
+    ? contrastRatio(draft.colors.text, draft.colors.bg)
+    : null;
   const terminalContrast = draft
-    ? contrastRatio(draft.colors.terminal.foreground, draft.colors.terminal.background)
+    ? contrastRatio(
+        draft.colors.terminal.foreground,
+        draft.colors.terminal.background,
+      )
     : null;
 
   useEffect(() => {
@@ -132,7 +157,9 @@ export function ThemeDesignerDialog({
       setSelectedThemeId(initial.id);
       setDraft(structuredCloneTheme(initial));
     } else {
-      const next = cloneThemeAsCustom(resolveTheme(appearance.theme, customThemes));
+      const next = cloneThemeAsCustom(
+        resolveTheme(appearance.theme, customThemes),
+      );
       setSelectedThemeId(next.id);
       setDraft(next);
     }
@@ -143,8 +170,13 @@ export function ThemeDesignerDialog({
     setDraft((current) => (current ? { ...current, ...patch } : current));
   }
 
-  function patchColor(path: Parameters<typeof setThemeColor>[1], value: string) {
-    setDraft((current) => (current ? setThemeColor(current, path, value) : current));
+  function patchColor(
+    path: Parameters<typeof setThemeColor>[1],
+    value: string,
+  ) {
+    setDraft((current) =>
+      current ? setThemeColor(current, path, value) : current,
+    );
   }
 
   function saveDraft() {
@@ -177,7 +209,9 @@ export function ThemeDesignerDialog({
 
   function deleteSelected() {
     if (!draft || !customThemes.some((theme) => theme.id === draft.id)) return;
-    applyAppearance((prev) => removeCustomThemePatch(prev, draft.id, DEFAULT_THEME_ID));
+    applyAppearance((prev) =>
+      removeCustomThemePatch(prev, draft.id, DEFAULT_THEME_ID),
+    );
     const remaining = customThemes.filter((theme) => theme.id !== draft.id);
     const next = remaining[0]
       ? structuredCloneTheme(remaining[0])
@@ -209,7 +243,9 @@ export function ThemeDesignerDialog({
         message: "Export theme failed",
         error,
       });
-      toast.error(t("settings.themeDesignerExportFailed", { error: String(error) }));
+      toast.error(
+        t("settings.themeDesignerExportFailed", { error: String(error) }),
+      );
     } finally {
       fileInFlight.current = false;
       setFileBusy(false);
@@ -230,17 +266,54 @@ export function ThemeDesignerDialog({
             });
       if (!filePath || Array.isArray(filePath)) return;
 
-      const imported =
-        filePath instanceof File
-          ? await readBrowserJson<Theme>(filePath)
-          : await invoke<Theme>("read_theme_file", { filePath });
-      const existingIds = new Set([...availableThemes.map((theme) => theme.id)]);
-      const next = normalizeImportedTheme(imported, existingIds);
-      const errors = validateTheme(next);
-      if (errors.length > 0 || isBuiltinThemeId(next.id)) {
-        toast.error(t("settings.themeDesignerImportInvalid"));
+      const existingIds = new Set([
+        ...availableThemes.map((theme) => theme.id),
+      ]);
+
+      // First try the native NyaTerm theme JSON schema. If that fails, fall
+      // back to Windows Terminal schemes, which may be JSONC.
+      let next: Theme | null = null;
+      try {
+        const imported =
+          filePath instanceof File
+            ? await readBrowserJson<Theme>(filePath)
+            : await invoke<Theme>("read_theme_file", { filePath });
+        const candidate = normalizeImportedTheme(imported, existingIds);
+        if (
+          validateTheme(candidate).length === 0 &&
+          !isBuiltinThemeId(candidate.id)
+        ) {
+          next = candidate;
+        }
+      } catch {
+        // Not a NyaTerm theme; handled by the Windows Terminal fallback below.
+      }
+
+      if (!next) {
+        const text =
+          filePath instanceof File
+            ? await filePath.text()
+            : await invoke<string>("read_theme_source", { filePath });
+        const importedThemes = parseWindowsTerminalThemes(
+          text,
+          existingIds,
+        ).filter(
+          (theme) =>
+            validateTheme(theme).length === 0 && !isBuiltinThemeId(theme.id),
+        );
+        if (importedThemes.length === 0) {
+          toast.error(t("settings.themeDesignerImportInvalid"));
+          return;
+        }
+        applyAppearance((prev) => ({
+          custom_themes: [...(prev.custom_themes ?? []), ...importedThemes],
+        }));
+        setSelectedThemeId(importedThemes[0].id);
+        setDraft(structuredCloneTheme(importedThemes[0]));
+        toast.success(t("settings.themeDesignerImportSuccess"));
         return;
       }
+
       applyAppearance((prev) => appendCustomThemePatch(prev, next));
       setSelectedThemeId(next.id);
       setDraft(structuredCloneTheme(next));
@@ -252,18 +325,25 @@ export function ThemeDesignerDialog({
         message: "Import theme failed",
         error,
       });
-      toast.error(t("settings.themeDesignerImportFailed", { error: String(error) }));
+      toast.error(
+        t("settings.themeDesignerImportFailed", { error: String(error) }),
+      );
     } finally {
       fileInFlight.current = false;
       setFileBusy(false);
     }
   }
 
-  const canDelete = !!draft && customThemes.some((theme) => theme.id === draft.id);
+  const canDelete =
+    !!draft && customThemes.some((theme) => theme.id === draft.id);
   const hasValidationErrors = validationErrors.length > 0;
 
   return (
-    <Dialog disablePointerDismissal open={open} onOpenChange={(value) => !value && onClose()}>
+    <Dialog
+      disablePointerDismissal
+      open={open}
+      onOpenChange={(value) => !value && onClose()}
+    >
       <DialogContent className="flex h-[min(760px,calc(100vh-2rem))] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[calc(100vw-2rem)] xl:w-[1120px] xl:max-w-[1120px]">
         <DialogHeader className="border-b px-5 py-4">
           <DialogTitle className="flex items-center gap-2 text-sm">
@@ -278,7 +358,9 @@ export function ThemeDesignerDialog({
         <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] md:grid-cols-[280px_minmax(0,1fr)] md:grid-rows-1">
           <aside className="flex min-h-0 flex-col border-b bg-muted/20 md:border-r md:border-b-0">
             <div className="space-y-3 border-b p-4">
-              <Label className="text-xs">{t("settings.themeDesignerCopyFrom")}</Label>
+              <Label className="text-xs">
+                {t("settings.themeDesignerCopyFrom")}
+              </Label>
               <Select value={sourceThemeId} onValueChange={setSourceThemeId}>
                 <SelectTrigger className="w-full text-xs">
                   <SelectValue />
@@ -296,7 +378,12 @@ export function ThemeDesignerDialog({
                 {t("settings.themeDesignerCopyTheme")}
               </Button>
               <div className="grid grid-cols-2 gap-2">
-                <Button size="sm" variant="outline" onClick={importTheme} disabled={fileBusy}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={importTheme}
+                  disabled={fileBusy}
+                >
                   <MdUpload />
                   {t("settings.themeDesignerImport")}
                 </Button>
@@ -326,7 +413,9 @@ export function ThemeDesignerDialog({
                     className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs transition-colors hover:bg-accent"
                     style={{
                       backgroundColor:
-                        selectedThemeId === theme.id ? "var(--df-bg-hover)" : undefined,
+                        selectedThemeId === theme.id
+                          ? "var(--df-bg-hover)"
+                          : undefined,
                     }}
                     onClick={() => selectCustomTheme(theme.id)}
                   >
@@ -337,8 +426,11 @@ export function ThemeDesignerDialog({
                         borderColor: "var(--df-border)",
                       }}
                     />
-                    <span className="min-w-0 flex-1 truncate">{theme.name}</span>
-                    {(appearance.theme === theme.id || appearance.terminal_theme === theme.id) && (
+                    <span className="min-w-0 flex-1 truncate">
+                      {theme.name}
+                    </span>
+                    {(appearance.theme === theme.id ||
+                      appearance.terminal_theme === theme.id) && (
                       <MdCheck className="shrink-0 text-[var(--df-success)]" />
                     )}
                   </button>
@@ -354,29 +446,43 @@ export function ThemeDesignerDialog({
                   <>
                     <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_120px_96px]">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">{t("settings.themeDesignerName")}</Label>
+                        <Label className="text-xs">
+                          {t("settings.themeDesignerName")}
+                        </Label>
                         <Input
                           value={draft.name}
                           className="text-sm"
-                          onChange={(event) => patchDraft({ name: event.target.value })}
+                          onChange={(event) =>
+                            patchDraft({ name: event.target.value })
+                          }
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">{t("settings.themeDesignerLabel")}</Label>
+                        <Label className="text-xs">
+                          {t("settings.themeDesignerLabel")}
+                        </Label>
                         <Input
                           value={draft.label}
                           className="text-sm"
                           maxLength={14}
-                          onChange={(event) => patchDraft({ label: event.target.value })}
+                          onChange={(event) =>
+                            patchDraft({ label: event.target.value })
+                          }
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">{t("settings.themeDesignerSwatch")}</Label>
+                        <Label className="text-xs">
+                          {t("settings.themeDesignerSwatch")}
+                        </Label>
                         <Input
                           type="color"
-                          value={isHexColor(draft.swatch) ? draft.swatch : "#000000"}
+                          value={
+                            isHexColor(draft.swatch) ? draft.swatch : "#000000"
+                          }
                           className="h-9 p-1"
-                          onChange={(event) => patchDraft({ swatch: event.target.value })}
+                          onChange={(event) =>
+                            patchDraft({ swatch: event.target.value })
+                          }
                         />
                       </div>
                     </div>
@@ -405,7 +511,9 @@ export function ThemeDesignerDialog({
 
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
                       <TabsList>
-                        <TabsTrigger value="ui">{t("settings.themeDesignerUiColors")}</TabsTrigger>
+                        <TabsTrigger value="ui">
+                          {t("settings.themeDesignerUiColors")}
+                        </TabsTrigger>
                         <TabsTrigger value="terminal">
                           {t("settings.themeDesignerTerminalColors")}
                         </TabsTrigger>
@@ -433,11 +541,18 @@ export function ThemeDesignerDialog({
             </ScrollArea>
 
             <div className="flex flex-col-reverse gap-2 border-t bg-background/95 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <Button variant="destructive" onClick={deleteSelected} disabled={!canDelete}>
+              <Button
+                variant="destructive"
+                onClick={deleteSelected}
+                disabled={!canDelete}
+              >
                 <MdDeleteOutline />
                 {t("settings.themeDesignerDelete")}
               </Button>
-              <Button onClick={() => saveDraft()} disabled={!draft || hasValidationErrors}>
+              <Button
+                onClick={() => saveDraft()}
+                disabled={!draft || hasValidationErrors}
+              >
                 {t("settings.themeDesignerSave")}
               </Button>
             </div>
@@ -524,7 +639,10 @@ function ThemePreview({ theme }: { theme: Theme }) {
             className="h-2 flex-1 rounded-sm"
             style={{ backgroundColor: theme.colors.success }}
           />
-          <span className="h-2 flex-1 rounded-sm" style={{ backgroundColor: theme.colors.link }} />
+          <span
+            className="h-2 flex-1 rounded-sm"
+            style={{ backgroundColor: theme.colors.link }}
+          />
         </div>
       </div>
 
@@ -536,13 +654,17 @@ function ThemePreview({ theme }: { theme: Theme }) {
           color: theme.colors.terminal.foreground,
         }}
       >
-        <div style={{ color: theme.colors.terminal.brightGreen }}>$ pnpm build</div>
+        <div style={{ color: theme.colors.terminal.brightGreen }}>
+          $ pnpm build
+        </div>
         <div>
           <span style={{ color: theme.colors.terminal.brightBlue }}>info</span>{" "}
           {t("settings.themeDesignerPreviewBuild")}
         </div>
         <div>
-          <span style={{ color: theme.colors.terminal.brightYellow }}>warn</span>{" "}
+          <span style={{ color: theme.colors.terminal.brightYellow }}>
+            warn
+          </span>{" "}
           {t("settings.themeDesignerPreviewWarn")}
         </div>
       </div>

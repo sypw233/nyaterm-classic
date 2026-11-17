@@ -143,6 +143,20 @@ pub async fn import_keyword_highlight_rules(
 }
 
 #[tauri::command]
+pub fn read_theme_source(file_path: String) -> AppResult<String> {
+    const MAX_THEME_BYTES: u64 = 1024 * 1024;
+    let metadata = std::fs::metadata(&file_path)
+        .map_err(|error| AppError::Config(format!("Failed to read theme file: {error}")))?;
+    if metadata.len() > MAX_THEME_BYTES {
+        return Err(AppError::Config(
+            "Theme file exceeds the 1 MiB limit".to_string(),
+        ));
+    }
+    std::fs::read_to_string(file_path)
+        .map_err(|error| AppError::Config(format!("Failed to read theme file: {error}")))
+}
+
+#[tauri::command]
 pub fn read_theme_file(file_path: String) -> AppResult<config::ThemeConfig> {
     let raw = std::fs::read_to_string(file_path)
         .map_err(|error| AppError::Config(format!("Failed to read theme file: {error}")))?;

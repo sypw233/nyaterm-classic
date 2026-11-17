@@ -33,6 +33,7 @@ import { invoke } from "@/lib/invoke";
 import { cn } from "@/lib/utils";
 import type { FileDocumentPane } from "@/types/global";
 import FileDocumentEditor from "./FileDocumentEditor";
+import { HexViewer } from "./HexViewer";
 import {
   type FileExplorerBackendKind,
   type FilePreviewKind,
@@ -94,7 +95,7 @@ type PreviewLoadState =
       kind: "markdown" | "csv" | "json" | "text";
       file: RemoteTextFile;
     }
-  | { status: "binary"; kind: "image" | "pdf"; file: RemoteBinaryFile };
+  | { status: "binary"; kind: "image" | "pdf" | "hex"; file: RemoteBinaryFile };
 
 export function FilePreviewContent(props: FilePreviewContentProps) {
   if (props.mode === "edit") {
@@ -117,12 +118,18 @@ function FilePreview({
 }: FilePreviewModeProps) {
   const { t } = useTranslation();
   const [state, setState] = useState<PreviewLoadState>({ status: "idle" });
+  const [hexMode, setHexMode] = useState(false);
   const requestIdRef = useRef(0);
   const onLoadStateChangeRef = useRef(onLoadStateChange);
 
   useEffect(() => {
     onLoadStateChangeRef.current = onLoadStateChange;
   }, [onLoadStateChange]);
+
+  // Reset the manual hex view when switching to a different file.
+  useEffect(() => {
+    setHexMode(false);
+  }, [data.path]);
 
   useEffect(() => {
     void reloadKey;
@@ -133,7 +140,7 @@ function FilePreview({
       onLoadStateChangeRef.current?.(summary);
     };
 
-    if (previewKind === "unsupported") {
+    if (previewKind === "unsupported" && !hexMode) {
       setState({
         status: "error",
         kind: previewKind,
@@ -152,7 +159,8 @@ function FilePreview({
 
     const backend = data.backend ?? "remote";
     const commandPrefix = backend === "local" ? "local" : "remote";
-    const isBinary = previewKind === "image" || previewKind === "pdf";
+    const isBinary =
+      previewKind === "image" || previewKind === "pdf" || hexMode;
     const maxBytes =
       previewKind === "csv"
         ? CSV_PREVIEW_MAX_BYTES
@@ -173,13 +181,13 @@ function FilePreview({
         if (isBinary) {
           setState({
             status: "binary",
-            kind: previewKind,
+            kind: hexMode ? "hex" : (previewKind as "image" | "pdf"),
             file: file as RemoteBinaryFile,
           });
         } else {
           setState({
             status: "text",
-            kind: previewKind,
+            kind: previewKind as "markdown" | "csv" | "json" | "text",
             file: file as RemoteTextFile,
           });
         }
@@ -195,14 +203,22 @@ function FilePreview({
         });
         notify({ status: "error", kind: previewKind, message });
       });
-  }, [data.backend, data.name, data.path, data.sessionId, reloadKey, t]);
+  }, [
+    data.backend,
+    data.name,
+    data.path,
+    data.sessionId,
+    reloadKey,
+    t,
+    hexMode,
+  ]);
 
   return (
     <div
       className={cn("h-full min-h-0 overflow-hidden", className)}
       data-file-document-mode="preview"
     >
-      {renderPreviewBody(state, data.name, t, active)}
+      {renderPreviewBody(state, data.name, t, active, () => setHexMode(true))}
     </div>
   );
 }
@@ -212,6 +228,7 @@ function renderPreviewBody(
   fileName: string,
   t: ReturnType<typeof useTranslation>["t"],
   active: boolean,
+  onOpenHex: () => void,
 ) {
   switch (state.status) {
     case "idle":
@@ -222,8 +239,25 @@ function renderPreviewBody(
         </div>
       );
     case "error":
+      if (state.kind === "unsupported") {
+        return (
+          <PreviewError
+            message={state.message}
+            actionLabel={t("filePreview.viewAsHex")}
+            onAction={onOpenHex}
+          />
+        );
+      }
       return <PreviewError message={state.message} />;
     case "binary":
+      if (state.kind === "hex") {
+        return (
+          <HexViewer
+            bytes={binaryFileBytes(state.file)}
+            totalSize={state.file.size}
+          />
+        );
+      }
       return state.kind === "image" ? (
         active ? (
           <ImagePreview file={state.file} fileName={fileName} />
@@ -248,11 +282,29 @@ function renderPreviewBody(
   }
 }
 
-function PreviewError({ message }: { message: string }) {
+function PreviewError({
+  message,
+  actionLabel,
+  onAction,
+}: {
+  message: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-sm text-muted-foreground">
       <MdErrorOutline className="h-7 w-7 text-destructive" />
       <div className="max-w-xl break-words">{message}</div>
+      {actionLabel && onAction ? (
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-1 text-xs"
+          onClick={onAction}
+        >
+          {actionLabel}
+        </Button>
+      ) : null}
     </div>
   );
 }

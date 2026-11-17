@@ -332,6 +332,19 @@ impl Default for ClaudeCodeIntegrationSettings {
     }
 }
 
+/// A user-defined HTTP header sent alongside requests for a single AI
+/// credential. Values are treated as secrets (encrypted at rest, masked in the
+/// settings API) because gateways often carry auth tokens here.
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+pub struct AiHttpHeader {
+    #[serde(default)]
+    pub id: String,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub value: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AiProviderCredential {
     pub id: String,
@@ -347,6 +360,8 @@ pub struct AiProviderCredential {
     pub base_url: Option<String>,
     #[serde(default)]
     pub api_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub extra_headers: Vec<AiHttpHeader>,
     #[serde(default = "default_true")]
     pub enabled: bool,
 }
@@ -647,6 +662,7 @@ fn credential_from_profile(profile: &AiProviderProfile) -> AiProviderCredential 
         api_format: AiApiFormat::default(),
         base_url: profile.base_url.clone(),
         api_key: profile.api_key.clone(),
+        extra_headers: Vec::new(),
         enabled: profile.enabled,
     }
 }
@@ -781,6 +797,11 @@ pub fn decrypt_ai_settings(mut settings: AiSettings) -> AppResult<AiSettings> {
     }
     for credential in &mut settings.provider_credentials {
         credential.api_key = decrypt_secret(credential.api_key.take())?;
+        for header in &mut credential.extra_headers {
+            if !header.value.is_empty() {
+                header.value = crypto::decrypt(&header.value)?;
+            }
+        }
     }
     Ok(settings)
 }
@@ -792,6 +813,11 @@ pub fn encrypt_ai_settings(mut settings: AiSettings) -> AppResult<AiSettings> {
     }
     for credential in &mut settings.provider_credentials {
         credential.api_key = encrypt_secret(credential.api_key.take())?;
+        for header in &mut credential.extra_headers {
+            if !header.value.is_empty() {
+                header.value = crypto::encrypt(&header.value)?;
+            }
+        }
     }
     Ok(settings)
 }
@@ -803,6 +829,11 @@ pub fn mask_ai_settings(mut settings: AiSettings) -> AiSettings {
     }
     for credential in &mut settings.provider_credentials {
         credential.api_key = mask_secret(credential.api_key.take());
+        for header in &mut credential.extra_headers {
+            if !header.value.is_empty() {
+                header.value = MASKED_SECRET_VALUE.to_string();
+            }
+        }
     }
     settings
 }
@@ -821,15 +852,57 @@ pub fn merge_masked_ai_settings(current: &AiSettings, mut next: AiSettings) -> A
         profile.api_key = merge_secret(current_secret, profile.api_key.as_ref());
     }
     for credential in &mut next.provider_credentials {
-        let current_secret = current
+        let current_credential = current
             .provider_credentials
             .iter()
-            .find(|item| item.id == credential.id)
-            .and_then(|item| item.api_key.as_ref());
-        credential.api_key = merge_secret(current_secret, credential.api_key.as_ref());
+            .find(|item| item.id == credential.id);
+        credential.api_key = merge_secret(
+            current_credential.and_then(|item| item.api_key.as_ref()),
+            credential.api_key.as_ref(),
+        );
+        credential.extra_headers = merge_masked_headers(
+            current_credential.map(|item| item.extra_headers.as_slice()),
+            &credential.extra_headers,
+        );
     }
     normalize_ai_settings(&mut next);
     next
+}
+
+/// Restore masked header values from the stored settings while preserving the
+/// incoming rows. Matching prefers a stable `id`, then falls back to the header
+/// name so imported/older rows still round-trip.
+fn merge_masked_headers(
+    current: Option<&[AiHttpHeader]>,
+    incoming: &[AiHttpHeader],
+) -> Vec<AiHttpHeader> {
+    let current = current.unwrap_or_default();
+    let mut merged = Vec::with_capacity(incoming.len());
+    for header in incoming {
+        let name = header.name.trim_matches([' ', '\t']).to_string();
+        let stored = if header.id.is_empty() {
+            current
+                .iter()
+                .find(|item| item.name.eq_ignore_ascii_case(&name))
+        } else {
+            current.iter().find(|item| item.id == header.id)
+        };
+        let value = if header.value == MASKED_SECRET_VALUE {
+            stored.map(|item| item.value.clone()).unwrap_or_default()
+        } else {
+            header.value.clone()
+        };
+        merged.push(AiHttpHeader {
+            id: if header.id.is_empty() {
+                stored.map(|item| item.id.clone()).unwrap_or_default()
+            } else {
+                header.id.clone()
+            },
+            name,
+            value,
+        });
+    }
+    merged
 }
 
 pub fn normalize_ai_settings(settings: &mut AiSettings) -> bool {
@@ -875,6 +948,7 @@ pub fn normalize_ai_settings(settings: &mut AiSettings) -> bool {
         if is_builtin_ollama_provider(&credential.id, &credential.provider_kind) {
             migrate_legacy_ollama_base_url(&mut credential.base_url);
         }
+        super::ai_headers::normalize_custom_headers(&mut credential.extra_headers);
     }
 
     if settings.models.is_empty() && migrating_legacy_credentials {
@@ -1009,12 +1083,37 @@ mod tests {
         settings.proxy.protocol = AiProxyProtocol::Socks5;
         settings.proxy.username = Some("proxy-user".to_string());
         settings.proxy.password = Some("proxy-secret".to_string());
+        settings.provider_credentials = vec![AiProviderCredential {
+            id: "cred-1".to_string(),
+            name: "Provider".to_string(),
+            provider_kind: AiProviderKind::OpenaiCompatible,
+            icon_data_url: None,
+            api_protocol: None,
+            api_format: AiApiFormat::default(),
+            base_url: None,
+            api_key: None,
+            extra_headers: vec![AiHttpHeader {
+                id: "hdr-1".to_string(),
+                name: "X-Gateway-Token".to_string(),
+                value: "header-secret".to_string(),
+            }],
+            enabled: true,
+        }];
         let encrypted = encrypt_ai_settings(settings.clone()).unwrap();
         assert_ne!(encrypted.proxy.password, settings.proxy.password);
+        assert_ne!(
+            encrypted.provider_credentials[0].extra_headers[0].value,
+            "header-secret"
+        );
         let stored = serde_json::to_string(&encrypted).unwrap();
         assert!(!stored.contains("proxy-secret"));
+        assert!(!stored.contains("header-secret"));
         let decoded = decrypt_ai_settings(serde_json::from_str(&stored).unwrap()).unwrap();
         assert_eq!(decoded.proxy, settings.proxy);
+        assert_eq!(
+            decoded.provider_credentials[0].extra_headers[0].value,
+            "header-secret"
+        );
         assert!(!format!("{:?}", decoded.proxy).contains("proxy-secret"));
 
         let masked = mask_ai_settings(settings.clone());
@@ -1036,6 +1135,74 @@ mod tests {
                 .as_deref(),
             Some("replacement")
         );
+    }
+
+    #[test]
+    fn custom_header_values_are_masked_and_merged() {
+        let mut settings = AiSettings::default();
+        settings.provider_credentials = vec![AiProviderCredential {
+            id: "cred-1".to_string(),
+            name: "Provider".to_string(),
+            provider_kind: AiProviderKind::OpenaiCompatible,
+            icon_data_url: None,
+            api_protocol: None,
+            api_format: AiApiFormat::default(),
+            base_url: None,
+            api_key: None,
+            extra_headers: vec![AiHttpHeader {
+                id: "hdr-1".to_string(),
+                name: "X-Gateway-Token".to_string(),
+                value: "super-secret".to_string(),
+            }],
+            enabled: true,
+        }];
+
+        let masked = mask_ai_settings(settings.clone());
+        assert_eq!(
+            masked.provider_credentials[0].extra_headers[0].value,
+            MASKED_SECRET_VALUE
+        );
+        let merged = merge_masked_ai_settings(&settings, masked);
+        assert_eq!(
+            merged.provider_credentials[0].extra_headers[0].value,
+            "super-secret"
+        );
+
+        // A user-edited value wins over the stored secret.
+        let mut next = mask_ai_settings(settings.clone());
+        next.provider_credentials[0].extra_headers[0].value = "replacement".to_string();
+        assert_eq!(
+            merge_masked_ai_settings(&settings, next).provider_credentials[0].extra_headers[0]
+                .value,
+            "replacement"
+        );
+    }
+
+    #[test]
+    fn normalize_assigns_custom_header_ids_and_caps_rows() {
+        let mut settings = AiSettings::default();
+        settings.provider_credentials = vec![AiProviderCredential {
+            id: "cred-1".to_string(),
+            name: "Provider".to_string(),
+            provider_kind: AiProviderKind::OpenaiCompatible,
+            icon_data_url: None,
+            api_protocol: None,
+            api_format: AiApiFormat::default(),
+            base_url: None,
+            api_key: None,
+            extra_headers: (0..(super::super::ai_headers::MAX_AI_CUSTOM_HEADERS + 5))
+                .map(|_| AiHttpHeader::default())
+                .collect(),
+            enabled: true,
+        }];
+
+        normalize_ai_settings(&mut settings);
+
+        let headers = &settings.provider_credentials[0].extra_headers;
+        assert_eq!(headers.len(), super::super::ai_headers::MAX_AI_CUSTOM_HEADERS);
+        let ids: std::collections::HashSet<_> = headers.iter().map(|h| h.id.as_str()).collect();
+        assert_eq!(ids.len(), headers.len(), "ids must be unique");
+        assert!(headers.iter().all(|h| !h.id.is_empty()));
     }
 
     #[test]
@@ -1413,6 +1580,7 @@ mod tests {
                 api_format: AiApiFormat::default(),
                 base_url: Some(OLLAMA_LEGACY_DEFAULT_BASE_URL.to_string()),
                 api_key: None,
+                extra_headers: Vec::new(),
                 enabled: true,
             }],
             ..AiSettings::default()

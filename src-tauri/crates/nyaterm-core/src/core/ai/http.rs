@@ -1,15 +1,21 @@
 use genai::WebConfig;
 use reqwest::{Client, ClientBuilder, NoProxy, Proxy, Url};
 
-use crate::config::{AiProxyMode, AiProxyProtocol, AiProxySettings, AiSettings};
+use crate::config::{
+    AiProviderCredential, AiProxyMode, AiProxyProtocol, AiProxySettings, AiSettings,
+};
 use crate::error::{AppError, AppResult};
 
 use super::model::ai_request_headers;
 
 /// Every built-in AI transport uses this builder. Keep timeouts at the request /
 /// stream level: a total client timeout would interrupt long-running streams.
-pub fn build_http_client(settings: &AiSettings) -> AppResult<Client> {
-    let web_config = WebConfig::default().with_default_headers(ai_request_headers(settings)?);
+pub fn build_http_client(
+    settings: &AiSettings,
+    credential: Option<&AiProviderCredential>,
+) -> AppResult<Client> {
+    let web_config =
+        WebConfig::default().with_default_headers(ai_request_headers(settings, credential)?);
     let builder = web_config.apply_to_builder(Client::builder());
     apply_proxy(builder, &settings.proxy)?
         .build()

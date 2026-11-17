@@ -287,7 +287,7 @@ pub fn build_client(model: &ResolvedAiModel, settings: &AiSettings) -> AppResult
     Ok(Client::builder()
         .with_model_mapper_fn(move |_model| Ok(ModelIden::new(adapter_kind, mapped_model.clone())))
         .with_service_target_resolver(resolver)
-        .with_reqwest(build_http_client(settings)?)
+        .with_reqwest(build_http_client(settings, model.credential.as_ref())?)
         .build())
 }
 
@@ -317,13 +317,29 @@ fn effective_request_user_agent(settings: &AiSettings) -> &str {
     }
 }
 
-pub fn ai_request_headers(settings: &AiSettings) -> AppResult<HeaderMap> {
+pub fn ai_request_headers(
+    settings: &AiSettings,
+    credential: Option<&AiProviderCredential>,
+) -> AppResult<HeaderMap> {
     let user_agent = effective_request_user_agent(settings);
     let user_agent_value = HeaderValue::from_str(user_agent).map_err(|error| {
         AppError::Config(format!("Invalid AI User-Agent header value: {error}"))
     })?;
     let mut headers = HeaderMap::new();
     headers.insert(USER_AGENT, user_agent_value);
+    if let Some(credential) = credential {
+        let pairs = crate::config::custom_header_pairs(&credential.extra_headers).map_err(|error| {
+            AppError::Config(format!("Invalid AI custom request header: {error}"))
+        })?;
+        for (name, value) in pairs {
+            let name = reqwest::header::HeaderName::from_bytes(name.as_bytes())
+                .map_err(|_| AppError::Config("Invalid AI custom header name".to_string()))?;
+            let mut value = HeaderValue::from_str(&value)
+                .map_err(|_| AppError::Config("Invalid AI custom header value".to_string()))?;
+            value.set_sensitive(true);
+            headers.insert(name, value);
+        }
+    }
     Ok(headers)
 }
 
@@ -479,7 +495,7 @@ async fn fetch_credential_model_names(
             });
     match protocol {
         AiProviderApiProtocol::OpenaiCompatible => {
-            fetch_openai_compatible_models(base_url, api_key, settings).await
+            fetch_openai_compatible_models(base_url, api_key, settings, Some(credential)).await
         }
         AiProviderApiProtocol::Anthropic => {
             fetch_provider_model_names(
@@ -491,6 +507,7 @@ async fn fetch_credential_model_names(
                 "data",
                 "id",
                 AiProviderApiProtocol::Anthropic,
+                Some(credential),
             )
             .await
         }
@@ -504,6 +521,7 @@ async fn fetch_credential_model_names(
                 "models",
                 "name",
                 AiProviderApiProtocol::Gemini,
+                Some(credential),
             )
             .await
         }
@@ -517,6 +535,7 @@ async fn fetch_credential_model_names(
                 "models",
                 "name",
                 AiProviderApiProtocol::Ollama,
+                Some(credential),
             )
             .await
         }
@@ -532,6 +551,7 @@ async fn fetch_provider_model_names(
     response_field: &str,
     model_name_field: &str,
     protocol: AiProviderApiProtocol,
+    credential: Option<&AiProviderCredential>,
 ) -> AppResult<Vec<String>> {
     let url = join_api_base_url(base_url, path)?;
     let mut url = reqwest::Url::parse(&url)
@@ -539,7 +559,7 @@ async fn fetch_provider_model_names(
     if let Some((name, value)) = query {
         url.query_pairs_mut().append_pair(name, value);
     }
-    let client = build_http_client(settings)?;
+    let client = build_http_client(settings, credential)?;
     let mut names = Vec::new();
     let mut cursor: Option<(&str, String)> = None;
     let mut seen_cursors = std::collections::HashSet::new();
@@ -666,9 +686,10 @@ async fn fetch_openai_compatible_models(
     base_url: &str,
     api_key: Option<&str>,
     settings: &AiSettings,
+    credential: Option<&AiProviderCredential>,
 ) -> AppResult<Vec<String>> {
     let url = openai_compatible_models_url(base_url)?;
-    let client = build_http_client(settings)?;
+    let client = build_http_client(settings, credential)?;
     let mut req = client.get(&url);
     if let Some(key) = api_key {
         req = req.bearer_auth(key);
@@ -842,6 +863,7 @@ mod tests {
             api_format: AiApiFormat::default(),
             base_url: Some("https://api.example.com/v1/".to_string()),
             api_key: api_key.map(str::to_string),
+            extra_headers: Vec::new(),
             enabled: true,
         }
     }
@@ -895,11 +917,64 @@ mod tests {
     }
 
     #[test]
+    fn ai_request_headers_include_credential_custom_headers() {
+        let settings = AiSettings::default();
+        let credential = AiProviderCredential {
+            id: "cred".to_string(),
+            name: "Provider".to_string(),
+            provider_kind: AiProviderKind::OpenaiCompatible,
+            icon_data_url: None,
+            api_protocol: None,
+            api_format: AiApiFormat::default(),
+            base_url: None,
+            api_key: None,
+            extra_headers: vec![crate::config::AiHttpHeader {
+                id: "hdr".to_string(),
+                name: "X-Title".to_string(),
+                value: "NyaTerm".to_string(),
+            }],
+            enabled: true,
+        };
+
+        let headers = ai_request_headers(&settings, Some(&credential)).unwrap();
+
+        assert_eq!(
+            headers
+                .get("x-title")
+                .and_then(|value| value.to_str().ok()),
+            Some("NyaTerm")
+        );
+    }
+
+    #[test]
+    fn ai_request_headers_reject_invalid_custom_header() {
+        let settings = AiSettings::default();
+        let credential = AiProviderCredential {
+            id: "cred".to_string(),
+            name: "Provider".to_string(),
+            provider_kind: AiProviderKind::OpenaiCompatible,
+            icon_data_url: None,
+            api_protocol: None,
+            api_format: AiApiFormat::default(),
+            base_url: None,
+            api_key: None,
+            extra_headers: vec![crate::config::AiHttpHeader {
+                id: "hdr".to_string(),
+                name: "Host".to_string(),
+                value: "example.com".to_string(),
+            }],
+            enabled: true,
+        };
+
+        assert!(ai_request_headers(&settings, Some(&credential)).is_err());
+    }
+
+    #[test]
     fn ai_request_headers_use_custom_user_agent() {
         let mut settings = AiSettings::default();
         settings.request_user_agent = "nyaterm-test/1.0".to_string();
 
-        let headers = ai_request_headers(&settings).unwrap();
+        let headers = ai_request_headers(&settings, None).unwrap();
 
         assert_eq!(
             headers
@@ -914,7 +989,7 @@ mod tests {
         let mut settings = AiSettings::default();
         settings.request_user_agent = "   ".to_string();
 
-        let headers = ai_request_headers(&settings).unwrap();
+        let headers = ai_request_headers(&settings, None).unwrap();
 
         assert_eq!(
             headers
@@ -929,7 +1004,7 @@ mod tests {
         let mut settings = AiSettings::default();
         settings.request_user_agent = "bad\r\nvalue".to_string();
 
-        let error = ai_request_headers(&settings).unwrap_err();
+        let error = ai_request_headers(&settings, None).unwrap_err();
 
         assert!(
             error
