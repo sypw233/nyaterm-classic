@@ -13,6 +13,7 @@ This changelog is inferred from release bump commits in git history (for example
 - **files:** Add a read-only, virtualized HEX viewer for binary files, reachable from the preview's "View as HEX" action; it supports offset jump and warns when the file is truncated.
 - **themes:** Add the missing Dracula Light, WindTerm Dark, and WindTerm Light built-in themes.
 - **monitoring:** Show logged-in users (account plus session count) on the remote resource panel. The `who` probe is time-bounded, runs on its own 30-second cadence, and reports "unavailable"/"failed" instead of silently showing an empty list.
+- **search:** Rank saved-connection results by text relevance (exact > prefix > substring, name/host > type > description > id, with tag and group hits promoted) while searching the start page; the chosen sort order still applies when no query is active.
 
 ### Changed
 

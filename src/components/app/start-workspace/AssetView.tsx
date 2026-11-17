@@ -1,8 +1,22 @@
 import type { TFunction } from "i18next";
 import type { CSSProperties } from "react";
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useApp } from "@/context/AppContext";
-import { buildGroupPath, getConnectionsForAssetGroup, getGroupPathLabel } from "@/lib/assetGroups";
+import {
+  buildGroupPath,
+  getConnectionsForAssetGroup,
+  getGroupPathLabel,
+} from "@/lib/assetGroups";
+import {
+  rankGroupName,
+  sortByConnectionRelevance,
+} from "@/lib/connectionSearch";
 import type { Group, SavedConnection } from "@/types/global";
 import AssetBreadcrumb from "./AssetBreadcrumb";
 import AssetCardGrid from "./AssetCardGrid";
@@ -40,7 +54,13 @@ export default function AssetView({
   onConnectConnection,
   onEditConnection,
 }: AssetViewProps) {
-  const { appSettings, savedConnections, savedGroups, refreshConnections, updateUi } = useApp();
+  const {
+    appSettings,
+    savedConnections,
+    savedGroups,
+    refreshConnections,
+    updateUi,
+  } = useApp();
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
@@ -48,7 +68,10 @@ export default function AssetView({
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const sortState = useMemo(
     () =>
-      normalizeAssetSortState(appSettings.ui.asset_sort_key, appSettings.ui.asset_sort_direction),
+      normalizeAssetSortState(
+        appSettings.ui.asset_sort_key,
+        appSettings.ui.asset_sort_direction,
+      ),
     [appSettings.ui.asset_sort_direction, appSettings.ui.asset_sort_key],
   );
 
@@ -78,18 +101,27 @@ export default function AssetView({
 
   const allRecords = useMemo<AssetRecord[]>(() => {
     return savedConnections.map((connection) => {
-      const groupPath = getGroupPathLabel(savedGroups, connection.group_id, t("assets.title"));
+      const groupPath = getGroupPathLabel(
+        savedGroups,
+        connection.group_id,
+        t("assets.title"),
+      );
       return {
         connection,
         groupPath,
-        groupSortOrder: connection.group_id ? (groupSortById.get(connection.group_id) ?? 0) : 0,
+        groupSortOrder: connection.group_id
+          ? (groupSortById.get(connection.group_id) ?? 0)
+          : 0,
         connectionTimeMs: getAssetConnectionTimeMs(connection.last_used_at_ms),
         searchText: buildAssetSearchText(connection, groupPath),
       };
     });
   }, [groupSortById, savedConnections, savedGroups, t]);
 
-  const availableTags = useMemo(() => collectConnectionTags(savedConnections), [savedConnections]);
+  const availableTags = useMemo(
+    () => collectConnectionTags(savedConnections),
+    [savedConnections],
+  );
 
   useEffect(() => {
     const available = new Set(availableTags);
@@ -101,7 +133,12 @@ export default function AssetView({
   }, [availableTags]);
 
   const groupConnections = useMemo(
-    () => getConnectionsForAssetGroup(savedConnections, savedGroups, selectedGroupId),
+    () =>
+      getConnectionsForAssetGroup(
+        savedConnections,
+        savedGroups,
+        selectedGroupId,
+      ),
     [savedConnections, savedGroups, selectedGroupId],
   );
   const groupConnectionIds = useMemo(
@@ -111,21 +148,52 @@ export default function AssetView({
 
   const filteredRecords = useMemo(() => {
     const keyword = deferredSearch.trim().toLowerCase();
-    return allRecords.filter((record) => {
-      if (selectedGroupId && !groupConnectionIds.has(record.connection.id)) return false;
+    const inScope = allRecords.filter((record) => {
+      if (selectedGroupId && !groupConnectionIds.has(record.connection.id))
+        return false;
       if (keyword && !record.searchText.includes(keyword)) return false;
       return matchesSelectedTags(record.connection, selectedTags);
     });
-  }, [allRecords, deferredSearch, groupConnectionIds, selectedGroupId, selectedTags]);
+    if (!keyword) return inScope;
+    // Relevance ordering applies only while searching; without a query the
+    // user's chosen sort order stays authoritative.
+    const groupRanks = new Map(
+      savedGroups.map((group) => [
+        group.id,
+        rankGroupName(group.name, keyword),
+      ]),
+    );
+    return sortByConnectionRelevance(
+      inScope,
+      keyword,
+      (record) => record.connection,
+      (record) =>
+        record.connection.group_id
+          ? (groupRanks.get(record.connection.group_id) ?? 0)
+          : 0,
+    );
+  }, [
+    allRecords,
+    deferredSearch,
+    groupConnectionIds,
+    savedGroups,
+    selectedGroupId,
+    selectedTags,
+  ]);
 
   const sortedRecords = useMemo(
-    () => sortAssetRecords(filteredRecords, sortState, labels),
-    [filteredRecords, labels, sortState],
+    () =>
+      deferredSearch.trim()
+        ? filteredRecords
+        : sortAssetRecords(filteredRecords, sortState, labels),
+    [deferredSearch, filteredRecords, labels, sortState],
   );
   const surfaceStyle = useMemo(
     () =>
       ({
-        backgroundColor: transparentBackground ? "transparent" : "var(--df-bg-terminal)",
+        backgroundColor: transparentBackground
+          ? "transparent"
+          : "var(--df-bg-terminal)",
         "--nyaterm-asset-sticky-bg": "var(--df-bg-terminal-solid)",
       }) as CSSProperties,
     [transparentBackground],
@@ -155,7 +223,10 @@ export default function AssetView({
   const handleSortChange = useCallback(
     (key: AssetSortKey) => {
       updateUi((prev) => {
-        const current = normalizeAssetSortState(prev.asset_sort_key, prev.asset_sort_direction);
+        const current = normalizeAssetSortState(
+          prev.asset_sort_key,
+          prev.asset_sort_direction,
+        );
         if (!current || current.key !== key) {
           return { asset_sort_key: key, asset_sort_direction: "asc" };
         }
@@ -236,13 +307,21 @@ function collectConnectionTags(connections: SavedConnection[]): string[] {
     }
   }
   return [...tags].sort((left, right) =>
-    left.localeCompare(right, undefined, { numeric: true, sensitivity: "variant" }),
+    left.localeCompare(right, undefined, {
+      numeric: true,
+      sensitivity: "variant",
+    }),
   );
 }
 
-function matchesSelectedTags(connection: SavedConnection, selectedTags: Set<string>): boolean {
+function matchesSelectedTags(
+  connection: SavedConnection,
+  selectedTags: Set<string>,
+): boolean {
   if (selectedTags.size === 0) return true;
-  return connection.tags?.some((value) => selectedTags.has(value.trim())) ?? false;
+  return (
+    connection.tags?.some((value) => selectedTags.has(value.trim())) ?? false
+  );
 }
 
 function sortAssetRecords(
@@ -268,10 +347,14 @@ function sortAssetRecords(
   return sorted;
 }
 
-function compareDefaultAssetOrder(left: AssetRecord, right: AssetRecord): number {
+function compareDefaultAssetOrder(
+  left: AssetRecord,
+  right: AssetRecord,
+): number {
   const groupDiff = left.groupSortOrder - right.groupSortOrder;
   if (groupDiff !== 0) return groupDiff;
-  const sortDiff = (left.connection.sort_order ?? 0) - (right.connection.sort_order ?? 0);
+  const sortDiff =
+    (left.connection.sort_order ?? 0) - (right.connection.sort_order ?? 0);
   if (sortDiff !== 0) return sortDiff;
   return naturalCompare(left.connection.name, right.connection.name);
 }
@@ -332,7 +415,9 @@ function normalizeAssetSortState(
   };
 }
 
-function isAssetSortKey(value: string | null | undefined): value is AssetSortKey {
+function isAssetSortKey(
+  value: string | null | undefined,
+): value is AssetSortKey {
   return (
     value === "name" ||
     value === "address" ||
@@ -353,7 +438,8 @@ function compareConnectionTime(
   const rightMs = right.connectionTimeMs;
   const leftValid = leftMs !== null;
   const rightValid = rightMs !== null;
-  if (leftValid && rightValid) return (leftMs - rightMs) * (direction === "asc" ? 1 : -1);
+  if (leftValid && rightValid)
+    return (leftMs - rightMs) * (direction === "asc" ? 1 : -1);
   if (leftValid) return -1;
   if (rightValid) return 1;
   return 0;
@@ -365,16 +451,24 @@ function getCpuSortValue(connection: SavedConnection): number | null {
   return asset.cpu_cores ?? asset.cpu_threads ?? null;
 }
 
-function compareNullableNumber(left: number | null | undefined, right: number | null | undefined) {
-  const leftValid = left !== null && left !== undefined && Number.isFinite(left);
-  const rightValid = right !== null && right !== undefined && Number.isFinite(right);
+function compareNullableNumber(
+  left: number | null | undefined,
+  right: number | null | undefined,
+) {
+  const leftValid =
+    left !== null && left !== undefined && Number.isFinite(left);
+  const rightValid =
+    right !== null && right !== undefined && Number.isFinite(right);
   if (leftValid && rightValid) return left - right;
   if (leftValid) return -1;
   if (rightValid) return 1;
   return 0;
 }
 
-function buildGroupOptions(groups: Group[], rootLabel: string): AssetGroupOption[] {
+function buildGroupOptions(
+  groups: Group[],
+  rootLabel: string,
+): AssetGroupOption[] {
   return groups
     .map((group) => {
       const path = buildGroupPath(groups, group.id)
