@@ -17,6 +17,7 @@ This changelog is inferred from release bump commits in git history (for example
 
 ### Changed
 
+- **terminal:** Stop using `/dev/null` as the zsh injection history file. Zsh creates a lock beside the history file, so an unprivileged user with `HISTSIZE`/`SAVEHIST` set got `locking failed` and the injection leaked into saved history. Push an anonymous in-memory list instead and pop it only when the push succeeded.
 - **ui:** Label 1024-based byte sizes with IEC units (`KiB`, `MiB`, `GiB`, …) instead of the decimal `KB`/`MB`/`GB` names across the resource monitor, header status, transfer panel, process manager, recording panel, update dialog, and asset list. Every one of them paired decimal labels with a 1024 divisor.
 - **branding:** Rename the application to `nyaterm-classic` (display name "NyaTerm Classic", Tauri identifier `com.kang.nyaterm.classic`) so the 1.x line can coexist with the 2.x GPUI build.
 - **storage:** Move the Desktop data directory to `~/.nyaterm-classic` (previously `~/.nyaterm`) so classic does not contend for the same `nyaterm.redb` file lock as other NyaTerm builds. Existing `~/.nyaterm` data is left untouched; migrate it manually if needed. Internal crate names, MCP sidecar name, and `nyaterm://` deep-link scheme are unchanged.

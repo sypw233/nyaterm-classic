@@ -325,7 +325,15 @@ fn local_unix_injection_script(shell: ShellKind, ready_marker: &str) -> Option<S
         )),
         ShellKind::Zsh => Some(format!(
             concat!(
-                " unset NYATERM_PRUNE_HISTORY 2>/dev/null; fc -p /dev/null 2>/dev/null\n",
+                // Push an anonymous in-memory history list on the first physical
+                // line. `/dev/null` cannot be locked while HISTSIZE/SAVEHIST are
+                // set: Zsh creates a history lock beside the file, so an
+                // unprivileged user gets `locking failed` and the injection would
+                // leak into their persistent history. Record the status on the
+                // next line so injection variables never reach the saved list.
+                " fc -p\n",
+                " NYATERM_INJ_HISTORY_PUSHED=$?\n",
+                " unset NYATERM_PRUNE_HISTORY 2>/dev/null\n",
                 " __nyaterm_local_uri_encode(){{",
                 " emulate -L zsh; unsetopt multibyte; local input=\"$1\" output='' ch hex; local -i i;",
                 " for ((i=1; i<=${{#input}}; i++)); do ch=${{input[i]}};",
@@ -355,7 +363,10 @@ fn local_unix_injection_script(shell: ShellKind, ready_marker: &str) -> Option<S
                 " }};",
                 " __nyaterm_local_install_prompt(){{ __nyaterm_local_repair_prompt; }};",
                 " __nyaterm_local_prompt_markable(){{ [[ ${{parameters[PS1]-}} != *readonly* ]] || return 1; PS1=$PS1; }};",
-                " fc -P 2>/dev/null\n if __nyaterm_local_prompt_markable && __nyaterm_local_install_prompt; then :; else __nyaterm_local_ready_failed; fi;\n",
+                // Pop only when the push actually succeeded, so a rejected
+                // `fc -p` never rewinds the user's real history list.
+                " if [ \"${{NYATERM_INJ_HISTORY_PUSHED:-1}}\" = 0 ]; then unset NYATERM_INJ_HISTORY_PUSHED; fc -P 2>/dev/null; else unset NYATERM_INJ_HISTORY_PUSHED; fi\n",
+                " if __nyaterm_local_prompt_markable && __nyaterm_local_install_prompt; then :; else __nyaterm_local_ready_failed; fi;\n",
             ),
             ready_failed_payload,
             ready_payload,

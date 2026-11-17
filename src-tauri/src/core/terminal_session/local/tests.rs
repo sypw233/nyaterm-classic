@@ -1919,4 +1919,30 @@ Write-Output 'VENV_PROMPT_OK'
         assert!(startup.pwsh_init_args.is_none());
         assert!(startup.cmd_prompt.is_none());
     }
+
+    /// Zsh cannot lock `/dev/null` when the host has HISTSIZE/SAVEHIST set, so
+    /// an unprivileged user's injection would leak into the saved history. The
+    /// guard must instead push an anonymous in-memory list and pop it only when
+    /// the push actually succeeded.
+    #[test]
+    fn zsh_history_guard_is_anonymous_and_pops_only_after_a_successful_push() {
+        let source = build_local_startup_script("/bin/zsh", &ready_marker(), true, true)
+            .script
+            .expect("Zsh source");
+
+        assert!(!source.contains("/dev/null"), "must not rely on a /dev/null history file");
+        assert!(source.contains("fc -p\n"), "must push an anonymous history list");
+        assert!(
+            source.contains("NYATERM_INJ_HISTORY_PUSHED=$?"),
+            "must record the push status"
+        );
+        assert!(
+            source.contains("if [ \"${NYATERM_INJ_HISTORY_PUSHED:-1}\" = 0 ]"),
+            "must pop conditionally on the recorded status"
+        );
+
+        let push = source.find("fc -p\n").expect("push present");
+        let pop = source.find("fc -P").expect("pop present");
+        assert!(push < pop, "history must be restored after the injection runs");
+    }
 }
