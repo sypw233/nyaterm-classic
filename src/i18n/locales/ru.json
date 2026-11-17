@@ -1,6 +1,7 @@
 {
   "about": {
     "architecture": "Архитектура приложения",
+    "classicDescription": "NyaTerm Classic — версия NyaTerm на Tauri/WebView, поддерживаемая для ветки 1.x.",
     "close": "Закрыть",
     "conpty": "Локальный терминал ConPTY",
     "conptyBundled": "В комплекте ConPTY {{version}}",
@@ -17,7 +18,10 @@
     "operatingSystem": "Операционная система",
     "packageManager": "Менеджер пакетов",
     "portable": "Портативный",
+    "projectRepo": "Репозиторий",
     "runtime": "Время выполнения",
+    "sourceProject": "nyakang/nyaterm (исходный проект)",
+    "sourceProjectLabel": "Основано на исходном проекте:",
     "supportInfo": "Информация о поддержке",
     "supportInfoCopied": "Информация о поддержке скопирована.",
     "supportInfoCopiedShort": "скопировано",

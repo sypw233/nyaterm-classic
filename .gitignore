@@ -19,6 +19,9 @@ target/
 src-tauri/binaries/nyaterm-mcp-*
 src-tauri/resources/windows/conpty/
 temp/
+# Tauri updater signing keys — never commit private keys
+*.key
+*.key.pub
 
 # Editor directories and files
 .vscode/*

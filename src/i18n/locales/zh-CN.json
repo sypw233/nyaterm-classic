@@ -1,6 +1,7 @@
 {
   "about": {
     "architecture": "应用架构",
+    "classicDescription": "NyaTerm Classic —— NyaTerm 的 Tauri/WebView 版本，持续维护 1.x 产品线。",
     "close": "关闭",
     "conpty": "本地终端 ConPTY",
     "conptyBundled": "内置 ConPTY {{version}}",
@@ -17,7 +18,10 @@
     "operatingSystem": "操作系统",
     "packageManager": "包管理器",
     "portable": "便携版",
+    "projectRepo": "本项目仓库",
     "runtime": "运行环境",
+    "sourceProject": "nyakang/nyaterm（上游源项目）",
+    "sourceProjectLabel": "基于以下源项目：",
     "supportInfo": "支持信息",
     "supportInfoCopied": "支持信息已复制",
     "supportInfoCopiedShort": "已复制",

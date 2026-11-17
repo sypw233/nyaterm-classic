@@ -1,6 +1,7 @@
 {
   "about": {
     "architecture": "Application architecture",
+    "classicDescription": "NyaTerm Classic — the Tauri/WebView edition of NyaTerm, maintained for the 1.x line.",
     "close": "Close",
     "conpty": "Local Terminal ConPTY",
     "conptyBundled": "Bundled ConPTY {{version}}",
@@ -17,7 +18,10 @@
     "operatingSystem": "Operating system",
     "packageManager": "Package manager",
     "portable": "Portable",
+    "projectRepo": "Repository",
     "runtime": "Runtime",
+    "sourceProject": "nyakang/nyaterm (upstream)",
+    "sourceProjectLabel": "Based on the upstream project:",
     "supportInfo": "Support information",
     "supportInfoCopied": "Support information copied",
     "supportInfoCopiedShort": "Copied",

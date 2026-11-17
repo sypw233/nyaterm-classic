@@ -72,8 +72,12 @@ export default function AboutDialog({ open, onClose }: AboutDialogProps) {
   }, [open]);
 
   const conpty = supportInfo?.conpty;
-  const bundledLabel = conpty ? t("about.conptyBundled", { version: conpty.version }) : "";
-  const systemLabel = conpty?.fallback ? t("about.conptySystemFallback") : t("about.conptySystem");
+  const bundledLabel = conpty
+    ? t("about.conptyBundled", { version: conpty.version })
+    : "";
+  const systemLabel = conpty?.fallback
+    ? t("about.conptySystemFallback")
+    : t("about.conptySystem");
   const conptyDisplay = !conpty
     ? null
     : !conpty.available
@@ -86,7 +90,8 @@ export default function AboutDialog({ open, onClose }: AboutDialogProps) {
             ? systemLabel
             : conpty.lastUsed
               ? t("about.conptyLastUsed", {
-                  source: conpty.lastUsed === "bundled" ? bundledLabel : systemLabel,
+                  source:
+                    conpty.lastUsed === "bundled" ? bundledLabel : systemLabel,
                 })
               : t("about.conptyNotStarted");
 
@@ -106,12 +111,14 @@ export default function AboutDialog({ open, onClose }: AboutDialogProps) {
           ? t("about.portable")
           : t("about.installed");
     const text = [
-      "NyaTerm Support Information",
+      "NyaTerm Classic Support Information",
       `Version: ${appVersion}`,
       `Operating System: ${supportInfo.os}`,
       `Application Architecture: ${supportInfo.architecture}`,
       `Runtime: ${runtimeLabel}`,
-      ...(packageManagerDisplay ? [`Package Manager: ${packageManagerDisplay}`] : []),
+      ...(packageManagerDisplay
+        ? [`Package Manager: ${packageManagerDisplay}`]
+        : []),
       ...(conptyDisplay ? [`Local Terminal ConPTY: ${conptyDisplay}`] : []),
     ].join("\n");
     try {
@@ -128,9 +135,11 @@ export default function AboutDialog({ open, onClose }: AboutDialogProps) {
   const versionDisplay =
     appVersion ?? (appVersionFailed ? t("about.unknown") : t("common.loading"));
   const osDisplay =
-    supportInfo?.os ?? (supportInfoFailed ? t("about.unknown") : t("common.loading"));
+    supportInfo?.os ??
+    (supportInfoFailed ? t("about.unknown") : t("common.loading"));
   const architectureDisplay =
-    supportInfo?.architecture ?? (supportInfoFailed ? t("about.unknown") : t("common.loading"));
+    supportInfo?.architecture ??
+    (supportInfoFailed ? t("about.unknown") : t("common.loading"));
   const runtimeDisplay = supportInfo
     ? supportInfo.runtime === "web"
       ? "Web"
@@ -146,7 +155,9 @@ export default function AboutDialog({ open, onClose }: AboutDialogProps) {
     [t("about.operatingSystem"), osDisplay],
     [t("about.architecture"), architectureDisplay],
     [t("about.runtime"), runtimeDisplay],
-    ...(packageManagerDisplay ? [[t("about.packageManager"), packageManagerDisplay]] : []),
+    ...(packageManagerDisplay
+      ? [[t("about.packageManager"), packageManagerDisplay]]
+      : []),
     ...(conptyDisplay ? [[t("about.conpty"), conptyDisplay]] : []),
   ];
 
@@ -156,11 +167,13 @@ export default function AboutDialog({ open, onClose }: AboutDialogProps) {
         <DialogHeader className="items-center">
           <NyaTermLogo className="w-24 h-24 object-contain" />
           <DialogTitle className="text-lg">{appName}</DialogTitle>
-          <DialogDescription className="text-xs">v{versionDisplay}</DialogDescription>
+          <DialogDescription className="text-xs">
+            v{versionDisplay}
+          </DialogDescription>
         </DialogHeader>
 
         <p className="text-xs text-center px-4 leading-relaxed text-muted-foreground">
-          {t("about.description")}
+          {t("about.classicDescription")}
         </p>
 
         <section
@@ -180,37 +193,60 @@ export default function AboutDialog({ open, onClose }: AboutDialogProps) {
               aria-label={t("about.copySupportInfo")}
               disabled={!supportInfoReady}
             >
-              {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-              {copied ? t("about.supportInfoCopiedShort") : t("about.copySupportInfo")}
+              {copied ? (
+                <Check className="size-3.5" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+              {copied
+                ? t("about.supportInfoCopiedShort")
+                : t("about.copySupportInfo")}
             </Button>
           </div>
           <dl className="grid grid-cols-[minmax(0,auto)_1fr] gap-x-4 gap-y-1.5 text-xs">
             {supportRows.map(([label, value]) => (
               <div className="contents" key={label}>
                 <dt className="text-muted-foreground">{label}</dt>
-                <dd className="min-w-0 break-words text-right font-mono">{value}</dd>
+                <dd className="min-w-0 break-words text-right font-mono">
+                  {value}
+                </dd>
               </div>
             ))}
           </dl>
         </section>
 
-        <div className="flex gap-3 w-full pt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 text-xs"
-            onClick={() => openUrl(pkg.homepage)}
-          >
-            {t("about.website")}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 text-xs"
-            onClick={() => openUrl(pkg.bugs.url)}
-          >
-            {t("about.issues")}
-          </Button>
+        <div className="flex flex-col gap-2 w-full pt-2">
+          <div className="flex gap-3 w-full">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 text-xs"
+              onClick={() => openUrl(pkg.homepage)}
+            >
+              {t("about.projectRepo")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 text-xs"
+              onClick={() => openUrl(pkg.bugs.url)}
+            >
+              {t("about.issues")}
+            </Button>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-[11px] text-muted-foreground">
+              {t("about.sourceProjectLabel")}
+            </span>
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto p-0 text-xs"
+              onClick={() => openUrl(pkg.sourceRepository)}
+            >
+              {t("about.sourceProject")}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
