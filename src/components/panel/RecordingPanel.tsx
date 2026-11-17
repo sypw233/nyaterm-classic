@@ -1,4 +1,5 @@
 import { listen } from "@/lib/backend/api";
+import { formatBytesCompact } from "@/lib/byteSize";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -21,27 +22,32 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { invoke } from "@/lib/invoke";
-import type { RecordingMode, RecordingStatus, SessionInfo } from "@/types/global";
+import type {
+  RecordingMode,
+  RecordingStatus,
+  SessionInfo,
+} from "@/types/global";
 
 interface RecordingPanelProps {
   activeSessionId: string | null;
   recordingStatuses: RecordingStatus[];
   onSessionClick: (sessionId: string) => void;
-  onToggleRecording: (session: SessionInfo, mode?: RecordingMode) => Promise<void> | void;
+  onToggleRecording: (
+    session: SessionInfo,
+    mode?: RecordingMode,
+  ) => Promise<void> | void;
   onSaveTranscript: (session: SessionInfo) => Promise<void> | void;
 }
 
 function shortSessionId(sessionId: string) {
   return sessionId.length <= 8 ? sessionId : sessionId.slice(0, 8);
-}
-
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
 }
 
 function formatElapsed(startedAt: string, _tick: number) {
@@ -70,11 +76,14 @@ function RecordingPanel({
   const { t } = useTranslation();
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [search, setSearch] = useState("");
-  const [busyActions, setBusyActions] = useState<Record<string, "record" | "save">>({});
+  const [busyActions, setBusyActions] = useState<
+    Record<string, "record" | "save">
+  >({});
   const [tick, setTick] = useState(0);
 
   const statusBySession = useMemo(
-    () => new Map(recordingStatuses.map((status) => [status.sessionId, status])),
+    () =>
+      new Map(recordingStatuses.map((status) => [status.sessionId, status])),
     [recordingStatuses],
   );
 
@@ -108,7 +117,11 @@ function RecordingPanel({
   }, []);
 
   const runAction = useCallback(
-    async (session: SessionInfo, action: "record" | "save", mode?: RecordingMode) => {
+    async (
+      session: SessionInfo,
+      action: "record" | "save",
+      mode?: RecordingMode,
+    ) => {
       setBusyActions((prev) => ({ ...prev, [session.id]: action }));
       try {
         if (action === "record") {
@@ -140,7 +153,9 @@ function RecordingPanel({
     () =>
       query
         ? sessions.filter((session) =>
-            `${session.name} ${session.session_type} ${session.id}`.toLowerCase().includes(query),
+            `${session.name} ${session.session_type} ${session.id}`
+              .toLowerCase()
+              .includes(query),
           )
         : sessions,
     [query, sessions],
@@ -151,15 +166,23 @@ function RecordingPanel({
       <PanelHeader
         title={t("recording.panelTitle")}
         actions={
-          <span className="text-[0.6875rem]" style={{ color: "var(--df-text-dimmed)" }}>
-            {query ? `${filteredSessions.length}/${sessions.length}` : sessions.length}
+          <span
+            className="text-[0.6875rem]"
+            style={{ color: "var(--df-text-dimmed)" }}
+          >
+            {query
+              ? `${filteredSessions.length}/${sessions.length}`
+              : sessions.length}
           </span>
         }
       />
 
       <div
         className="nyaterm-wallpaper-transparent-surface border-b px-2 py-1.5"
-        style={{ borderColor: "var(--df-border)", backgroundColor: "var(--df-bg-panel)" }}
+        style={{
+          borderColor: "var(--df-border)",
+          backgroundColor: "var(--df-bg-panel)",
+        }}
       >
         <div className="relative shrink-0">
           <MdSearch
@@ -195,7 +218,8 @@ function RecordingPanel({
             const status = statusBySession.get(session.id);
             const isCurrent = activeSessionId === session.id;
             const isRecording = !!status;
-            const isProblem = status?.state === "failed" || status?.state === "degraded";
+            const isProblem =
+              status?.state === "failed" || status?.state === "degraded";
             return (
               <div
                 key={session.id}
@@ -209,12 +233,19 @@ function RecordingPanel({
                     isRecording && !isProblem ? "animate-pulse" : ""
                   }`}
                   style={{
-                    backgroundColor: isProblem ? "#f59e0b" : isRecording ? "#ef4444" : "#22c55e",
+                    backgroundColor: isProblem
+                      ? "#f59e0b"
+                      : isRecording
+                        ? "#ef4444"
+                        : "#22c55e",
                   }}
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 items-center gap-2">
-                    <span className="truncate" style={{ color: "var(--df-text)" }}>
+                    <span
+                      className="truncate"
+                      style={{ color: "var(--df-text)" }}
+                    >
                       {session.name}
                     </span>
                     <span
@@ -237,7 +268,7 @@ function RecordingPanel({
                         <div className="truncate">
                           {modeLabel(status.mode)} ·{" "}
                           {formatElapsed(status.startedAt, tick)} ·{" "}
-                          {formatBytes(status.writtenBytes)}
+                          {formatBytesCompact(status.writtenBytes)}
                         </div>
                         <div className="truncate">{status.filePath}</div>
                         {isProblem && (
@@ -267,7 +298,11 @@ function RecordingPanel({
                             event.stopPropagation();
                             void runAction(session, "record", "transcript");
                           }}
-                          aria-label={isRecording ? t("recording.stop") : t("recording.start")}
+                          aria-label={
+                            isRecording
+                              ? t("recording.stop")
+                              : t("recording.start")
+                          }
                         >
                           {isRecording ? (
                             <MdStop className="h-4 w-4" />
@@ -277,7 +312,9 @@ function RecordingPanel({
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        {isRecording ? t("recording.stop") : t("recording.start")}
+                        {isRecording
+                          ? t("recording.stop")
+                          : t("recording.start")}
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -293,16 +330,25 @@ function RecordingPanel({
                         <MdMoreVert className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
+                    <DropdownMenuContent
+                      align="end"
+                      onClick={(event) => event.stopPropagation()}
+                    >
                       {!isRecording && (
                         <>
                           <DropdownMenuItem
-                            onClick={() => void runAction(session, "record", "transcript")}
+                            onClick={() =>
+                              void runAction(session, "record", "transcript")
+                            }
                           >
                             <MdOutlineDescription className="mr-2 h-4 w-4" />
                             {t("recording.startTranscriptLog")}
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => void runAction(session, "record", "raw")}>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              void runAction(session, "record", "raw")
+                            }
+                          >
                             <PiRecordFill className="mr-2 h-4 w-4" />
                             {t("recording.startRawLog")}
                           </DropdownMenuItem>
@@ -312,14 +358,22 @@ function RecordingPanel({
                       {status && (
                         <>
                           <DropdownMenuItem
-                            onClick={() => void openPath("open_recording_file", status.filePath)}
+                            onClick={() =>
+                              void openPath(
+                                "open_recording_file",
+                                status.filePath,
+                              )
+                            }
                           >
                             <MdOutlineDescription className="mr-2 h-4 w-4" />
                             {t("recording.openLog")}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() =>
-                              void openPath("show_recording_in_folder", status.filePath)
+                              void openPath(
+                                "show_recording_in_folder",
+                                status.filePath,
+                              )
                             }
                           >
                             <MdFolderOpen className="mr-2 h-4 w-4" />
@@ -328,7 +382,9 @@ function RecordingPanel({
                           <DropdownMenuSeparator />
                         </>
                       )}
-                      <DropdownMenuItem onClick={() => void runAction(session, "save")}>
+                      <DropdownMenuItem
+                        onClick={() => void runAction(session, "save")}
+                      >
                         <MdSave className="mr-2 h-4 w-4" />
                         {t("recording.saveTranscript")}
                       </DropdownMenuItem>

@@ -23,7 +23,12 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { useApp } from "@/context/AppContext";
 import type { UpdateInfo, UpdateProgress, UpdateStatus } from "@/lib/updater";
-import { checkForUpdate, downloadAndInstallUpdate, relaunchApp } from "@/lib/updater";
+import {
+  checkForUpdate,
+  downloadAndInstallUpdate,
+  relaunchApp,
+} from "@/lib/updater";
+import { formatBytes } from "@/lib/byteSize";
 
 interface UpdateDialogProps {
   open: boolean;
@@ -40,14 +45,6 @@ type MarkdownCodeProps = {
   children?: ReactNode;
   className?: string;
 };
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / k ** i).toFixed(1)} ${sizes[i]}`;
-}
 
 function MarkdownContent({ content }: { content: string }) {
   return (
@@ -66,13 +63,19 @@ function MarkdownContent({ content }: { content: string }) {
             </h2>
           ),
           h3: ({ children }: MarkdownNodeProps) => (
-            <h3 className="mt-3 mb-1.5 text-xs font-semibold first:mt-0">{children}</h3>
+            <h3 className="mt-3 mb-1.5 text-xs font-semibold first:mt-0">
+              {children}
+            </h3>
           ),
           h4: ({ children }: MarkdownNodeProps) => (
-            <h4 className="mt-2.5 mb-1.5 text-xs font-medium first:mt-0">{children}</h4>
+            <h4 className="mt-2.5 mb-1.5 text-xs font-medium first:mt-0">
+              {children}
+            </h4>
           ),
           p: ({ children }: MarkdownNodeProps) => (
-            <p className="my-2 text-xs leading-5 first:mt-0 last:mb-0">{children}</p>
+            <p className="my-2 text-xs leading-5 first:mt-0 last:mb-0">
+              {children}
+            </p>
           ),
           ul: ({ children }: MarkdownNodeProps) => (
             <ul className="my-2 list-disc space-y-1 pl-5 marker:text-muted-foreground">
@@ -138,7 +141,9 @@ function MarkdownContent({ content }: { content: string }) {
             <tr className="border-b border-border/60">{children}</tr>
           ),
           th: ({ children }: MarkdownNodeProps) => (
-            <th className="break-words px-2.5 py-1.5 font-semibold text-foreground">{children}</th>
+            <th className="break-words px-2.5 py-1.5 font-semibold text-foreground">
+              {children}
+            </th>
           ),
           td: ({ children }: MarkdownNodeProps) => (
             <td className="break-words px-2.5 py-1.5 align-top text-muted-foreground">
@@ -153,14 +158,23 @@ function MarkdownContent({ content }: { content: string }) {
   );
 }
 
-export default function UpdateDialog({ open, onClose, onUpdateFound }: UpdateDialogProps) {
+export default function UpdateDialog({
+  open,
+  onClose,
+  onUpdateFound,
+}: UpdateDialogProps) {
   const { t } = useTranslation();
   const { runtimeInfo, runtimeInfoLoaded } = useApp();
   const [status, setStatus] = useState<UpdateStatus>("checking");
-  const [progress, setProgress] = useState<UpdateProgress>({ downloaded: 0, total: 0 });
+  const [progress, setProgress] = useState<UpdateProgress>({
+    downloaded: 0,
+    total: 0,
+  });
   const [error, setError] = useState<string>("");
   const [currentVersion, setCurrentVersion] = useState("");
-  const [localUpdateInfo, setLocalUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [localUpdateInfo, setLocalUpdateInfo] = useState<UpdateInfo | null>(
+    null,
+  );
   const isUpdating = useRef(false);
   const onUpdateFoundRef = useRef(onUpdateFound);
   onUpdateFoundRef.current = onUpdateFound;
@@ -199,7 +213,12 @@ export default function UpdateDialog({ open, onClose, onUpdateFound }: UpdateDia
     return () => {
       cancelled = true;
     };
-  }, [open, runtimeInfo.packageManager, runtimeInfo.portable, runtimeInfoLoaded]);
+  }, [
+    open,
+    runtimeInfo.packageManager,
+    runtimeInfo.portable,
+    runtimeInfoLoaded,
+  ]);
 
   const handleUpdate = useCallback(async () => {
     if (isUpdating.current || runtimeInfo.packageManager) return;
@@ -229,8 +248,14 @@ export default function UpdateDialog({ open, onClose, onUpdateFound }: UpdateDia
   }, [runtimeInfo.portable]);
 
   const canClose =
-    status === "checking" || status === "available" || status === "idle" || status === "error";
-  const percent = progress.total > 0 ? Math.round((progress.downloaded / progress.total) * 100) : 0;
+    status === "checking" ||
+    status === "available" ||
+    status === "idle" ||
+    status === "error";
+  const percent =
+    progress.total > 0
+      ? Math.round((progress.downloaded / progress.total) * 100)
+      : 0;
 
   return (
     <Dialog
@@ -252,7 +277,9 @@ export default function UpdateDialog({ open, onClose, onUpdateFound }: UpdateDia
         {status === "checking" && (
           <DialogHeader>
             <DialogTitle>{t("updater.checking")}</DialogTitle>
-            <DialogDescription className="sr-only">{t("updater.checking")}</DialogDescription>
+            <DialogDescription className="sr-only">
+              {t("updater.checking")}
+            </DialogDescription>
           </DialogHeader>
         )}
 
@@ -323,7 +350,9 @@ export default function UpdateDialog({ open, onClose, onUpdateFound }: UpdateDia
             </DialogHeader>
             <div className="space-y-2 py-2">
               <Progress value={percent} className="h-2" />
-              <p className="text-xs text-center text-muted-foreground">{percent}%</p>
+              <p className="text-xs text-center text-muted-foreground">
+                {percent}%
+              </p>
             </div>
           </>
         )}

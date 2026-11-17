@@ -17,6 +17,7 @@ This changelog is inferred from release bump commits in git history (for example
 
 ### Changed
 
+- **ui:** Label 1024-based byte sizes with IEC units (`KiB`, `MiB`, `GiB`, …) instead of the decimal `KB`/`MB`/`GB` names across the resource monitor, header status, transfer panel, process manager, recording panel, update dialog, and asset list. Every one of them paired decimal labels with a 1024 divisor.
 - **branding:** Rename the application to `nyaterm-classic` (display name "NyaTerm Classic", Tauri identifier `com.kang.nyaterm.classic`) so the 1.x line can coexist with the 2.x GPUI build.
 - **storage:** Move the Desktop data directory to `~/.nyaterm-classic` (previously `~/.nyaterm`) so classic does not contend for the same `nyaterm.redb` file lock as other NyaTerm builds. Existing `~/.nyaterm` data is left untouched; migrate it manually if needed. Internal crate names, MCP sidecar name, and `nyaterm://` deep-link scheme are unchanged.
 - **build:** Add the `custom-protocol` Cargo feature (standard Tauri template entry) so release builds embed the frontend assets instead of falling back to the `localhost:1420` dev URL. Required when building with plain `cargo build` rather than `tauri build`.

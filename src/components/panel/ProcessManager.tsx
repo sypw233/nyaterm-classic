@@ -31,21 +31,31 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useApp } from "@/context/AppContext";
 import { useVirtualList } from "@/hooks/useVirtualList";
 import { getErrorMessage } from "@/lib/errors";
 import { invoke } from "@/lib/invoke";
 import { cn } from "@/lib/utils";
 import type { RemoteProcess } from "@/types/global";
+import { formatBytes } from "@/lib/byteSize";
 
 type ProcessSortKey = "command" | "cpu" | "memory" | "pid" | "user";
 type SortDirection = "asc" | "desc";
-type PendingSignal = { process: RemoteProcess; signal: string; destructive: boolean } | null;
+type PendingSignal = {
+  process: RemoteProcess;
+  signal: string;
+  destructive: boolean;
+} | null;
 type ProcessDisplayMode = "compact" | "medium" | "narrow" | "wide";
 
 const MAX_CONSECUTIVE_FAILURES = 3;
-const PROCESS_UNSUPPORTED_ERROR = "process listing is unsupported on this remote host";
+const PROCESS_UNSUPPORTED_ERROR =
+  "process listing is unsupported on this remote host";
 const PROCESS_ROW_HEIGHT = 38;
 const PROCESS_DETAILS_HEIGHT = 120;
 const PROCESS_COMPACT_ROW_HEIGHT = 46;
@@ -104,11 +114,7 @@ function getProcessDetailsHeight(mode: ProcessDisplayMode) {
 
 function formatKb(kb: number): string {
   if (kb <= 0) return "0 B";
-  const bytes = kb * 1024;
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  const val = bytes / 1024 ** i;
-  return `${val < 10 ? val.toFixed(1) : val.toFixed(0)} ${units[i]}`;
+  return formatBytes(kb * 1024);
 }
 
 function processMatches(process: RemoteProcess, query: string) {
@@ -132,8 +138,10 @@ function memoryTone(value: number) {
 
 function stateTone(state: string) {
   const normalized = state.toUpperCase();
-  if (normalized.startsWith("Z")) return "border-red-500/40 bg-red-500/10 text-red-300";
-  if (normalized.startsWith("D")) return "border-amber-500/40 bg-amber-500/10 text-amber-300";
+  if (normalized.startsWith("Z"))
+    return "border-red-500/40 bg-red-500/10 text-red-300";
+  if (normalized.startsWith("D"))
+    return "border-amber-500/40 bg-amber-500/10 text-amber-300";
   return "border-border bg-background text-muted-foreground";
 }
 
@@ -145,13 +153,18 @@ interface ProcessManagerProps {
   activeSessionId: string | null;
 }
 
-export default function ProcessManager({ activeSessionId }: ProcessManagerProps) {
+export default function ProcessManager({
+  activeSessionId,
+}: ProcessManagerProps) {
   const { t } = useTranslation();
   const { appSettings } = useApp();
   const [processes, setProcesses] = useState<RemoteProcess[] | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState<{ key: ProcessSortKey; direction: SortDirection }>({
+  const [sort, setSort] = useState<{
+    key: ProcessSortKey;
+    direction: SortDirection;
+  }>({
     key: "cpu",
     direction: "desc",
   });
@@ -165,7 +178,8 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
   const failCountRef = useRef(0);
 
   const enabled = appSettings.ui.show_process_manager ?? false;
-  const pollIntervalMs = Math.max(3, appSettings.ui.process_manager_interval ?? 5) * 1000;
+  const pollIntervalMs =
+    Math.max(3, appSettings.ui.process_manager_interval ?? 5) * 1000;
   const isCompactMode = displayMode === "compact";
 
   useEffect(() => {
@@ -187,34 +201,39 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
     return () => observer.disconnect();
   }, []);
 
-  const fetchProcesses = useCallback(async (sessionId: string, manual = false) => {
-    if (fetchingRef.current) return;
-    fetchingRef.current = true;
-    if (manual) setIsManualRefreshing(true);
+  const fetchProcesses = useCallback(
+    async (sessionId: string, manual = false) => {
+      if (fetchingRef.current) return;
+      fetchingRef.current = true;
+      if (manual) setIsManualRefreshing(true);
 
-    try {
-      const data = await invoke<RemoteProcess[]>("get_remote_processes", { sessionId });
-      setProcesses(data);
-      setErrorMessage(null);
-      failCountRef.current = 0;
-    } catch (error) {
-      const message = getErrorMessage(error);
-      setErrorMessage(message);
-      if (isProcessUnsupportedError(message)) {
-        setProcesses(null);
-        failCountRef.current = MAX_CONSECUTIVE_FAILURES;
-        return;
-      }
+      try {
+        const data = await invoke<RemoteProcess[]>("get_remote_processes", {
+          sessionId,
+        });
+        setProcesses(data);
+        setErrorMessage(null);
+        failCountRef.current = 0;
+      } catch (error) {
+        const message = getErrorMessage(error);
+        setErrorMessage(message);
+        if (isProcessUnsupportedError(message)) {
+          setProcesses(null);
+          failCountRef.current = MAX_CONSECUTIVE_FAILURES;
+          return;
+        }
 
-      failCountRef.current += 1;
-      if (failCountRef.current >= MAX_CONSECUTIVE_FAILURES) {
-        setProcesses(null);
+        failCountRef.current += 1;
+        if (failCountRef.current >= MAX_CONSECUTIVE_FAILURES) {
+          setProcesses(null);
+        }
+      } finally {
+        fetchingRef.current = false;
+        if (manual) setIsManualRefreshing(false);
       }
-    } finally {
-      fetchingRef.current = false;
-      if (manual) setIsManualRefreshing(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   const refresh = useCallback(() => {
     if (!enabled || !activeSessionId) return;
@@ -235,7 +254,10 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
     }
 
     fetchProcesses(activeSessionId);
-    pollRef.current = setInterval(() => fetchProcesses(activeSessionId), pollIntervalMs);
+    pollRef.current = setInterval(
+      () => fetchProcesses(activeSessionId),
+      pollIntervalMs,
+    );
 
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
@@ -250,13 +272,16 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
 
   const normalizedQuery = query.trim().toLowerCase();
   const visibleProcesses = useMemo(() => {
-    const items = (processes ?? []).filter((process) => processMatches(process, normalizedQuery));
+    const items = (processes ?? []).filter((process) =>
+      processMatches(process, normalizedQuery),
+    );
     return [...items].sort((left, right) => {
       const direction = sort.direction === "asc" ? 1 : -1;
       let result = 0;
       switch (sort.key) {
         case "command":
-          result = left.command.localeCompare(right.command) || left.pid - right.pid;
+          result =
+            left.command.localeCompare(right.command) || left.pid - right.pid;
           break;
         case "memory":
           result =
@@ -283,7 +308,8 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
     });
   }, [normalizedQuery, processes, sort]);
 
-  const selectedProcess = visibleProcesses.find((process) => process.pid === selectedPid) ?? null;
+  const selectedProcess =
+    visibleProcesses.find((process) => process.pid === selectedPid) ?? null;
   const {
     containerRef: processListRef,
     visibleItems: virtualProcesses,
@@ -293,7 +319,8 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
   } = useVirtualList(visibleProcesses, {
     getItemHeight: (process) =>
       process.pid === selectedPid
-        ? getProcessRowHeight(displayMode) + getProcessDetailsHeight(displayMode)
+        ? getProcessRowHeight(displayMode) +
+          getProcessDetailsHeight(displayMode)
         : getProcessRowHeight(displayMode),
     itemHeight: getProcessRowHeight(displayMode),
     overscan: 8,
@@ -317,7 +344,10 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
       if (displayMode !== "wide" && current.key === "user") {
         return { key: "cpu", direction: "desc" };
       }
-      if ((displayMode === "compact" || displayMode === "narrow") && current.key === "memory") {
+      if (
+        (displayMode === "compact" || displayMode === "narrow") &&
+        current.key === "memory"
+      ) {
         return { key: "cpu", direction: "desc" };
       }
       return current;
@@ -333,7 +363,9 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
           pid: process.pid,
           signal,
         });
-        toast.success(t("processManager.signalSuccess", { pid: process.pid, signal }));
+        toast.success(
+          t("processManager.signalSuccess", { pid: process.pid, signal }),
+        );
         void fetchProcesses(activeSessionId, true);
       } catch (error) {
         toast.error(getErrorMessage(error));
@@ -384,7 +416,9 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
                 disabled={!enabled || !activeSessionId || isManualRefreshing}
                 aria-label={t("common.refresh")}
               >
-                <MdRefresh className={`h-4 w-4 ${isManualRefreshing ? "animate-spin" : ""}`} />
+                <MdRefresh
+                  className={`h-4 w-4 ${isManualRefreshing ? "animate-spin" : ""}`}
+                />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top">{t("common.refresh")}</TooltipContent>
@@ -394,9 +428,15 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
 
       <div ref={panelBodyRef} className="flex-1 min-h-0 p-2.5">
         {!activeSessionId ? (
-          <EmptyState icon={<MdTaskAlt />} text={t("processManager.noSession")} />
+          <EmptyState
+            icon={<MdTaskAlt />}
+            text={t("processManager.noSession")}
+          />
         ) : !enabled ? (
-          <EmptyState icon={<MdTaskAlt />} text={t("processManager.disabled")} />
+          <EmptyState
+            icon={<MdTaskAlt />}
+            text={t("processManager.disabled")}
+          />
         ) : errorMessage && !processes ? (
           <EmptyState icon={<MdTaskAlt />} text={errorText} />
         ) : processes ? (
@@ -418,7 +458,9 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
                 <span className="hidden text-[0.625rem] uppercase min-[340px]:inline">
                   {t("processManager.total")}
                 </span>
-                <span className="font-semibold text-foreground">{processes.length}</span>
+                <span className="font-semibold text-foreground">
+                  {processes.length}
+                </span>
               </div>
             </div>
 
@@ -427,7 +469,11 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
               style={{ borderColor: "var(--df-border)" }}
             >
               {!isCompactMode && (
-                <ProcessTableHeader mode={displayMode} sort={sort} onToggleSort={toggleSort} />
+                <ProcessTableHeader
+                  mode={displayMode}
+                  sort={sort}
+                  onToggleSort={toggleSort}
+                />
               )}
 
               <div
@@ -438,7 +484,12 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
                 )}
                 onScroll={handleProcessListScroll}
               >
-                <div style={{ paddingTop: processPaddingTop, paddingBottom: processPaddingBottom }}>
+                <div
+                  style={{
+                    paddingTop: processPaddingTop,
+                    paddingBottom: processPaddingBottom,
+                  }}
+                >
                   {virtualProcesses.map(({ item: process }) => (
                     <div
                       key={process.pid}
@@ -454,7 +505,11 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
                           onSelect={() => toggleSelectedPid(process.pid)}
                           onSignal={(signal, destructive) => {
                             if (destructive) {
-                              setPendingSignal({ process, signal, destructive });
+                              setPendingSignal({
+                                process,
+                                signal,
+                                destructive,
+                              });
                             } else {
                               void signalProcess(process, signal);
                             }
@@ -468,7 +523,9 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
                           onCopyPid={() =>
                             void copyProcessText(
                               String(process.pid),
-                              t("processManager.pidCopied", { pid: process.pid }),
+                              t("processManager.pidCopied", {
+                                pid: process.pid,
+                              }),
                             )
                           }
                         />
@@ -479,7 +536,11 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
                           onSelect={() => toggleSelectedPid(process.pid)}
                           onSignal={(signal, destructive) => {
                             if (destructive) {
-                              setPendingSignal({ process, signal, destructive });
+                              setPendingSignal({
+                                process,
+                                signal,
+                                destructive,
+                              });
                             } else {
                               void signalProcess(process, signal);
                             }
@@ -493,7 +554,9 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
                           onCopyPid={() =>
                             void copyProcessText(
                               String(process.pid),
-                              t("processManager.pidCopied", { pid: process.pid }),
+                              t("processManager.pidCopied", {
+                                pid: process.pid,
+                              }),
                             )
                           }
                         />
@@ -532,7 +595,9 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
       >
         <AlertDialogContent size="sm">
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("processManager.confirmSignalTitle")}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("processManager.confirmSignalTitle")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {pendingSignal
                 ? t("processManager.confirmSignalDesc", {
@@ -548,7 +613,11 @@ export default function ProcessManager({ activeSessionId }: ProcessManagerProps)
             <AlertDialogAction
               variant="destructive"
               onClick={() => {
-                if (pendingSignal) void signalProcess(pendingSignal.process, pendingSignal.signal);
+                if (pendingSignal)
+                  void signalProcess(
+                    pendingSignal.process,
+                    pendingSignal.signal,
+                  );
                 setPendingSignal(null);
               }}
             >
@@ -583,7 +652,10 @@ function ProcessActionMenu({
           <MdMoreVert className="h-3.5 w-3.5" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
+      <DropdownMenuContent
+        align="end"
+        onClick={(event) => event.stopPropagation()}
+      >
         <DropdownMenuItem onSelect={onCopyPid}>
           <Copy className="h-3.5 w-3.5" />
           {t("processManager.copyPid")}
@@ -606,7 +678,10 @@ function ProcessActionMenu({
           {t("processManager.signalCont")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onSelect={() => onSignal("KILL", true)}>
+        <DropdownMenuItem
+          variant="destructive"
+          onSelect={() => onSignal("KILL", true)}
+        >
           {t("processManager.signalKill")}
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -690,7 +765,12 @@ function ProcessTableRow({
   onCopyPid: () => void;
 }) {
   return (
-    <div className={cn("grid h-[38px] items-center gap-1 px-2", getProcessTableColumns(mode))}>
+    <div
+      className={cn(
+        "grid h-[38px] items-center gap-1 px-2",
+        getProcessTableColumns(mode),
+      )}
+    >
       <button
         type="button"
         className={cn(
@@ -703,17 +783,32 @@ function ProcessTableRow({
         <span className="truncate font-medium" title={process.command_line}>
           {process.command}
         </span>
-        <span className="truncate text-right font-mono text-muted-foreground">{process.pid}</span>
-        <span className={cn("truncate text-right font-mono", cpuTone(process.cpu_percent))}>
+        <span className="truncate text-right font-mono text-muted-foreground">
+          {process.pid}
+        </span>
+        <span
+          className={cn(
+            "truncate text-right font-mono",
+            cpuTone(process.cpu_percent),
+          )}
+        >
           {process.cpu_percent.toFixed(1)}%
         </span>
         {mode !== "narrow" && (
-          <span className={cn("truncate text-right font-mono", memoryTone(process.memory_percent))}>
+          <span
+            className={cn(
+              "truncate text-right font-mono",
+              memoryTone(process.memory_percent),
+            )}
+          >
             {process.memory_percent.toFixed(1)}%
           </span>
         )}
         {mode === "wide" && (
-          <span className="truncate font-mono text-muted-foreground" title={process.user}>
+          <span
+            className="truncate font-mono text-muted-foreground"
+            title={process.user}
+          >
             {process.user}
           </span>
         )}
@@ -750,14 +845,22 @@ function CompactProcessRow({
         onClick={onSelect}
       >
         <span className="min-w-0">
-          <span className="block truncate text-xs font-medium" title={process.command_line}>
+          <span
+            className="block truncate text-xs font-medium"
+            title={process.command_line}
+          >
             {process.command}
           </span>
           <span className="mt-0.5 block truncate font-mono text-[0.6875rem] text-muted-foreground">
             PID {process.pid}
           </span>
         </span>
-        <span className={cn("truncate text-right font-mono text-xs font-semibold", cpuTone(process.cpu_percent))}>
+        <span
+          className={cn(
+            "truncate text-right font-mono text-xs font-semibold",
+            cpuTone(process.cpu_percent),
+          )}
+        >
           {process.cpu_percent.toFixed(1)}%
         </span>
       </button>
@@ -814,23 +917,45 @@ function ProcessDetails({
   const { t } = useTranslation();
   const compact = mode === "compact";
   const narrow = compact || mode === "narrow";
-  const detailHeight = compact ? "h-[132px]" : narrow ? "h-[132px]" : "h-[120px]";
+  const detailHeight = compact
+    ? "h-[132px]"
+    : narrow
+      ? "h-[132px]"
+      : "h-[120px]";
 
   return (
     <div
       className={cn("overflow-hidden border-t px-2 py-2", detailHeight)}
-      style={{ backgroundColor: "var(--df-bg)", borderTopColor: "var(--df-border)" }}
+      style={{
+        backgroundColor: "var(--df-bg)",
+        borderTopColor: "var(--df-border)",
+      }}
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[0.6875rem] text-muted-foreground">
         <span>PPID {process.ppid}</span>
         <span className="truncate">{process.user}</span>
-        <Badge className={cn("h-5 shrink-0 px-1.5 font-mono text-[0.625rem]", stateTone(process.state))} variant="outline">
+        <Badge
+          className={cn(
+            "h-5 shrink-0 px-1.5 font-mono text-[0.625rem]",
+            stateTone(process.state),
+          )}
+          variant="outline"
+        >
           {process.state}
         </Badge>
       </div>
 
-      <div className={cn("mt-2 grid gap-x-4 gap-y-1", narrow ? "grid-cols-2" : "grid-cols-4")}>
-        <Metric label="CPU" value={`${process.cpu_percent.toFixed(1)}%`} valueClassName={cpuTone(process.cpu_percent)} />
+      <div
+        className={cn(
+          "mt-2 grid gap-x-4 gap-y-1",
+          narrow ? "grid-cols-2" : "grid-cols-4",
+        )}
+      >
+        <Metric
+          label="CPU"
+          value={`${process.cpu_percent.toFixed(1)}%`}
+          valueClassName={cpuTone(process.cpu_percent)}
+        />
         <Metric
           label="MEM"
           value={`${process.memory_percent.toFixed(1)}%`}
@@ -860,7 +985,9 @@ function ProcessDetails({
               <Copy className="h-3 w-3" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top">{t("processManager.copyCommand")}</TooltipContent>
+          <TooltipContent side="top">
+            {t("processManager.copyCommand")}
+          </TooltipContent>
         </Tooltip>
       </div>
     </div>
@@ -878,8 +1005,15 @@ function Metric({
 }) {
   return (
     <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-baseline gap-2">
-      <span className="truncate text-[0.625rem] uppercase text-muted-foreground">{label}</span>
-      <span className={cn("truncate text-right font-mono text-xs font-semibold", valueClassName)}>
+      <span className="truncate text-[0.625rem] uppercase text-muted-foreground">
+        {label}
+      </span>
+      <span
+        className={cn(
+          "truncate text-right font-mono text-xs font-semibold",
+          valueClassName,
+        )}
+      >
         {value}
       </span>
     </div>

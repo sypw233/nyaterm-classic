@@ -36,36 +36,38 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useApp } from "@/context/AppContext";
 import { invoke } from "@/lib/invoke";
-import { type TransferItem, useTransfer } from "../../../context/TransferContext";
+import {
+  type TransferItem,
+  useTransfer,
+} from "../../../context/TransferContext";
+import { formatByteRate, formatBytes } from "@/lib/byteSize";
 
 interface FileTransferProps {
   activeSessionId: string | null;
 }
 
 function formatSize(bytes: number): string {
-  if (bytes === 0) return "-";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  return formatBytes(bytes);
 }
 
 function formatRate(bytesPerSecond: number): string {
-  if (bytesPerSecond <= 0) return "0 B/s";
-  if (bytesPerSecond < 1024) return `${Math.round(bytesPerSecond)} B/s`;
-  if (bytesPerSecond < 1024 * 1024) return `${(bytesPerSecond / 1024).toFixed(1)} KB/s`;
-  if (bytesPerSecond < 1024 * 1024 * 1024) {
-    return `${(bytesPerSecond / (1024 * 1024)).toFixed(1)} MB/s`;
-  }
-  return `${(bytesPerSecond / (1024 * 1024 * 1024)).toFixed(1)} GB/s`;
+  return formatByteRate(bytesPerSecond);
 }
 
 function formatTime(ts: number): string {
   const d = new Date(ts);
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return d.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 }
 
 function getTransferDisplayRank(transfer: TransferItem): number {
@@ -146,7 +148,11 @@ function TransferRow({
           ? MdUpload
           : MdDownload;
   const dirColor =
-    item.direction === "copy" ? "#a78bfa" : item.direction === "upload" ? "#4ade80" : "#60a5fa";
+    item.direction === "copy"
+      ? "#a78bfa"
+      : item.direction === "upload"
+        ? "#4ade80"
+        : "#60a5fa";
   const hasByteProgress = item.totalSize > 0;
   const byteProgress = hasByteProgress
     ? Math.min(100, Math.round((item.bytesTransferred / item.totalSize) * 100))
@@ -156,17 +162,27 @@ function TransferRow({
       ? hasByteProgress
         ? byteProgress
         : item.itemCountTotal && item.itemCountTotal > 0
-          ? Math.min(100, Math.round(((item.itemCountCompleted ?? 0) / item.itemCountTotal) * 100))
+          ? Math.min(
+              100,
+              Math.round(
+                ((item.itemCountCompleted ?? 0) / item.itemCountTotal) * 100,
+              ),
+            )
           : item.status === "completed"
             ? 100
             : 0
       : item.totalSize > 0
-        ? Math.min(100, Math.round((item.bytesTransferred / item.totalSize) * 100))
+        ? Math.min(
+            100,
+            Math.round((item.bytesTransferred / item.totalSize) * 100),
+          )
         : 0;
   const isModemTransfer = isBackendModemTransfer(item);
   const isRestrictedTransfer = isRestrictedBackendTransfer(item);
   const isLocalDownload =
-    supports("nativeFiles") && item.direction === "download" && !isRestrictedTransfer;
+    supports("nativeFiles") &&
+    item.direction === "download" &&
+    !isRestrictedTransfer;
   const localName = isLocalDownload
     ? item.localPath.split(/[\\/]/).filter(Boolean).pop()
     : undefined;
@@ -176,7 +192,9 @@ function TransferRow({
     item.status !== "queued" &&
     item.queueState !== "pending";
   const displayName =
-    isLocalDownload && item.status === "completed" && localName ? localName : item.fileName;
+    isLocalDownload && item.status === "completed" && localName
+      ? localName
+      : item.fileName;
   const canPause =
     supports("transferControl") &&
     !isRestrictedTransfer &&
@@ -196,7 +214,9 @@ function TransferRow({
   const canCancel =
     supports("transferControl") &&
     !isModemTransfer &&
-    (item.status === "queued" || item.status === "transferring" || item.status === "paused");
+    (item.status === "queued" ||
+      item.status === "transferring" ||
+      item.status === "paused");
   const canDelete = isModemTransfer
     ? item.status !== "transferring"
     : !canCancel || item.status === "queued" || item.queueState === "pending";
@@ -238,7 +258,9 @@ function TransferRow({
         <div
           className="rounded transition-colors px-2 py-1.5"
           style={{
-            backgroundColor: selected ? "var(--df-bg-hover)" : "var(--df-bg-panel)",
+            backgroundColor: selected
+              ? "var(--df-bg-hover)"
+              : "var(--df-bg-panel)",
             outline: selected ? "1px solid var(--df-primary)" : undefined,
           }}
           onMouseDown={() => onSelect(item.id)}
@@ -254,12 +276,17 @@ function TransferRow({
           }}
           title={[
             item.error || `${displayName} — ${statusText}`,
-            ...(isRenamed ? [t("fileTransfer.originalName", { name: item.fileName })] : []),
+            ...(isRenamed
+              ? [t("fileTransfer.originalName", { name: item.fileName })]
+              : []),
             ...(isLocalDownload && item.localPath
               ? [
-                  t(isRenamed ? "fileTransfer.saveAs" : "fileTransfer.savePath", {
-                    path: item.localPath,
-                  }),
+                  t(
+                    isRenamed ? "fileTransfer.saveAs" : "fileTransfer.savePath",
+                    {
+                      path: item.localPath,
+                    },
+                  ),
                 ]
               : []),
           ].join("\n")}
@@ -269,7 +296,10 @@ function TransferRow({
 
             <div className="flex-1 min-w-0">
               <div className="flex min-w-0 items-center gap-1.5">
-                <div className="truncate text-xs" style={{ color: "var(--df-text)" }}>
+                <div
+                  className="truncate text-xs"
+                  style={{ color: "var(--df-text)" }}
+                >
                   {displayName}
                 </div>
                 {isRenamed && (
@@ -319,7 +349,9 @@ function TransferRow({
                       {formatSize(item.totalSize)}
                     </span>
                   </>
-                ) : item.status === "completed" && item.size > 0 && item.totalSize === 0 ? (
+                ) : item.status === "completed" &&
+                  item.size > 0 &&
+                  item.totalSize === 0 ? (
                   <>
                     <span className="shrink-0">·</span>
                     <span className="truncate">{formatSize(item.size)}</span>
@@ -348,7 +380,8 @@ function TransferRow({
                 className="shrink-0 rounded px-1.5 py-0.5 text-[0.625rem]"
                 style={{
                   color: statusColor,
-                  backgroundColor: "color-mix(in srgb, currentColor 12%, transparent)",
+                  backgroundColor:
+                    "color-mix(in srgb, currentColor 12%, transparent)",
                 }}
               >
                 {statusText}
@@ -388,17 +421,26 @@ function TransferRow({
                   <MdPause className="mr-2 text-[0.875rem]" />
                   {t("fileTransfer.pause")}
                 </ContextMenuItem>
-                <ContextMenuItem onClick={() => onResume(item.id)} disabled={!canResume}>
+                <ContextMenuItem
+                  onClick={() => onResume(item.id)}
+                  disabled={!canResume}
+                >
                   <MdPlayArrow className="mr-2 text-[0.875rem]" />
                   {t("fileTransfer.resume")}
                 </ContextMenuItem>
-                <ContextMenuItem onClick={() => onRetry(item)} disabled={!canRetry}>
+                <ContextMenuItem
+                  onClick={() => onRetry(item)}
+                  disabled={!canRetry}
+                >
                   <MdRefresh className="mr-2 text-[0.875rem]" />
                   {t("fileTransfer.retry")}
                 </ContextMenuItem>
               </>
             )}
-            <ContextMenuItem onClick={() => onCancel(item.id)} disabled={!canCancel}>
+            <ContextMenuItem
+              onClick={() => onCancel(item.id)}
+              disabled={!canCancel}
+            >
               <MdBlock className="mr-2 text-[0.875rem]" />
               {t("fileTransfer.cancel")}
             </ContextMenuItem>
@@ -414,7 +456,11 @@ function TransferRow({
             <ContextMenuSeparator />
           </>
         )}
-        <ContextMenuItem variant="destructive" onClick={() => onDelete(item)} disabled={!canDelete}>
+        <ContextMenuItem
+          variant="destructive"
+          onClick={() => onDelete(item)}
+          disabled={!canDelete}
+        >
           <MdDelete className="mr-2 text-[0.875rem]" />
           {t("fileTransfer.delete")}
         </ContextMenuItem>
@@ -436,8 +482,11 @@ export default function FileTransfer({ activeSessionId }: FileTransferProps) {
   } = useTransfer();
   const { appSettings } = useApp();
   const [resolvedDownloadDir, setResolvedDownloadDir] = useState("");
-  const [selectedTransferId, setSelectedTransferId] = useState<string | null>(null);
-  const [pendingDeleteTransfer, setPendingDeleteTransfer] = useState<TransferItem | null>(null);
+  const [selectedTransferId, setSelectedTransferId] = useState<string | null>(
+    null,
+  );
+  const [pendingDeleteTransfer, setPendingDeleteTransfer] =
+    useState<TransferItem | null>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
   const previousActiveSessionIdRef = useRef(activeSessionId);
 
@@ -449,7 +498,9 @@ export default function FileTransfer({ activeSessionId }: FileTransferProps) {
 
   const displayPath = appSettings.transfer.download_path || resolvedDownloadDir;
   const visibleTransfers = useMemo(() => {
-    const topLevelTransfers = transfers.filter((transfer) => !transfer.parentId);
+    const topLevelTransfers = transfers.filter(
+      (transfer) => !transfer.parentId,
+    );
     const filteredTransfers = activeSessionId
       ? topLevelTransfers.filter(
           (transfer) =>
@@ -483,7 +534,9 @@ export default function FileTransfer({ activeSessionId }: FileTransferProps) {
   }, [selectedTransferId, visibleTransfers]);
 
   const selectedTransfer = useMemo(
-    () => visibleTransfers.find((transfer) => transfer.id === selectedTransferId) ?? null,
+    () =>
+      visibleTransfers.find((transfer) => transfer.id === selectedTransferId) ??
+      null,
     [selectedTransferId, visibleTransfers],
   );
 
@@ -567,7 +620,8 @@ export default function FileTransfer({ activeSessionId }: FileTransferProps) {
       (transfer.status === "transferring" || transfer.status === "queued"),
   );
   const hasPaused = visibleTransfers.some(
-    (transfer) => !isBackendModemTransfer(transfer) && transfer.status === "paused",
+    (transfer) =>
+      !isBackendModemTransfer(transfer) && transfer.status === "paused",
   );
   const hasActive = visibleTransfers.some(
     (transfer) =>
@@ -576,7 +630,9 @@ export default function FileTransfer({ activeSessionId }: FileTransferProps) {
         transfer.status === "transferring" ||
         transfer.status === "paused"),
   );
-  const hasCompleted = visibleTransfers.some((transfer) => transfer.status === "completed");
+  const hasCompleted = visibleTransfers.some(
+    (transfer) => transfer.status === "completed",
+  );
   const hasClearable = visibleTransfers.some(
     (transfer) =>
       transfer.status !== "queued" &&
@@ -590,7 +646,8 @@ export default function FileTransfer({ activeSessionId }: FileTransferProps) {
         .filter(
           (transfer) =>
             !isBackendModemTransfer(transfer) &&
-            (transfer.status === "transferring" || transfer.status === "queued"),
+            (transfer.status === "transferring" ||
+              transfer.status === "queued"),
         )
         .map((transfer) => pauseTransfer(transfer.id)),
     );
@@ -612,7 +669,10 @@ export default function FileTransfer({ activeSessionId }: FileTransferProps) {
   const handleResumeAll = useCallback(() => {
     void Promise.all(
       visibleTransfers
-        .filter((transfer) => !isBackendModemTransfer(transfer) && transfer.status === "paused")
+        .filter(
+          (transfer) =>
+            !isBackendModemTransfer(transfer) && transfer.status === "paused",
+        )
         .map((transfer) => resumeTransfer(transfer.id)),
     );
   }, [resumeTransfer, visibleTransfers]);
@@ -703,14 +763,24 @@ export default function FileTransfer({ activeSessionId }: FileTransferProps) {
         onKeyDown={handleListKeyDown}
       >
         {!activeSessionId ? (
-          <div className="text-center py-8 text-xs" style={{ color: "var(--df-text-dimmed)" }}>
+          <div
+            className="text-center py-8 text-xs"
+            style={{ color: "var(--df-text-dimmed)" }}
+          >
             <MdFolderOff className="text-xl block mx-auto mb-2" />
-            <div className="text-sm block mb-2">{t("fileExplorer.connectToSession")}</div>
+            <div className="text-sm block mb-2">
+              {t("fileExplorer.connectToSession")}
+            </div>
           </div>
         ) : visibleTransfers.length === 0 ? (
-          <div className="text-center py-8 text-xs" style={{ color: "var(--df-text-dimmed)" }}>
+          <div
+            className="text-center py-8 text-xs"
+            style={{ color: "var(--df-text-dimmed)" }}
+          >
             <MdSwapHoriz className="text-xl block mx-auto mb-2" />
-            <div className="text-sm block mb-2">{t("fileTransfer.noTransfers")}</div>
+            <div className="text-sm block mb-2">
+              {t("fileTransfer.noTransfers")}
+            </div>
           </div>
         ) : (
           <div className="space-y-0.5">
@@ -725,7 +795,9 @@ export default function FileTransfer({ activeSessionId }: FileTransferProps) {
                 onRetry={(transfer) => void retryTransfer(transfer)}
                 onCancel={(id) => void cancelTransfer(id)}
                 onDelete={requestDeleteTransfer}
-                onOpenTargetDirectory={(id) => void handleOpenTargetDirectory(id)}
+                onOpenTargetDirectory={(id) =>
+                  void handleOpenTargetDirectory(id)
+                }
               />
             ))}
           </div>
@@ -752,7 +824,9 @@ export default function FileTransfer({ activeSessionId }: FileTransferProps) {
               <div className="truncate">{displayPath}</div>
             </div>
           </TooltipTrigger>
-          <TooltipContent side="top">{t("fileTransfer.downloadPath")}</TooltipContent>
+          <TooltipContent side="top">
+            {t("fileTransfer.downloadPath")}
+          </TooltipContent>
         </Tooltip>
       )}
     </aside>

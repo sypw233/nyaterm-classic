@@ -30,20 +30,10 @@ import {
   useNetworkHistorySeries,
 } from "@/hooks/useNetworkHistory";
 import type { RemoteStatsState } from "@/hooks/useRemoteStats";
+import { formatBytes } from "@/lib/byteSize";
 import NetworkTrafficChart, { formatNetworkRate } from "./NetworkTrafficChart";
 
 const ALL_NETWORK_INTERFACES = "__all__";
-
-function formatBytes(bytes: number): string {
-  if (bytes <= 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.min(
-    Math.floor(Math.log(bytes) / Math.log(1024)),
-    units.length - 1,
-  );
-  const val = bytes / 1024 ** i;
-  return `${val < 10 ? val.toFixed(2) : val < 100 ? val.toFixed(1) : val.toFixed(0)} ${units[i]}`;
-}
 
 function formatUptime(
   seconds: number,
