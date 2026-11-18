@@ -980,6 +980,9 @@ jobs:
     needs:
       - validate-release-assets
       - stage-r2-release
+    # The R2 mirror is optional (see r2-config), so its job may be skipped.
+    # Gate on the asset validation instead of inheriting the skip.
+    if: ${{ !cancelled() && needs.validate-release-assets.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -1107,14 +1110,45 @@ jobs:
 
             console.log(`Uploaded latest.json to updater-beta release for ${tag}.`);
 
+  r2-config:
+    name: Check Cloudflare R2 credentials
+    needs: validate-release-assets
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    permissions:
+      contents: read
+    steps:
+      - name: Detect whether the R2 mirror is configured
+        id: check
+        shell: bash
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          set -euo pipefail
+
+          # The R2 bucket and its public origin belong to the upstream project.
+          # `latest.json` always points at github.com, so R2 is only a mirror:
+          # a clone without these secrets should still be able to publish.
+          if [ -n "${R2_ACCOUNT_ID:-}" ] && [ -n "${R2_ACCESS_KEY_ID:-}" ] \
+             && [ -n "${R2_SECRET_ACCESS_KEY:-}" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "Cloudflare R2 credentials are configured; the versioned mirror will be staged."
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Cloudflare R2 credentials are not set; skipping the versioned R2 mirror. The GitHub release is unaffected."
+          fi
+
   stage-r2-release:
     name: Stage versioned release assets to Cloudflare R2
     outputs:
       manifest-sha256: ${{ steps.verify.outputs.manifest-sha256 }}
-    needs: validate-release-assets
+    needs: [validate-release-assets, r2-config]
     runs-on: ubuntu-latest
 
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') && needs.r2-config.outputs.enabled == 'true'
 
     permissions:
       contents: write
@@ -1372,6 +1406,8 @@ jobs:
     needs:
       - publish-release
       - stage-r2-release
+    # Mirrors the staging job: nothing to promote when R2 is unconfigured.
+    if: ${{ !cancelled() && needs.stage-r2-release.result == 'success' && needs.publish-release.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
