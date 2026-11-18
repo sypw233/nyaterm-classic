@@ -99,10 +99,9 @@ export function HexViewer({
           </span>
         ) : null}
       </div>
-      <div
+      <section
         ref={scrollRef}
         className="min-h-0 flex-1 overflow-auto font-mono text-[11px] leading-5"
-        role="region"
         aria-label={t("filePreview.hexViewer")}
       >
         <div
@@ -144,7 +143,7 @@ export function HexViewer({
             );
           })}
         </div>
-      </div>
+      </section>
     </div>
   );
 }
