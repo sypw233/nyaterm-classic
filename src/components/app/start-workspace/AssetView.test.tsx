@@ -203,20 +203,22 @@ describe("start workspace asset view", () => {
     renderAssetView();
     const search = screen.getByPlaceholderText("Search assets");
 
+    // The list filters through `useDeferredValue`, so matches arrive a render
+    // later than the keystroke; asserting synchronously races the filter.
     await user.type(search, "linux");
-    expect(screen.getByText("GPU Lab")).not.toBeNull();
+    await waitFor(() => expect(screen.getByText("GPU Lab")).not.toBeNull());
     await user.clear(search);
 
     await user.type(search, "windows");
-    expect(screen.getByText("Windows VM")).not.toBeNull();
+    await waitFor(() => expect(screen.getByText("Windows VM")).not.toBeNull());
     await user.clear(search);
 
     await user.type(search, "gpu");
-    expect(screen.getByText("GPU Lab")).not.toBeNull();
+    await waitFor(() => expect(screen.getByText("GPU Lab")).not.toBeNull());
     await user.clear(search);
 
     await user.type(search, "npu");
-    expect(screen.getByText("Ascend Edge")).not.toBeNull();
+    await waitFor(() => expect(screen.getByText("Ascend Edge")).not.toBeNull());
   });
 
   it("shows ancestor breadcrumbs after selecting a group", async () => {
