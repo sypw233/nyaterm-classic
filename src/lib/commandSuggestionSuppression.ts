@@ -519,3 +519,258 @@ export function isPagerSearchOrCommandInput(value: string): boolean {
 export function isPagerSingleKeyInput(data: string): boolean {
   return [" ", "b", "g", "G", "n", "N", "q"].includes(data);
 }
+
+/**
+ * True when an unquoted `|` joins commands; the right side then reads a pipe,
+ * not a terminal, so it cannot open an interactive shell.
+ */
+function hasUnquotedPipe(input: string): boolean {
+  const chars = [...input];
+  let quote: "'" | '"' | null = null;
+  let escaped = false;
+
+  for (let index = 0; index < chars.length; index += 1) {
+    const char = chars[index] ?? "";
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === "\\" && quote !== "'") {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (char === quote) quote = null;
+      continue;
+    }
+    if (char === "'" || char === '"') {
+      quote = char;
+      continue;
+    }
+    if (char === "|" && chars[index + 1] !== "|" && chars[index - 1] !== "|") {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Positional arguments, skipping options and the values of `withValue`
+ * options, plus whether a `--` ended option parsing.
+ */
+function positionals(
+  tokens: string[],
+  withValue: readonly string[],
+): { values: string[]; dashdash: boolean } {
+  const values: string[] = [];
+  let index = 0;
+
+  while (index < tokens.length) {
+    const token = tokens[index] ?? "";
+    if (token === "--") {
+      return { values, dashdash: true };
+    }
+    if (withValue.includes(token)) {
+      index += 2;
+      continue;
+    }
+    if (token.startsWith("-") && token !== "-") {
+      index += 1;
+      continue;
+    }
+    values.push(token);
+    index += 1;
+  }
+
+  return { values, dashdash: false };
+}
+
+function shortClusterHas(token: string, letters: string): boolean {
+  if (!token.startsWith("-") || token.startsWith("--") || token.length <= 1) {
+    return false;
+  }
+  const cluster = token.slice(1);
+  return /^[A-Za-z]+$/u.test(cluster) && [...cluster].some((char) => letters.includes(char));
+}
+
+function containerExecIsInteractive(
+  args: string[],
+  short: string,
+  long: readonly string[],
+): boolean {
+  return args.some(
+    (token) =>
+      long.includes(token) || (shortClusterHas(token, short) && !shortClusterHas(token, "d")),
+  );
+}
+
+function segmentEntersForeignShell(segment: string): boolean {
+  const { tokens } = unwrapCommand(tokenizeShellLike(segment));
+  const first = tokens[0] ?? "";
+  const name = commandName(first).replace(/\.exe$/u, "");
+  const args = tokens.slice(1);
+  const subcommands = args.filter((token) => !token.startsWith("-"));
+  const sub = subcommands[0];
+
+  switch (name) {
+    // A remote command (`ssh host uptime`) or a forward-only flag returns to
+    // the local prompt by itself, so only a bare `ssh host` opens a shell.
+    case "ssh": {
+      const value = [
+        "-b", "-c", "-D", "-E", "-e", "-F", "-I", "-i", "-J", "-L", "-l", "-m", "-O", "-o",
+        "-p", "-Q", "-R", "-S", "-W", "-w", "-B",
+      ];
+      const batch = args.some((token) =>
+        ["-N", "-f", "-W", "-O", "-G", "-Q", "-V", "-s"].includes(token),
+      );
+      return !batch && positionals(args, value).values.length === 1;
+    }
+    case "mosh": {
+      const value = ["--ssh", "--port", "-p", "--predict", "--family", "--server"];
+      const parsed = positionals(args, value);
+      return !parsed.dashdash && parsed.values.length === 1;
+    }
+    case "telnet":
+      return positionals(args, ["-l", "-e", "-b", "-s"]).values.length > 0;
+    case "docker":
+    case "podman":
+    case "nerdctl": {
+      const verb = sub === "container" ? subcommands[1] : sub;
+      return (
+        (verb === "exec" || verb === "run" || verb === "attach") &&
+        containerExecIsInteractive(args, "it", ["--interactive", "--tty"])
+      );
+    }
+    case "kubectl":
+    case "oc":
+      if (sub === "rsh") return true;
+      if (sub === "exec" || sub === "debug" || sub === "run") {
+        return containerExecIsInteractive(args, "it", ["--stdin", "--tty"]);
+      }
+      return false;
+    case "lxc":
+    case "incus":
+      return sub === "exec" || sub === "shell";
+    case "machinectl":
+      return sub === "shell" || sub === "login";
+    case "multipass":
+    case "limactl":
+    case "distrobox":
+    case "toolbox":
+      return sub === "shell" || sub === "enter";
+    case "vagrant":
+      return sub === "ssh" && !hasOption(args, "--command", "-c");
+    case "nsenter":
+      return true;
+    case "chroot":
+      return positionals(args, []).values.length === 1;
+    case "wsl": {
+      const management = new Set([
+        "-l", "--list", "--shutdown", "-t", "--terminate", "--install", "--update", "--status",
+        "--version", "-v", "--set-default", "-s", "--set-version", "--unregister", "--export",
+        "--import", "--mount", "--unmount", "-e", "--exec", "--help", "--manage",
+        "--import-in-place", "--set-default-version",
+      ]);
+      const parsed = positionals(args, ["-d", "--distribution", "-u", "--user", "--cd"]);
+      return (
+        !parsed.dashdash &&
+        !args.some((token) => management.has(token)) &&
+        parsed.values.every((value) => value.startsWith("~"))
+      );
+    }
+    case "adb":
+      return positionals(args, ["-s", "-t", "-H", "-P", "-L"]).values.join(" ") === "shell";
+    default:
+      return false;
+  }
+}
+
+/**
+ * How many interactive shells on another host, container or distro this
+ * submitted command line opens.
+ *
+ * Same-host switches (`su`, `sudo -i`, `bash`) do not count: the file system
+ * the suggestions list stays the same. Neither do commands that return by
+ * themselves (`ssh host cmd`, `ssh -N`, piped or backgrounded ssh).
+ */
+export function commandEntersForeignShell(command: string): number {
+  const normalized = sanitizeTerminalCommand(command);
+  if (!normalized) {
+    return 0;
+  }
+  if (hasUnquotedPipe(normalized) || (normalized.endsWith("&") && !normalized.endsWith("&&"))) {
+    return 0;
+  }
+
+  return splitCommandSegments(normalized).filter((segment) =>
+    segmentEntersForeignShell(segment.text),
+  ).length;
+}
+
+/** True when the submitted line ends the current shell (`exit`, `logout`). */
+export function commandLeavesShell(command: string): boolean {
+  return splitCommandSegments(sanitizeTerminalCommand(command)).some((segment) => {
+    const { tokens } = unwrapCommand(tokenizeShellLike(segment.text));
+    const name = commandName(tokens[0] ?? "");
+    return name === "exit" || name === "logout";
+  });
+}
+
+/**
+ * Interactive shells a session opened on another host, container or distro.
+ *
+ * Path suggestions list the session's own file system, which is the wrong one
+ * while this is non-zero. The depth survives a line reset: a password prompt or
+ * alternate screen inside the nested shell must not make the outer host's
+ * files look current.
+ */
+export class ForeignShellTracker {
+  /** A bound keeps a runaway chain from overflowing; real nesting is shallow. */
+  static readonly MAX_DEPTH = 8;
+
+  private depth = 0;
+  /** Prompt prefix of the outermost shell, to notice a return without `exit`. */
+  private outerPrompt: string | null = null;
+
+  isActive(): boolean {
+    return this.depth > 0;
+  }
+
+  getDepth(): number {
+    return this.depth;
+  }
+
+  enter(count: number, outerPrompt?: string | null): void {
+    if (count <= 0) return;
+    if (this.depth === 0) {
+      const prompt = outerPrompt?.trim();
+      this.outerPrompt = prompt ? (outerPrompt ?? null) : null;
+    }
+    this.depth = Math.min(ForeignShellTracker.MAX_DEPTH, this.depth + Math.trunc(count));
+  }
+
+  /** `exit`, `logout`, or Ctrl+D on an empty line. */
+  leave(): void {
+    this.depth = Math.max(0, this.depth - 1);
+    if (this.depth === 0) {
+      this.outerPrompt = null;
+    }
+  }
+
+  reset(): void {
+    this.depth = 0;
+    this.outerPrompt = null;
+  }
+
+  /**
+   * The outermost shell's prompt is back on screen: the nested shell ended or
+   * never started. Prompts that differ keep the guard on.
+   */
+  notePrompt(prompt: string): void {
+    if (this.depth > 0 && this.outerPrompt !== null && this.outerPrompt === prompt) {
+      this.reset();
+    }
+  }
+}
+

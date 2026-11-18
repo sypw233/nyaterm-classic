@@ -35,7 +35,10 @@ import {
   writeClipboardText,
 } from "@/lib/clipboard";
 import {
+  commandEntersForeignShell,
+  commandLeavesShell,
   commandStartsSuggestionSuppressingProgram,
+  ForeignShellTracker,
   isPagerSearchOrCommandInput,
   isPagerSingleKeyInput,
 } from "@/lib/commandSuggestionSuppression";
@@ -58,7 +61,7 @@ import {
   sendSessionInputWithSync,
 } from "@/lib/sessionInput";
 import { registerTerminalContextProvider } from "@/lib/terminalContext";
-import { isBareShellPrompt } from "@/lib/terminalCommand";
+import { isBareShellPrompt, stripTerminalCommandPrompt } from "@/lib/terminalCommand";
 import { resolveTerminalFontSize } from "@/lib/terminalFontSize";
 import {
   applyTerminalInputData,
@@ -332,6 +335,10 @@ export default function XTerminal({
   const credentialPromptBufferRef = useRef("");
   const credentialPromptInputUntilRef = useRef(0);
   const commandSuggestionSuppressedRef = useRef(false);
+  // Shells this session opened on another host/container/distro. Path and
+  // command suggestions describe this session's own file system, which is the
+  // wrong one while nested.
+  const foreignShellsRef = useRef(new ForeignShellTracker());
 
   const clearSearchSelectionState = useCallback(() => {
     pendingSearchSelectionRef.current = false;
@@ -713,6 +720,11 @@ export default function XTerminal({
 
       const inputState = inputStateRef.current;
       if (commandSuggestionSuppressedRef.current) {
+        return false;
+      }
+      // Inside a shell on another host or container, this session's file
+      // system and command catalog are not what the user is typing into.
+      if (foreignShellsRef.current.isActive()) {
         return false;
       }
       if (isPagerSearchOrCommandInput(inputState.value)) {
@@ -1899,6 +1911,22 @@ export default function XTerminal({
           inputStateRef.current = createTerminalInputState();
         }
       }
+      // A failed `ssh`/`docker exec` never opens a shell and announces nothing,
+      // so recognize a return by seeing the outermost shell's prompt again.
+      if (
+        foreignShellsRef.current.isActive() &&
+        terminal.buffer.active.type === "normal" &&
+        (outputDrainRef.current?.getPendingBytes() ?? 0) === 0 &&
+        (frameGateRef.current?.getHeldBytes() ?? 0) === 0
+      ) {
+        const line = readCurrentInputLine(terminal);
+        const prompt = stripTerminalCommandPrompt(line);
+        // The prompt is present when the stripped remainder differs from the
+        // raw line; typing after the prompt must not hide the return.
+        if (prompt !== line.trimStart()) {
+          foreignShellsRef.current.notePrompt(line.slice(0, line.length - prompt.length).trimEnd());
+        }
+      }
       const terminalSettings = terminalAppSettingsRef.current?.terminal;
       if (
         terminal.buffer.active.type === "normal" &&
@@ -2117,6 +2145,8 @@ export default function XTerminal({
       inputStateRef.current = createTerminalInputState();
       clearCredentialPromptInputMode();
       resetCommandSuggestionSuppression();
+      // A reconnect starts a fresh shell on this session's own host.
+      foreignShellsRef.current.reset();
       dismissSuggestions();
     };
 
@@ -2504,6 +2534,19 @@ export default function XTerminal({
         inputStateRef.current = createTerminalInputState();
       }
 
+      // Ctrl+D on an empty line at a shell prompt ends that shell. While a
+      // program runs it only closes that program's stdin, so require an empty
+      // tracked line.
+      if (
+        data === "\x04" &&
+        foreignShellsRef.current.isActive() &&
+        !inputStateRef.current.value &&
+        !inputStateRef.current.desynced &&
+        !inputStateRef.current.multiline
+      ) {
+        foreignShellsRef.current.leave();
+      }
+
       if (
         canShowCommandSuggestions() &&
         showSuggestionsRef.current &&
@@ -2637,6 +2680,17 @@ export default function XTerminal({
       }
       if (data === "\r" && command) {
         noteShellCommand(command);
+        // Remember shells opened on another host/container so suggestions stop
+        // describing this session's file system while inside them.
+        const entered = commandEntersForeignShell(command);
+        if (entered > 0) {
+          foreignShellsRef.current.enter(
+            entered,
+            stripTerminalCommandPrompt(readCurrentInputLine(terminal)),
+          );
+        } else if (commandLeavesShell(command)) {
+          foreignShellsRef.current.leave();
+        }
         dismissSuggestions();
       } else if (
         isPagerSingleKeyInput(data) ||
