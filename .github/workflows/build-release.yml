@@ -75,9 +75,9 @@ jobs:
           print(f'Release versions match {version} (app crate {app_name})')
           PY
 
-          # The tag must be cut from the Tauri 1.x maintenance line. Accept any
-          # branch that tracks it, because the same commits are published as
-          # both `main` (the repository default) and `archive/tauri-v1`.
+          # The tag must be cut from the Tauri 1.x maintenance line. `main` is the
+          # repository default here; `archive/tauri-v1` is accepted as well so the
+          # check still works on clones that keep the upstream branch name.
           git fetch origin '+refs/heads/*:refs/remotes/origin/*'
           tag_commit=$(git rev-parse "${GITHUB_REF}^{commit}")
           landed=false
@@ -90,7 +90,7 @@ jobs:
             fi
           done
           if [ "$tag_commit" != "$(git rev-parse HEAD)" ] || [ "$landed" != true ]; then
-            echo "::error::The tag commit must belong to the Tauri 1.x maintenance line (origin/main or origin/archive/tauri-v1)."
+            echo "::error::The tag commit must belong to the Tauri 1.x maintenance line (origin/main)."
             exit 1
           fi
 
