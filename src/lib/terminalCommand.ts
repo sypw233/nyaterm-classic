@@ -49,3 +49,27 @@ export function sanitizeTerminalCommand(input: string): string {
   const withoutPrompt = stripTerminalCommandPrompt(input);
   return withoutPrompt.trim();
 }
+
+/**
+ * True when a terminal line holds nothing but a recognizable shell prompt.
+ *
+ * Used to detect that a pager or full-screen program has exited and the shell
+ * is accepting input again. Requiring a known prompt prefix keeps ordinary
+ * output lines, which never start with one, from releasing that state.
+ */
+export function isBareShellPrompt(input: string): boolean {
+  const trimmed = input.trimStart();
+  if (!trimmed.trim()) {
+    return false;
+  }
+
+  const match = [
+    BRACKET_PROMPT_PREFIX,
+    POSIX_PROMPT_PREFIX,
+    SIMPLE_POSIX_PROMPT_PREFIX,
+    POWERSHELL_PROMPT_PREFIX,
+    WINDOWS_PROMPT_PREFIX,
+  ].some((matcher) => matcher.test(trimmed));
+
+  return match && !stripKnownPromptPrefix(trimmed).trim();
+}

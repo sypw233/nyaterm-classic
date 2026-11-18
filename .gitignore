@@ -14,6 +14,7 @@ docs-site/.docusaurus
 dist
 dist-ssr
 dist-windows/
+dist-windows-debug/
 *.local
 target/
 src-tauri/binaries/nyaterm-mcp-*

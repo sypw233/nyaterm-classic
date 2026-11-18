@@ -58,6 +58,7 @@ import {
   sendSessionInputWithSync,
 } from "@/lib/sessionInput";
 import { registerTerminalContextProvider } from "@/lib/terminalContext";
+import { isBareShellPrompt } from "@/lib/terminalCommand";
 import { resolveTerminalFontSize } from "@/lib/terminalFontSize";
 import {
   applyTerminalInputData,
@@ -1085,6 +1086,9 @@ export default function XTerminal({
 
     const commandNavigation = new CommandNavigation();
     let fallbackInteractive = false;
+    // Inside a pager, `/`, `?` and `:` open a search/command line. A `q` typed
+    // there belongs to the query and must not be read as "leave the pager".
+    let pagerPromptOpen = false;
 
     const getAbsCursorLine = () => {
       const buffer = terminal.buffer.active;
@@ -1874,6 +1878,27 @@ export default function XTerminal({
       if (terminal.buffer.active.type === "alternate") {
         dismissSuggestions();
       }
+      // `git log` and friends run their pager on the normal screen, so the
+      // alternate-screen guard never sees them. Once that command exits the
+      // shell prints a bare prompt again; release the suppression there
+      // instead of waiting for a `q` the user may never have pressed (a short
+      // `git log` leaves less immediately because of `LESS=FRX`).
+      if (
+        commandSuggestionSuppressedRef.current &&
+        terminal.buffer.active.type === "normal" &&
+        (outputDrainRef.current?.getPendingBytes() ?? 0) === 0 &&
+        (frameGateRef.current?.getHeldBytes() ?? 0) === 0 &&
+        isBareShellPrompt(readCurrentInputLine(terminal))
+      ) {
+        resetCommandSuggestionSuppression();
+        // Suppressed input never reaches the tracker, so this only clears
+        // leftovers. Guard anyway: a keystroke echoed after this check has
+        // already started a real command line that must not be wiped.
+        const state = inputStateRef.current;
+        if (!state.value && !state.pasteMode && !state.multiline) {
+          inputStateRef.current = createTerminalInputState();
+        }
+      }
       const terminalSettings = terminalAppSettingsRef.current?.terminal;
       if (
         terminal.buffer.active.type === "normal" &&
@@ -1910,6 +1935,7 @@ export default function XTerminal({
     const setCommandSuggestionSuppressed = (suppressed: boolean) => {
       if (commandSuggestionSuppressedRef.current === suppressed) return;
       commandSuggestionSuppressedRef.current = suppressed;
+      pagerPromptOpen = false;
       if (suppressed) {
         dismissSuggestions();
       }
@@ -2529,7 +2555,16 @@ export default function XTerminal({
 
       if (commandSuggestionSuppressedRef.current) {
         dismissSuggestions();
-        if (data === "\u0003" || data === "q") {
+        if (data === "\u0003") {
+          pagerPromptOpen = false;
+          resetCommandSuggestionSuppression();
+          inputStateRef.current = createTerminalInputState();
+        } else if (data === "\r" || data === "\x1b") {
+          // Escape and Enter both close a pager search/command line.
+          pagerPromptOpen = false;
+        } else if (isPagerSearchOrCommandInput(data)) {
+          pagerPromptOpen = true;
+        } else if (data === "q" && !pagerPromptOpen) {
           resetCommandSuggestionSuppression();
           inputStateRef.current = createTerminalInputState();
         }

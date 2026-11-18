@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeTerminalCommand, stripTerminalCommandPrompt } from "./terminalCommand";
+import {
+  isBareShellPrompt,
+  sanitizeTerminalCommand,
+  stripTerminalCommandPrompt,
+} from "./terminalCommand";
 
 describe("terminal prompt boundaries", () => {
   it("strips a standalone POSIX dollar prompt but not command variables", () => {
@@ -14,11 +18,15 @@ describe("terminal prompt boundaries", () => {
   });
 
   it("preserves existing POSIX, bracketed, PowerShell and Windows prefixes", () => {
-    expect(stripTerminalCommandPrompt("alice@server:~/work$ echo $DISPLAY")).toBe(
+    expect(
+      stripTerminalCommandPrompt("alice@server:~/work$ echo $DISPLAY"),
+    ).toBe("echo $DISPLAY");
+    expect(stripTerminalCommandPrompt("[alice@server] # ls -la")).toBe(
+      "ls -la",
+    );
+    expect(stripTerminalCommandPrompt("PS C:\\work> echo $DISPLAY")).toBe(
       "echo $DISPLAY",
     );
-    expect(stripTerminalCommandPrompt("[alice@server] # ls -la")).toBe("ls -la");
-    expect(stripTerminalCommandPrompt("PS C:\\work> echo $DISPLAY")).toBe("echo $DISPLAY");
     expect(stripTerminalCommandPrompt("C:\\work> dir")).toBe("dir");
   });
 
@@ -27,5 +35,32 @@ describe("terminal prompt boundaries", () => {
     expect(sanitizeTerminalCommand("$HOME  &&  echo $DISPLAY")).toBe(
       "$HOME  &&  echo $DISPLAY",
     );
+  });
+});
+
+describe("bare shell prompt detection", () => {
+  it("recognizes an idle prompt across supported shells", () => {
+    for (const line of [
+      "alice@server:~/work$",
+      "alice@server:~/work$ ",
+      "[alice@server] #",
+      "$ ",
+      "PS C:\\work>",
+      "C:\\work>",
+    ]) {
+      expect(isBareShellPrompt(line), line).toBe(true);
+    }
+  });
+
+  it("does not treat command output as a prompt", () => {
+    for (const line of [
+      "alice@server:~/work$ git log",
+      "commit 1a2b3c4 -- initial",
+      "",
+      "   ",
+      "less README.md",
+    ]) {
+      expect(isBareShellPrompt(line), line).toBe(false);
+    }
   });
 });
