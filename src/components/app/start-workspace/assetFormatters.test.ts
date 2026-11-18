@@ -11,7 +11,7 @@ import {
 
 describe("assetFormatters", () => {
   it("formats bytes and keeps undefined distinct from confirmed empty arrays", () => {
-    expect(formatBytes(16 * 1024 ** 3)).toBe("16 GB");
+    expect(formatBytes(16 * 1024 ** 3)).toBe("16 GiB");
     expect(formatBytes(undefined)).toBe("-");
     expect(formatAccelerators(undefined)).toBe("-");
     expect(formatAccelerators([])).toBe("None");
@@ -24,7 +24,7 @@ describe("assetFormatters", () => {
     ];
 
     expect(getDiskTotalBytes(disks)).toBe(2 * 1024 ** 4);
-    expect(formatDiskSummary(disks)).toBe("2.0 TB");
+    expect(formatDiskSummary(disks)).toBe("2.0 TiB");
     expect(formatDiskSummary([])).toBe("None");
     expect(formatDiskSummary(undefined)).toBe("-");
   });

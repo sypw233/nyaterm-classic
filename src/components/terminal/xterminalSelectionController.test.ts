@@ -335,9 +335,10 @@ describe("installXTerminalSelectionController", () => {
     const xtermMouseDown = vi.fn();
     xtermTarget.addEventListener("mousedown", xtermMouseDown);
 
-    const event = dispatchMouse(xtermTarget, "mousedown", 2);
+    dispatchMouse(xtermTarget, "mousedown", 2);
 
-    expect(event.defaultPrevented).toBe(true);
+    // `contextmenu` must survive so Radix can open the menu; only the pointer
+    // event is stopped, which is what keeps xterm from reporting the click.
     expect(xtermMouseDown).not.toHaveBeenCalled();
     expect(terminal.focus).toHaveBeenCalled();
     // menu mode leaves rendering to Radix; it must not paste behind our back.
@@ -381,7 +382,6 @@ describe("installXTerminalSelectionController", () => {
     });
     xtermTarget.dispatchEvent(event);
 
-    expect(event.defaultPrevented).toBe(true);
     expect(xtermMouseDown).not.toHaveBeenCalled();
     controller.dispose();
   });

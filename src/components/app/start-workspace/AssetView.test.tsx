@@ -272,7 +272,7 @@ describe("start workspace asset view", () => {
     const user = userEvent.setup();
     const view = renderAssetView();
 
-    expect(screen.getByText("2.0 TB")).not.toBeNull();
+    expect(screen.getByText("2.0 TiB")).not.toBeNull();
     expect(screen.getByText(formatTestDateTime(GPU_CONNECTION_TIME_MS))).not.toBeNull();
 
     await user.click(screen.getByRole("button", { name: /Name/ }));
