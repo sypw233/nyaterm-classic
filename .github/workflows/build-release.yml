@@ -365,7 +365,7 @@ jobs:
             "src-tauri/target/release"
           }
 
-          $exe = Join-Path $releaseDir "nyaterm.exe"
+          $exe = Join-Path $releaseDir "nyaterm-classic.exe"
           if (-not (Test-Path $exe)) {
             $exe = Get-ChildItem -Path $releaseDir -Filter "*.exe" |
               Where-Object { $_.Name -notmatch 'build[-_]script' } |

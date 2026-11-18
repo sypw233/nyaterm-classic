@@ -146,7 +146,7 @@ runs:
         $ErrorActionPreference = "Stop"
 
         $releaseDir = Join-Path "src-tauri/target" "$env:WIN7_TARGET/release"
-        $expected = Join-Path $releaseDir "nyaterm.exe"
+        $expected = Join-Path $releaseDir "nyaterm-classic.exe"
         if (Test-Path -LiteralPath $expected -PathType Leaf) {
           $exe = (Resolve-Path -LiteralPath $expected).Path
         } else {
@@ -198,9 +198,9 @@ runs:
           throw "cargo clean failed for webview2-com-sys."
         }
 
-        cargo clean --manifest-path src-tauri/Cargo.toml --target $env:WIN7_TARGET -p nyaterm
+        cargo clean --manifest-path src-tauri/Cargo.toml --target $env:WIN7_TARGET -p nyaterm-classic
         if ($LASTEXITCODE -ne 0) {
-          throw "cargo clean failed for nyaterm."
+          throw "cargo clean failed for nyaterm-classic."
         }
 
         cargo build `
@@ -221,7 +221,7 @@ runs:
         $ErrorActionPreference = "Stop"
 
         $releaseDir = Join-Path "src-tauri/target" "$env:WIN7_TARGET/release"
-        $expected = Join-Path $releaseDir "nyaterm.exe"
+        $expected = Join-Path $releaseDir "nyaterm-classic.exe"
         if (Test-Path -LiteralPath $expected -PathType Leaf) {
           $exe = (Resolve-Path -LiteralPath $expected).Path
         } else {
