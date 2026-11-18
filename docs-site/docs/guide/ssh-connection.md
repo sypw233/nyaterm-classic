@@ -242,8 +242,8 @@ NyaTerm 也可以从浏览器、脚本、启动器或其他工具中打开连接
 
 支持的入口：
 
-- 程序调用：把链接作为启动参数传给 NyaTerm，例如 `NyaTerm.exe ssh://root@example.com:22`
-- 本地终端调用：使用 `NyaTerm.exe --local`，或通过 `NyaTerm.exe --local --cwd "D:\Projects\foo"` 指定初始工作目录
+- 程序调用：把链接作为启动参数传给 NyaTerm，例如 `nyaterm-classic.exe ssh://root@example.com:22`
+- 本地终端调用：使用 `nyaterm-classic.exe --local`，或通过 `nyaterm-classic.exe --local --cwd "D:\Projects\foo"` 指定初始工作目录
 - 协议调用：通过系统 URL Scheme 打开 `ssh://`、`telnet://` 或 `nyaterm://` 链接
 
 支持的链接格式：

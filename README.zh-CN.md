@@ -2,16 +2,16 @@
   <img src="./public/icons/app/nyaterm.svg" alt="NyaTerm" width="128" height="128">
 </p>
 
-<h1 align="center">NyaTerm</h1>
+<h1 align="center">NyaTerm Classic</h1>
 
 <p align="center">
   <em>妮雅</em>
 </p>
 
 <p align="center">
-  <strong>基于 Tauri、React 与 Rust 构建的现代远程终端工作区。</strong><br/>
-  <a href="https://nyaterm.app"><strong>nyaterm.app</strong></a> ·
-  <a href="https://nyaterm.app/docs/"><strong>在线文档</strong></a>
+  <strong>NyaTerm 持续维护的 Tauri 1.x 产品线 —— 基于 Tauri、React 与 Rust 构建的远程终端工作区。</strong><br/>
+  <a href="https://github.com/sypw233/nyaterm-classic"><strong>nyaterm-classic</strong></a> ·
+  <a href="./docs-site/docs/"><strong>在线文档</strong></a>
 </p>
 
 <p align="center">
@@ -23,12 +23,12 @@
   &nbsp;
   <a href="https://docs.qq.com/doc/DYW5TUkZnakxOWUFW" target="_blank"><img src="https://img.shields.io/badge/微信交流群-点击加入-07C160?style=for-the-badge&logo=wechat&logoColor=white" alt="微信交流群" /></a>
   <br/>
-  <a href="https://nyaterm.app"><img alt="Version" src="https://img.shields.io/github/v/release/nyakang/nyaterm.svg?style=flat-square&logo=github&color=0EA5E9&labelColor=334155&label=%E7%89%88%E6%9C%AC&cacheSeconds=300"></a>
+  <a href="https://github.com/sypw233/nyaterm-classic/releases"><img alt="Version" src="https://img.shields.io/github/v/release/sypw233/nyaterm-classic.svg?style=flat-square&logo=github&color=0EA5E9&labelColor=334155&label=%E7%89%88%E6%9C%AC&cacheSeconds=300"></a>
   &nbsp;
-  <a href="https://github.com/nyakang/nyaterm/releases">
+  <a href="https://github.com/sypw233/nyaterm-classic/releases">
     <img
       alt="GitHub downloads"
-      src="https://img.shields.io/github/downloads/nyakang/nyaterm/total.svg?style=flat-square&logo=github&color=0EA5E9&label=%E4%B8%8B%E8%BD%BD%E9%87%8F&labelColor=334155&v=2"
+      src="https://img.shields.io/github/downloads/sypw233/nyaterm-classic/total.svg?style=flat-square&logo=github&color=0EA5E9&label=%E4%B8%8B%E8%BD%BD%E9%87%8F&labelColor=334155&v=2"
     >
   </a>
   &nbsp;
@@ -255,7 +255,7 @@ NyaTerm 适合每天在服务器、本地命令、设备调试和配置文件之
 | **macOS** | macOS 12+，Intel / Apple Silicon |
 | **Linux** | Ubuntu 20.04+、Fedora 36+、Arch Linux 及类似发行版 |
 
-可从 [nyaterm.app](https://nyaterm.app) 或 [Releases](https://github.com/nyakang/nyaterm/releases) 页面下载安装包。
+可从本仓库的 [Releases](https://github.com/sypw233/nyaterm-classic/releases) 页面下载安装包。
 
 ---
 
@@ -276,7 +276,7 @@ NyaTerm 适合每天在服务器、本地命令、设备调试和配置文件之
 
 ## 下载
 
-从 [nyaterm.app](https://nyaterm.app) 或 [Releases](https://github.com/nyakang/nyaterm/releases) 下载适合你平台的最新版。
+从本仓库的 [Releases](https://github.com/sypw233/nyaterm-classic/releases) 下载适合你平台的最新版。
 
 | 平台 | 格式 |
 |------|------|
@@ -284,54 +284,27 @@ NyaTerm 适合每天在服务器、本地命令、设备调试和配置文件之
 | macOS | `.dmg` |
 | Linux | `.deb` / `.AppImage` |
 
-Windows 便携版解压后运行 `NyaTerm.exe` 即可。**Help → 检查更新** 与安装版共用 Cloudflare R2 更新清单和下载源，暂存更新前会强制验证 Tauri updater 签名。重启时 NyaTerm 会自动替换程序文件，并完整保留 `data/` 目录。
+Windows 便携版解压后运行 `nyaterm-classic.exe` 即可。**Help → 检查更新** 从本仓库最新 release 读取带签名的 `latest.json`，暂存更新前会强制验证 Tauri updater 签名。重启时 NyaTerm Classic 会自动替换程序文件，并完整保留 `data/` 目录。
+
+> **关于发布渠道。** NyaTerm Classic 是持续维护的 1.x 产品线，只通过本仓库的 Releases 页面（以及下文介绍的 Web Docker 镜像）发布。它**不会**发布到上游的 `nyakang/nyaterm` Homebrew tap、`nyaterm-bin` AUR 包或 `nyaterm.app` 站点 —— 那些渠道对应的是独立的 2.x GPUI 重写版。请勿用它们安装或更新 NyaTerm Classic。
 
 ### macOS
 
-macOS 用户可以通过 Homebrew 安装 NyaTerm：
+从 [Releases](https://github.com/sypw233/nyaterm-classic/releases) 下载 `.dmg` 安装包，将 NyaTerm Classic 拖入 `/Applications` 即可。
+
+NyaTerm Classic 目前还没有使用 Apple Developer 证书签名。安装后如果 macOS 提示应用已损坏或无法打开，可以移除 quarantine 属性后再打开：
 
 ```bash
-brew install nyakang/nyaterm/nyaterm
+sudo xattr -cr "/Applications/NyaTerm Classic.app"
 ```
-
-该命令会使用 [`nyakang/homebrew-nyaterm`](https://github.com/nyakang/homebrew-nyaterm) tap，并安装 `nyaterm` cask。也可以从 [nyaterm.app](https://nyaterm.app) 或 [Releases](https://github.com/nyakang/nyaterm/releases) 下载 `.dmg` 安装包，然后将 NyaTerm 拖入 `/Applications`。
-
-NyaTerm 目前还没有使用 Apple Developer 证书签名。安装后如果 macOS 提示应用已损坏或无法打开，可以移除 quarantine 属性后再打开：
-
-```bash
-sudo xattr -cr /Applications/NyaTerm.app
-```
-
-### Arch Linux / AUR
-
-Arch Linux 用户可以通过 AUR 安装 NyaTerm：
-
-```bash
-yay -S nyaterm-bin
-```
-
-或使用 `paru`：
-
-```bash
-paru -S nyaterm-bin
-```
-
-也可以手动从 AUR 构建安装：
-
-```bash
-git clone https://aur.archlinux.org/nyaterm-bin.git
-cd nyaterm-bin
-makepkg -si
-```
-
-AUR 软件包：[`nyaterm-bin`](https://aur.archlinux.org/packages/nyaterm-bin)
-
-> `nyaterm-bin` 为社区维护的 AUR 二进制包。如果 AUR 版本暂未同步到最新发布版，可以从 [Releases](https://github.com/nyakang/nyaterm/releases) 下载官方安装包。
-
 
 ## Web / Docker 部署
 
-Web Beta 通过单个容器提供浏览器界面与 API，面向一个可信管理员。构建与 Compose 命令见 [deploy/web/](./deploy/web/README.md)，配置和能力范围见 [部署指南](./docs/web-deployment.md)。
+Web Beta 通过单个容器提供浏览器界面与 API，面向一个可信管理员。预构建的多架构镜像发布在 `ghcr.io/sypw233/nyaterm-web`。构建与 Compose 命令见 [deploy/web/](./deploy/web/README.md)，配置和能力范围见 [部署指南](./docs/web-deployment.md)。
+
+## 项目背景
+
+NyaTerm Classic 是 NyaTerm 的 Tauri/WebView 1.x 产品线（当前 1.3.x）。同一项目还有独立的 2.x 产品线 —— 上游 [nyakang/nyaterm](https://github.com/nyakang/nyaterm) 中的原生 GPUI 重写版。两条线同名但属于不同应用，架构、发布渠道和数据目录都不相同，安装包不能混用。本仓库只维护和发布 1.x 产品线。
 
 ## 开发环境要求
 
@@ -342,8 +315,8 @@ Web Beta 通过单个容器提供浏览器界面与 API，面向一个可信管�
 ## 本地开发
 
 ```bash
-git clone https://github.com/nyakang/nyaterm.git
-cd nyaterm
+git clone https://github.com/sypw233/nyaterm-classic.git
+cd nyaterm-classic
 pnpm install
 pnpm tauri dev
 ```
@@ -361,7 +334,8 @@ pnpm tauri dev
 │   ├── src/cmd/            # 暴露给前端的 Tauri commands
 │   ├── src/core/           # SSH、SFTP、PTY、Telnet、串口、AI、备份逻辑
 │   ├── src/config/         # 持久化配置模型
-│   └── crates/otp/         # 本地 OTP 实现
+│   ├── crates/otp/         # 本地 OTP 实现
+│   └── crates/nyaterm-web/ # Web 服务端后端（HTTP / SSE / WS）
 ├── deploy/web/             # Web Dockerfile、Compose 与部署入口
 ├── docs-site/              # Docusaurus 文档站点
 ├── public/                 # 静态资源
@@ -390,23 +364,20 @@ pnpm tauri dev
 <a name="contributors"></a>
 # 贡献者
 
-<a href="https://github.com/nyakang/nyaterm/graphs/contributors">
-  <img src="https://contrib-wall.coderkang.workers.dev/image?snapshot=tQPH3XaVAWIw41hXZ4V9Xd97&amp;sealed_token=eyJ2IjoxLCJ0eXBlIjoic25hcHNob3QiLCJzbmFwc2hvdCI6InRRUEgzWGFWQVdJdzQxaFhaNFY5WGQ5NyIsImV4cCI6MTgxNTAzNjI5Nn0.9-dqi08YYwadlKeNUEeoBnTyAPhF5hs83OOFgeT8cPs&amp;sealed_github_token=TKIdMnw6IIsp1TI-.ip9G3OywnI_nGDAKhFJUFCSnFyWfWL_HK9JlihiBedCkEXKCKNLt007stBH5MJKbCGQALquRAi8xxG1o3EfewtTTcs3zV12YEBCBLuWJTf4o3IgaIpA2oVTGROrO7vZh79sJEhJMM2NSRU6E6DpXk73JtHT0HDSFfY4Yyot3lBSaFNQ_VKmeo6hfP8c-oMMXn4vvUs1usWS4XHtp3AddeKHr1RjYl1rzOLGhUasRj60" alt="贡献者们" />
+<a href="https://github.com/sypw233/nyaterm-classic/graphs/contributors">
+  NyaTerm Classic 贡献者
 </a>
 
 ---
 
 ## 星标历史
 
-<a href="https://www.star-history.com/?repos=nyakang%2Fnyaterm&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=nyakang/nyaterm&type=date&theme=dark&legend=top-left&sealed_token=B9FcRzP_4KoFVgTzgY_L9J4F1huRnhx9N962VMQBHjFsF-VtiApJNnKYWg5IaJDZtDm7iCd3epIU3uEZTSG2XVoU8jVssH-ge-gPjPGq5cRz9xtF2N_piA" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=nyakang/nyaterm&type=date&legend=top-left&sealed_token=B9FcRzP_4KoFVgTzgY_L9J4F1huRnhx9N962VMQBHjFsF-VtiApJNnKYWg5IaJDZtDm7iCd3epIU3uEZTSG2XVoU8jVssH-ge-gPjPGq5cRz9xtF2N_piA" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=nyakang/nyaterm&type=date&legend=top-left&sealed_token=B9FcRzP_4KoFVgTzgY_L9J4F1huRnhx9N962VMQBHjFsF-VtiApJNnKYWg5IaJDZtDm7iCd3epIU3uEZTSG2XVoU8jVssH-ge-gPjPGq5cRz9xtF2N_piA" />
- </picture>
+<a href="https://star-history.com/#sypw233/nyaterm-classic&Date">
+  sypw233/nyaterm-classic 的星标历史
 </a>
 
 ---
+
 
 <a name="许可证"></a>
 # 许可证

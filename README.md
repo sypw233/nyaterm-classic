@@ -2,16 +2,16 @@
   <img src="./public/icons/app/nyaterm.svg" alt="NyaTerm" width="128" height="128">
 </p>
 
-<h1 align="center">NyaTerm</h1>
+<h1 align="center">NyaTerm Classic</h1>
 
 <p align="center">
   <em>/ˈnjaː tɜːrm/</em>
 </p>
 
 <p align="center">
-  <strong>A modern remote terminal workspace built with Tauri, React, and Rust.</strong><br/>
-  <a href="https://nyaterm.app"><strong>nyaterm.app</strong></a> ·
-  <a href="https://nyaterm.app/docs/"><strong>Documentation</strong></a>
+  <strong>The maintained Tauri 1.x line of NyaTerm — a remote terminal workspace built with Tauri, React, and Rust.</strong><br/>
+  <a href="https://github.com/sypw233/nyaterm-classic"><strong>nyaterm-classic</strong></a> ·
+  <a href="./docs-site/docs/"><strong>Documentation</strong></a>
 </p>
 
 <p align="center">
@@ -23,9 +23,9 @@
   &nbsp;
   <a href="https://docs.qq.com/doc/DYW5TUkZnakxOWUFW" target="_blank"><img src="https://img.shields.io/badge/WeChatGroup-Join-07C160?style=for-the-badge&logo=wechat&logoColor=white" alt="WeChatGroup" /></a>
   <br/>
-  <a href="https://nyaterm.app"><img alt="Version" src="https://img.shields.io/github/v/release/nyakang/nyaterm?style=flat-square&logo=github&color=0EA5E9&labelColor=334155"></a>
+  <a href="https://github.com/sypw233/nyaterm-classic/releases"><img alt="Version" src="https://img.shields.io/github/v/release/sypw233/nyaterm-classic?style=flat-square&logo=github&color=0EA5E9&labelColor=334155"></a>
   &nbsp;
-  <a href="https://github.com/nyakang/nyaterm/releases"><img alt="GitHub downloads" src="https://img.shields.io/github/downloads/nyakang/nyaterm/total?style=flat-square&logo=github&color=0EA5E9&label=Downloads&labelColor=334155"></a>
+  <a href="https://github.com/sypw233/nyaterm-classic/releases"><img alt="GitHub downloads" src="https://img.shields.io/github/downloads/sypw233/nyaterm-classic/total?style=flat-square&logo=github&color=0EA5E9&label=Downloads&labelColor=334155"></a>
   &nbsp;
   <a href="#"><img alt="Platform" src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-0EA5E9?style=flat-square&logo=linux&labelColor=334155"></a>
   &nbsp;
@@ -248,7 +248,7 @@ Sync encrypted portable configuration snapshots and restore backups through WebD
 | **macOS** | macOS 12+, Intel / Apple Silicon |
 | **Linux** | Ubuntu 20.04+, Fedora 36+, Arch Linux, and similar distributions |
 
-Download installers from [nyaterm.app](https://nyaterm.app) or the [Releases](https://github.com/nyakang/nyaterm/releases) page.
+Download installers for the current release from the [Releases](https://github.com/sypw233/nyaterm-classic/releases) page of this repository.
 
 ---
 
@@ -269,7 +269,7 @@ Download installers from [nyaterm.app](https://nyaterm.app) or the [Releases](ht
 
 ## Download
 
-Download the latest build for your platform from [nyaterm.app](https://nyaterm.app) or [Releases](https://github.com/nyakang/nyaterm/releases).
+Download the latest build for your platform from this repository's [Releases](https://github.com/sypw233/nyaterm-classic/releases) page.
 
 | Platform | Format |
 |----------|--------|
@@ -277,54 +277,27 @@ Download the latest build for your platform from [nyaterm.app](https://nyaterm.a
 | macOS | `.dmg` |
 | Linux | `.deb` / `.AppImage` |
 
-For the Windows portable edition, extract the zip and run `NyaTerm.exe`. **Help → Check Updates** uses the same Cloudflare R2 update manifest and download source as the installed edition. Tauri updater signatures are always verified before staging an update; NyaTerm preserves the complete `data/` folder while replacing the program files and restarting.
+For the Windows portable edition, extract the zip and run `nyaterm-classic.exe`. **Help → Check Updates** reads the signed `latest.json` from this repository's latest release; Tauri updater signatures are always verified before an update is staged. Updating preserves the complete `data/` folder while replacing the program files and restarting.
+
+> **A note on distribution channels.** NyaTerm Classic is the maintained 1.x line and is published only through this repository's Releases page (plus the Web Docker image described below). It is **not** published to the upstream `nyakang/nyaterm` Homebrew tap, the `nyaterm-bin` AUR package, or the upstream `nyaterm.app` site — those channels track the separate 2.x GPUI rewrite. Do not use them to install or update NyaTerm Classic.
 
 ### macOS
 
-macOS users can install NyaTerm with Homebrew:
+Download the `.dmg` installer from [Releases](https://github.com/sypw233/nyaterm-classic/releases) and drag NyaTerm Classic into `/Applications`.
+
+NyaTerm Classic is currently not signed with an Apple Developer certificate. If macOS reports that the app is damaged or cannot be opened after installation, remove the quarantine attribute and open it again:
 
 ```bash
-brew install nyakang/nyaterm/nyaterm
+sudo xattr -cr "/Applications/NyaTerm Classic.app"
 ```
-
-This uses the [`nyakang/homebrew-nyaterm`](https://github.com/nyakang/homebrew-nyaterm) tap and installs the `nyaterm` cask. You can also download the `.dmg` installer from [nyaterm.app](https://nyaterm.app) or [Releases](https://github.com/nyakang/nyaterm/releases), then drag NyaTerm into `/Applications`.
-
-NyaTerm is currently not signed with an Apple Developer certificate. If macOS reports that the app is damaged or cannot be opened after installation, remove the quarantine attribute and open it again:
-
-```bash
-sudo xattr -cr /Applications/NyaTerm.app
-```
-
-### Arch Linux / AUR
-
-Arch Linux users can install NyaTerm from the AUR:
-
-```bash
-yay -S nyaterm-bin
-```
-
-Or with `paru`:
-
-```bash
-paru -S nyaterm-bin
-```
-
-You can also build it manually from the AUR repository:
-
-```bash
-git clone https://aur.archlinux.org/nyaterm-bin.git
-cd nyaterm-bin
-makepkg -si
-```
-
-AUR package: [`nyaterm-bin`](https://aur.archlinux.org/packages/nyaterm-bin)
-
-> `nyaterm-bin` is a community-maintained binary AUR package. If the AUR package has not yet caught up with the latest release, download the official package from [Releases](https://github.com/nyakang/nyaterm/releases).
-
 
 ## Web / Docker Deployment
 
-The Web Beta serves the browser interface and API from a single container for one trusted administrator. See [deploy/web/](./deploy/web/README.md) for build and Compose commands, and the [deployment guide](./docs/web-deployment.md) for configuration and supported capabilities.
+The Web Beta serves the browser interface and API from a single container for one trusted administrator. Prebuilt multi-architecture images are published to `ghcr.io/sypw233/nyaterm-web`. See [deploy/web/](./deploy/web/README.md) for build and Compose commands, and the [deployment guide](./docs/web-deployment.md) for configuration and supported capabilities.
+
+## Project background
+
+NyaTerm Classic is the Tauri/WebView 1.x line of NyaTerm (currently 1.3.x). The same project also has a separate 2.x line — a native GPUI rewrite developed upstream at [nyakang/nyaterm](https://github.com/nyakang/nyaterm). The two lines share the product name but are different applications with different architectures, release channels, and data directories; installers are not interchangeable. This repository maintains and releases the 1.x line only.
 
 ## Prerequisites for Development
 
@@ -335,8 +308,8 @@ The Web Beta serves the browser interface and API from a single container for on
 ## Development
 
 ```bash
-git clone https://github.com/nyakang/nyaterm.git
-cd nyaterm
+git clone https://github.com/sypw233/nyaterm-classic.git
+cd nyaterm-classic
 pnpm install
 pnpm tauri dev
 ```
@@ -354,7 +327,8 @@ pnpm tauri dev
 │   ├── src/cmd/            # Tauri commands exposed to the frontend
 │   ├── src/core/           # SSH, SFTP, PTY, Telnet, Serial, AI, backup logic
 │   ├── src/config/         # Persistent config models
-│   └── crates/otp/         # Local OTP implementation
+│   ├── crates/otp/         # Local OTP implementation
+│   └── crates/nyaterm-web/ # Web server backend (HTTP / SSE / WS)
 ├── deploy/web/             # Web Dockerfile, Compose, and deployment entry point
 ├── docs-site/              # Docusaurus documentation site
 ├── public/                 # Static assets
@@ -383,23 +357,20 @@ If NyaTerm helps your daily development, operations, or remote terminal workflow
 <a name="contributors"></a>
 # Contributors
 
-<a href="https://github.com/nyakang/nyaterm/graphs/contributors">
-  <img src="https://contrib-wall.coderkang.workers.dev/image?snapshot=EEZNlyhjBOrARLki-MUhXqKk&amp;sealed_token=eyJ2IjoxLCJ0eXBlIjoic25hcHNob3QiLCJzbmFwc2hvdCI6IkVFWk5seWhqQk9yQVJMa2ktTVVoWHFLayIsImV4cCI6MTgxNTAzNjQ0NH0.UwegiwfiT3KSKQ17n5ivt24EFwAtoaHZGRwx97t0ODA&amp;sealed_github_token=A6pS93BW-53hz_Cs.8rPY0yM6koNS_UowTbu8qkWzmPLRco8HJRJO2_yp5MZH9yz9o1Ob2g5MUL4aLFK24gjbDexjdErw6eR72ruRbNcsFciYuM4DghLZJgi9V5D9f1-_xFT-sGYK6ibc1A4aWz8EyvFIQo0byPAXv-d410cJmhwsH-bqc963L8J-z0kU6oIi-2zCSszxllze23WmJsWnTJBFUBrQbllg5cLwuHm6q-BMkjoVxChLdOMVwEs" alt="Contributors" />
+<a href="https://github.com/sypw233/nyaterm-classic/graphs/contributors">
+  Contributors to NyaTerm Classic
 </a>
 
 ---
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=nyakang%2Fnyaterm&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=nyakang/nyaterm&type=date&theme=dark&legend=top-left&sealed_token=B9FcRzP_4KoFVgTzgY_L9J4F1huRnhx9N962VMQBHjFsF-VtiApJNnKYWg5IaJDZtDm7iCd3epIU3uEZTSG2XVoU8jVssH-ge-gPjPGq5cRz9xtF2N_piA" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=nyakang/nyaterm&type=date&legend=top-left&sealed_token=B9FcRzP_4KoFVgTzgY_L9J4F1huRnhx9N962VMQBHjFsF-VtiApJNnKYWg5IaJDZtDm7iCd3epIU3uEZTSG2XVoU8jVssH-ge-gPjPGq5cRz9xtF2N_piA" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=nyakang/nyaterm&type=date&legend=top-left&sealed_token=B9FcRzP_4KoFVgTzgY_L9J4F1huRnhx9N962VMQBHjFsF-VtiApJNnKYWg5IaJDZtDm7iCd3epIU3uEZTSG2XVoU8jVssH-ge-gPjPGq5cRz9xtF2N_piA" />
- </picture>
+<a href="https://star-history.com/#sypw233/nyaterm-classic&Date">
+  Star history of sypw233/nyaterm-classic
 </a>
 
 ---
+
 
 <a name="license"></a>
 # License

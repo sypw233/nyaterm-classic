@@ -244,8 +244,8 @@ NyaTerm can also open connection links from browsers, scripts, launchers, or oth
 
 Supported entry points:
 
-- Program invocation: pass a link as a NyaTerm startup argument, for example `NyaTerm.exe ssh://root@example.com:22`
-- Local terminal invocation: use `NyaTerm.exe --local`, or `NyaTerm.exe --local --cwd "D:\Projects\foo"` to set the initial working directory
+- Program invocation: pass a link as a NyaTerm startup argument, for example `nyaterm-classic.exe ssh://root@example.com:22`
+- Local terminal invocation: use `nyaterm-classic.exe --local`, or `nyaterm-classic.exe --local --cwd "D:\Projects\foo"` to set the initial working directory
 - Protocol invocation: open an `ssh://`, `telnet://`, or `nyaterm://` link through the operating system URL scheme handler
 
 Supported link formats:

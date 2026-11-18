@@ -10,8 +10,8 @@ const config: Config = {
   url: 'https://nyaterm.app',
   baseUrl: '/',
 
-  organizationName: 'NyaKang',
-  projectName: 'nyaterm',
+  organizationName: 'sypw233',
+  projectName: 'nyaterm-classic',
 
   onBrokenLinks: 'throw',
   onBrokenAnchors: 'ignore',
@@ -43,7 +43,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/nyakang/nyaterm/edit/main/docs-site/',
+          editUrl: 'https://github.com/sypw233/nyaterm-classic/edit/main/docs-site/',
         },
         blog: false,
         theme: {
@@ -114,7 +114,7 @@ const config: Config = {
           position: 'right',
         },
         {
-          href: 'https://github.com/nyakang/nyaterm',
+          href: 'https://github.com/sypw233/nyaterm-classic',
           label: 'GitHub',
           position: 'right',
         },
@@ -154,11 +154,11 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/nyakang/nyaterm',
+              href: 'https://github.com/sypw233/nyaterm-classic',
             },
             {
               label: '问题反馈',
-              href: 'https://github.com/nyakang/nyaterm/issues',
+              href: 'https://github.com/sypw233/nyaterm-classic/issues',
             },
           ],
         },

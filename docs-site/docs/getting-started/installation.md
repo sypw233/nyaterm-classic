@@ -6,7 +6,7 @@ sidebar_position: 1
 
 ## 系统要求
 
-NyaTerm 支持以下操作系统：
+NyaTerm Classic 支持以下操作系统：
 
 - **Windows** 10 版本 1809（Build 17763）或更高版本 / Windows 11 (64-bit)
 - **macOS** 12+ (Intel & Apple Silicon)
@@ -18,7 +18,7 @@ Windows 本地终端优先使用随应用分发的 Microsoft ConPTY；如果加�
 
 ### 从发布页面下载
 
-前往 [Releases](https://github.com/nyakang/nyaterm/releases) 页面，下载适合你操作系统的安装包：
+前往本仓库的 [Releases](https://github.com/sypw233/nyaterm-classic/releases) 页面，下载适合你操作系统的安装包：
 
 | 平台 | 安装包格式 |
 |------|-----------|
@@ -26,29 +26,20 @@ Windows 本地终端优先使用随应用分发的 Microsoft ConPTY；如果加�
 | macOS | `.dmg` |
 | Linux | `.deb` / `.AppImage` |
 
-Windows 便携版解压后运行 `NyaTerm.exe` 即可。**Help → 检查更新** 与安装版共用 Cloudflare R2 更新清单和下载源，暂存更新前会强制验证 Tauri updater 签名。重启时 NyaTerm 会自动替换程序文件，并完整保留 `data/` 目录。
+Windows 便携版解压后运行 `nyaterm-classic.exe` 即可。**Help → 检查更新** 从本仓库最新 release 读取带签名的 `latest.json`，暂存更新前会强制验证 Tauri updater 签名。重启时 NyaTerm Classic 会自动替换程序文件，并完整保留 `data/` 目录。
 
 首次升级到包含 bundled ConPTY 的便携版时，旧版更新器无法处理新增的 `conpty/` 目录。请手动下载新版便携包，替换程序文件并保留原有 `data/` 目录；之后可继续使用应用内更新。
 
-Windows 便携版直接下载：
-
-- [NyaTerm_1.1.18_windows_x64_portable.zip](https://downloads.nyaterm.app/releases/v1.1.18/NyaTerm_1.1.18_windows_x64_portable.zip)（x64）
-- [NyaTerm_1.1.18_windows_arm64_portable.zip](https://downloads.nyaterm.app/releases/v1.1.18/NyaTerm_1.1.18_windows_arm64_portable.zip)（ARM64）
+> **发布渠道。** NyaTerm Classic（1.x 维护线）只在本仓库的 Releases 页面发布，不发布到上游 `nyakang/nyaterm` 的 Homebrew tap、AUR 包或 `nyaterm.app` 站点 —— 那些渠道对应独立的 2.x GPUI 重写版，安装包不能混用。
 
 ### macOS
 
-macOS 用户可以通过 Homebrew 安装 NyaTerm：
+从 [Releases](https://github.com/sypw233/nyaterm-classic/releases) 下载 `.dmg` 安装包，将 NyaTerm Classic 拖入 `/Applications` 即可。
+
+NyaTerm Classic 目前还没有使用 Apple Developer 证书签名。安装后如果 macOS 提示应用已损坏或无法打开，可以移除 quarantine 属性后再打开：
 
 ```bash
-brew install nyakang/nyaterm/nyaterm
-```
-
-该命令会使用 [`nyakang/homebrew-nyaterm`](https://github.com/nyakang/homebrew-nyaterm) tap，并安装 `nyaterm` cask。也可以从 [nyaterm.app](https://nyaterm.app) 或 [Releases](https://github.com/nyakang/nyaterm/releases) 下载 `.dmg` 安装包，然后将 NyaTerm 拖入 `/Applications`。
-
-NyaTerm 目前还没有使用 Apple Developer 证书签名。安装后如果 macOS 提示应用已损坏或无法打开，可以移除 quarantine 属性后再打开：
-
-```bash
-sudo xattr -cr /Applications/NyaTerm.app
+sudo xattr -cr "/Applications/NyaTerm Classic.app"
 ```
 
 ### 从源码构建

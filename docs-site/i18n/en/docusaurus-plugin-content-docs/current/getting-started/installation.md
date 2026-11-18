@@ -6,7 +6,7 @@ sidebar_position: 1
 
 ## System Requirements
 
-NyaTerm supports the following operating systems:
+NyaTerm Classic supports the following operating systems:
 
 - **Windows** 10 version 1809 (Build 17763) or later / Windows 11 (64-bit)
 - **macOS** 12+ (Intel & Apple Silicon)
@@ -18,7 +18,7 @@ Local Terminal prefers the Microsoft ConPTY bundled with NyaTerm and falls back 
 
 ### From releases
 
-Visit the [Releases](https://github.com/nyakang/nyaterm/releases) page and download the installer for your OS:
+Visit this repository's [Releases](https://github.com/sypw233/nyaterm-classic/releases) page and download the installer for your OS:
 
 | Platform | Format |
 |----------|--------|
@@ -26,29 +26,20 @@ Visit the [Releases](https://github.com/nyakang/nyaterm/releases) page and downl
 | macOS | `.dmg` |
 | Linux | `.deb` / `.AppImage` |
 
-For the Windows portable edition, extract the zip and run `NyaTerm.exe`. **Help → Check Updates** uses the same Cloudflare R2 update manifest and download source as the installed edition. Tauri updater signatures are always verified before staging an update; when restarting, NyaTerm replaces the program files and preserves the complete `data/` folder.
+For the Windows portable edition, extract the zip and run `nyaterm-classic.exe`. **Help → Check Updates** reads the signed `latest.json` from this repository's latest release; Tauri updater signatures are always verified before an update is staged. When restarting, NyaTerm Classic replaces the program files and preserves the complete `data/` folder.
 
 The first upgrade to a portable build with bundled ConPTY requires a manual download because older updaters cannot process the new `conpty/` directory. Replace the program files while keeping your existing `data/` directory. In-app updates work again after that upgrade.
 
-Direct downloads for the Windows portable edition:
-
-- [NyaTerm_1.1.18_windows_x64_portable.zip](https://downloads.nyaterm.app/releases/v1.1.18/NyaTerm_1.1.18_windows_x64_portable.zip) (x64)
-- [NyaTerm_1.1.18_windows_arm64_portable.zip](https://downloads.nyaterm.app/releases/v1.1.18/NyaTerm_1.1.18_windows_arm64_portable.zip) (ARM64)
+> **Distribution channels.** NyaTerm Classic (the maintained 1.x line) is published only on this repository's Releases page. It is **not** published to the upstream `nyakang/nyaterm` Homebrew tap, AUR package, or the `nyaterm.app` site — those channels track the separate 2.x GPUI rewrite, and their installers are not interchangeable.
 
 ### macOS
 
-macOS users can install NyaTerm with Homebrew:
+Download the `.dmg` installer from [Releases](https://github.com/sypw233/nyaterm-classic/releases) and drag NyaTerm Classic into `/Applications`.
+
+NyaTerm Classic is currently not signed with an Apple Developer certificate. If macOS reports that the app is damaged or cannot be opened after installation, remove the quarantine attribute and open it again:
 
 ```bash
-brew install nyakang/nyaterm/nyaterm
-```
-
-This uses the [`nyakang/homebrew-nyaterm`](https://github.com/nyakang/homebrew-nyaterm) tap and installs the `nyaterm` cask. You can also download the `.dmg` installer from [nyaterm.app](https://nyaterm.app) or [Releases](https://github.com/nyakang/nyaterm/releases), then drag NyaTerm into `/Applications`.
-
-NyaTerm is currently not signed with an Apple Developer certificate. If macOS reports that the app is damaged or cannot be opened after installation, remove the quarantine attribute and open it again:
-
-```bash
-sudo xattr -cr /Applications/NyaTerm.app
+sudo xattr -cr "/Applications/NyaTerm Classic.app"
 ```
 
 ### Build from source

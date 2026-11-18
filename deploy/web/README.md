@@ -7,11 +7,11 @@
 
 ## 使用发布镜像
 
-官方镜像 `ghcr.io/nyakang/nyaterm-web` 支持 `linux/amd64` 和 `linux/arm64`。`latest` 指向稳定版本，只由更高版本更新；生产部署可在 `.env` 中通过 `NYATERM_WEB_IMAGE` 固定完整版本或 digest：
+发布镜像 `ghcr.io/sypw233/nyaterm-web` 支持 `linux/amd64` 和 `linux/arm64`。`latest` 指向稳定版本，只由更高版本更新；生产部署可在 `.env` 中通过 `NYATERM_WEB_IMAGE` 固定完整版本或 digest：
 
 ```dotenv
-NYATERM_WEB_IMAGE=ghcr.io/nyakang/nyaterm-web:1.2.12
-# 或 ghcr.io/nyakang/nyaterm-web@sha256:<manifest-digest>
+NYATERM_WEB_IMAGE=ghcr.io/sypw233/nyaterm-web:1.3.3
+# 或 ghcr.io/sypw233/nyaterm-web@sha256:<manifest-digest>
 ```
 
 版本示例需替换为实际已发布的版本。在仓库根目录执行：
