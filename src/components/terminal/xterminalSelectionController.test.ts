@@ -173,6 +173,8 @@ describe("installXTerminalSelectionController", () => {
 
     const mouseDown = dispatchMouse(xtermTarget, "mousedown", 2);
 
+    // The pointer event must not reach xterm, but `contextmenu` stays
+    // uncancelled so Radix can still render the menu.
     expect(mouseDown.defaultPrevented).toBe(false);
     expect(xtermMouseDown).not.toHaveBeenCalled();
     expect(terminal.focus).toHaveBeenCalledOnce();
@@ -182,12 +184,9 @@ describe("installXTerminalSelectionController", () => {
     controller.dispose();
   });
 
-  it.each([
-    "none",
-    "menu",
-  ] as const)("keeps Windows right mousedown visible to xterm in %s mode", (rightClickAction) => {
+  it("keeps right mousedown visible to xterm when right-click behavior is off", () => {
     const { controller, terminal, xtermTarget } = createHarness({
-      rightClickAction,
+      rightClickAction: "none",
     });
     const xtermMouseDown = vi.fn();
     xtermTarget.addEventListener("mousedown", xtermMouseDown);
@@ -196,6 +195,20 @@ describe("installXTerminalSelectionController", () => {
 
     expect(xtermMouseDown).toHaveBeenCalledOnce();
     expect(terminal.focus).not.toHaveBeenCalled();
+    controller.dispose();
+  });
+
+  it("keeps right mousedown local in menu mode so only one menu appears", () => {
+    const { controller, terminal, xtermTarget } = createHarness({
+      rightClickAction: "menu",
+    });
+    const xtermMouseDown = vi.fn();
+    xtermTarget.addEventListener("mousedown", xtermMouseDown);
+
+    dispatchMouse(xtermTarget, "mousedown", 2);
+
+    expect(xtermMouseDown).not.toHaveBeenCalled();
+    expect(terminal.focus).toHaveBeenCalled();
     controller.dispose();
   });
 
@@ -210,7 +223,9 @@ describe("installXTerminalSelectionController", () => {
     dispatchMouse(nonWindows.xtermTarget, "mousedown", 1);
     dispatchMouse(nonWindows.xtermTarget, "mousedown", 2);
 
-    expect(nonWindowsMouseDown).toHaveBeenCalledTimes(2);
+    // Middle-click stays platform-specific (only Windows captures it), while
+    // the paste-mode right-click is now local on every platform.
+    expect(nonWindowsMouseDown).toHaveBeenCalledOnce();
     nonWindows.controller.dispose();
 
     const windows = createHarness();

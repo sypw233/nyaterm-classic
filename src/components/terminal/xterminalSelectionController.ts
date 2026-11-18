@@ -155,7 +155,9 @@ export function installXTerminalSelectionController({
     const decision = resolveRightClick(e);
     if (decision.owner !== "local") return;
 
-    e.preventDefault();
+    // Stop propagation instead of cancelling the default action: xterm must
+    // not see the pointer event, but `contextmenu` must still reach Radix so
+    // the menu can open.
     e.stopPropagation();
     handleTerminalMouseDown(e);
     terminal.focus();
@@ -180,7 +182,6 @@ export function installXTerminalSelectionController({
     e.preventDefault();
     e.stopPropagation();
   };
-
   const resolveRightClick = (e: MouseEvent) => {
     const interaction = terminalAppSettingsRef.current?.interaction;
     return routeTerminalRightClick({
