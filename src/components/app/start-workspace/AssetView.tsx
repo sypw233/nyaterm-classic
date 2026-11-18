@@ -171,6 +171,11 @@ export default function AssetView({
         record.connection.group_id
           ? (groupRanks.get(record.connection.group_id) ?? 0)
           : 0,
+      // `inScope` is already filtered on this exact text, which also covers
+      // asset fields (OS, CPU, accelerators, disks) that `rankConnection`
+      // does not know about. Re-filtering on the narrower haystack dropped
+      // rows matched by, for example, `os_name`.
+      (record) => record.searchText,
     );
   }, [
     allRecords,

@@ -127,6 +127,30 @@ describe("sortByConnectionRelevance", () => {
     ).toHaveLength(0);
   });
 
+  it("keeps records matched only by caller-supplied search text", () => {
+    // The asset view matches OS, CPU, accelerator and disk fields, which
+    // `rankConnection` does not model. Those rows must survive the second
+    // pass instead of being dropped as non-matching.
+    const scoped = [
+      {
+        connection: connection({ id: "asset", name: "GPU Lab" }),
+        searchText: "gpu lab ubuntu linux nvidia h100",
+      },
+      {
+        connection: connection({ id: "other", name: "Windows VM" }),
+        searchText: "windows vm windows server",
+      },
+    ];
+    const sorted = sortByConnectionRelevance(
+      scoped,
+      "linux",
+      (record) => record.connection,
+      undefined,
+      (record) => record.searchText,
+    );
+    expect(sorted.map((record) => record.connection.id)).toEqual(["asset"]);
+  });
+
   it("uses the supplied group rank for subtree matches", () => {
     const scoped = [
       { connection: connection({ id: "g1", name: "alpha" }), groupRank: 350 },

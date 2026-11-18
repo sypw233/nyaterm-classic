@@ -100,12 +100,18 @@ export function rankConnection(
 /**
  * Stable relevance ordering. Records that do not match are dropped when a
  * query is present, and ties keep the caller's existing order.
+ *
+ * `getSearchText` lets a caller supply the text it already matched against.
+ * The asset view searches descriptions, OS, accelerators and disks, which
+ * `rankConnection` does not model; without this hook the second pass would
+ * drop rows the first pass had matched.
  */
 export function sortByConnectionRelevance<T>(
   records: readonly T[],
   query: string,
   getConnection: (record: T) => SavedConnection,
   getGroupRank?: (record: T) => number,
+  getSearchText?: (record: T) => string | undefined,
 ): T[] {
   const normalized = normalizeConnectionSearchQuery(query);
   if (!normalized) return [...records];
@@ -117,7 +123,14 @@ export function sortByConnectionRelevance<T>(
       normalized,
       getGroupRank?.(record) ?? NO_SEARCH_RANK,
     );
+    // A record the caller already matched by other text stays eligible, but
+    // ranks below any field-level hit.
+    const matchedByCaller =
+      rank === null &&
+      (getSearchText?.(record)?.toLowerCase().includes(normalized) ?? false);
     if (rank !== null) scored.push({ record, rank, index });
+    else if (matchedByCaller)
+      scored.push({ record, rank: NO_SEARCH_RANK + 1, index });
   });
 
   scored.sort(
