@@ -167,10 +167,49 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        # The action already installs `stable` for the runner's host triple and
+        # only retries checksum mismatches. A transient DNS/connect failure while
+        # syncing the channel manifest aborts the whole job (this took out the
+        # macOS x86_64 leg once), so retry the step itself on any failure.
+        continue-on-error: true
+        id: rust-install
+
+      - name: Retry Rust install on transient network failure
+        if: steps.rust-install.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # `dtolnay/rust-toolchain` exports the cargo bin dir through
+          # $GITHUB_PATH, which is only applied to later steps once the step
+          # completes. Ensure the binary is reachable either way.
+          export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$PATH"
+          for attempt in 1 2 3; do
+            echo "Retrying rustup toolchain install (attempt $attempt/3)..."
+            if rustup toolchain install stable --profile minimal --no-self-update; then
+              echo "${CARGO_HOME:-$HOME/.cargo}/bin" >> "$GITHUB_PATH"
+              exit 0
+            fi
+            sleep $((attempt * 20))
+          done
+          echo "::error::Failed to install the Rust toolchain after retries."
+          exit 1
 
       - name: Add Rust target
         if: matrix.target != 'x86_64-unknown-linux-gnu' && matrix.target != 'x86_64-pc-windows-msvc'
-        run: rustup target add ${{ matrix.target }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Cross targets download a std component from the same host as the
+          # toolchain, so retry the same transient failures here.
+          for attempt in 1 2 3; do
+            if rustup target add "${{ matrix.target }}"; then
+              exit 0
+            fi
+            echo "Retrying rustup target add (attempt $attempt/3)..."
+            sleep $((attempt * 15))
+          done
+          echo "::error::Failed to add Rust target ${{ matrix.target }} after retries."
+          exit 1
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
