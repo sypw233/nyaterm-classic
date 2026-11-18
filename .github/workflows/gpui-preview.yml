@@ -77,9 +77,11 @@ jobs:
           NYATERM_GITHUB_GIST_CLIENT_ID: ${{ vars.NYATERM_GITHUB_GIST_CLIENT_ID }}
         run: |
           set -euo pipefail
-          if [[ -z "${NYATERM_GITHUB_GIST_CLIENT_ID:-}" ]]; then
-            echo 'NYATERM_GITHUB_GIST_CLIENT_ID repository variable is required' >&2
-            exit 1
+          # Optional: only enables the GitHub Gist cloud-sync provider.
+          if [[ -n "${NYATERM_GITHUB_GIST_CLIENT_ID:-}" ]]; then
+            echo 'GitHub Gist OAuth client ID is configured.'
+          else
+            echo '::notice::NYATERM_GITHUB_GIST_CLIENT_ID is not set; this build will not offer GitHub Gist sync.'
           fi
 
       - name: Test packaging helpers

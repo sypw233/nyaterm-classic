@@ -256,16 +256,21 @@ jobs:
           console.log(`Tauri updater signing key prepared at: ${keyPath}`);
           NODE
 
-      - name: Verify GitHub Gist OAuth Client ID
+      - name: Check GitHub Gist OAuth Client ID
         shell: bash
         env:
           NYATERM_GITHUB_GIST_CLIENT_ID: ${{ vars.NYATERM_GITHUB_GIST_CLIENT_ID }}
         run: |
           set -euo pipefail
 
-          if [ -z "${NYATERM_GITHUB_GIST_CLIENT_ID:-}" ]; then
-            echo "NYATERM_GITHUB_GIST_CLIENT_ID repository variable is required for release builds."
-            exit 1
+          # The client ID only enables the GitHub Gist cloud-sync provider; the
+          # app reads it through `option_env!` and degrades to a "client ID
+          # missing" message in the UI when it is absent. Treat it as optional so
+          # a fork can still cut a release without registering an OAuth App.
+          if [ -n "${NYATERM_GITHUB_GIST_CLIENT_ID:-}" ]; then
+            echo "GitHub Gist OAuth client ID is configured."
+          else
+            echo "::notice::NYATERM_GITHUB_GIST_CLIENT_ID is not set; this build will not offer GitHub Gist sync."
           fi
 
       - name: Build Tauri app
