@@ -1,6 +1,6 @@
 use crate::error::AppResult;
 use redb::{ReadableDatabase, ReadableTable};
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 
 use super::Storage;
 use super::tables::*;
@@ -78,7 +78,19 @@ impl Storage {
     }
     pub fn delete_connection(&self, connection_id: &str) -> AppResult<()> {
         let txn = self.db.begin_write().map_err(storage_error)?;
-        delete_connection_in_txn(&txn, connection_id)?;
+        delete_connections_in_txn(&txn, &BTreeSet::from([connection_id]))?;
+        txn.commit().map_err(storage_error)?;
+        Ok(())
+    }
+    /// Delete records, their passwords and index entries in one transaction.
+    /// Missing IDs are harmless; duplicate IDs are processed once.
+    pub fn delete_connections(&self, connection_ids: &[String]) -> AppResult<()> {
+        if connection_ids.is_empty() {
+            return Ok(());
+        }
+        let ids: BTreeSet<&str> = connection_ids.iter().map(String::as_str).collect();
+        let txn = self.db.begin_write().map_err(storage_error)?;
+        delete_connections_in_txn(&txn, &ids)?;
         txn.commit().map_err(storage_error)?;
         Ok(())
     }
@@ -373,18 +385,66 @@ fn existing_connection_created_at(
     let connection: crate::config::SavedConnection = deserialize_json(raw.value())?;
     Ok(connection.created_at_ms)
 }
-pub(super) fn delete_connection_in_txn(
+pub(super) fn delete_connections_in_txn(
     txn: &redb::WriteTransaction,
-    connection_id: &str,
+    connection_ids: &BTreeSet<&str>,
 ) -> AppResult<()> {
     {
         let mut table = txn.open_table(CONNECTIONS_TABLE).map_err(storage_error)?;
-        table
-            .remove(entity_key(CONNECTION_PREFIX, connection_id).as_str())
-            .map_err(storage_error)?;
+        for connection_id in connection_ids {
+            table
+                .remove(entity_key(CONNECTION_PREFIX, connection_id).as_str())
+                .map_err(storage_error)?;
+        }
     }
-    delete_connection_password_in_txn(txn, connection_id)?;
-    remove_connection_index_entries(txn, connection_id)?;
+    {
+        let mut table = txn.open_table(CREDENTIALS_TABLE).map_err(storage_error)?;
+        for connection_id in connection_ids {
+            table
+                .remove(entity_key(CONNECTION_PASSWORD_PREFIX, connection_id).as_str())
+                .map_err(storage_error)?;
+        }
+    }
+    // Scan each index once for the entire batch instead of once per connection.
+    remove_connection_index_entries_for_ids(txn, connection_ids)
+}
+fn remove_connection_index_entries_for_ids(
+    txn: &redb::WriteTransaction,
+    connection_ids: &BTreeSet<&str>,
+) -> AppResult<()> {
+    for definition in [
+        IDX_CONNECTIONS_BY_GROUP_TABLE,
+        IDX_CONNECTIONS_BY_LAST_USED_TABLE,
+        IDX_CONNECTIONS_BY_PROTOCOL_TABLE,
+    ] {
+        remove_connection_index_entries_for_ids_from_table(txn, definition, connection_ids)?;
+    }
+    Ok(())
+}
+fn remove_connection_index_entries_for_ids_from_table(
+    txn: &redb::WriteTransaction,
+    definition: redb::TableDefinition<&str, &str>,
+    connection_ids: &BTreeSet<&str>,
+) -> AppResult<()> {
+    let table = txn.open_table(definition).map_err(storage_error)?;
+    let mut keys = Vec::new();
+    for entry in table.iter().map_err(storage_error)? {
+        let (key, value) = entry.map_err(storage_error)?;
+        let value = value.value();
+        let key_value = key.value();
+        if connection_ids.contains(value)
+            || key_value
+                .rsplit_once('|')
+                .is_some_and(|(_, id)| connection_ids.contains(id))
+        {
+            keys.push(key_value.to_string());
+        }
+    }
+    drop(table);
+    let mut table = txn.open_table(definition).map_err(storage_error)?;
+    for key in keys {
+        table.remove(key.as_str()).map_err(storage_error)?;
+    }
     Ok(())
 }
 fn delete_connection_password_in_txn(

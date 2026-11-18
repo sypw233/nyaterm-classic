@@ -730,9 +730,9 @@ export default function SavedConnections({
     const targetIds = new Set(deleteTargets.map((connection) => connection.id));
 
     try {
-      await Promise.all(
-        deleteTargets.map((connection) => invoke("delete_connection", { id: connection.id })),
-      );
+      await invoke("delete_connections", {
+        ids: deleteTargets.map((connection) => connection.id),
+      });
       setSelectedConnectionIds((prev) => {
         const next = new Set(Array.from(prev).filter((id) => !targetIds.has(id)));
         return next.size === prev.size ? prev : next;

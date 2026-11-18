@@ -105,6 +105,13 @@ pub async fn route(
             let mut config=config::load_config(&())?;config.connections.retain(|c|Some(c.id.as_str())!=args["id"].as_str());config::save_config(&(),&config)?;
             state.broadcast("connections-changed",Value::Null).await;Value::Null
         },
+        "delete_connections" => {
+            let _guard=state.mutation.lock().await;
+            let ids:Vec<String>=argument(&args,"ids")?;
+            let targets:std::collections::HashSet<&str>=ids.iter().map(String::as_str).collect();
+            let mut config=config::load_config(&())?;config.connections.retain(|c|!targets.contains(c.id.as_str()));config::save_config(&(),&config)?;
+            state.broadcast("connections-changed",Value::Null).await;Value::Null
+        },
         "update_connection_icon" | "update_connection_asset_from_monitoring" => {
             let _guard=state.mutation.lock().await;let mut cfg=config::load_config(&())?;
             let id=text(&args,"connectionId")?;

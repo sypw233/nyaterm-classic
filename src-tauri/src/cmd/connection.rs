@@ -1457,6 +1457,25 @@ pub fn delete_connection(app: tauri::AppHandle, id: String) -> AppResult<()> {
     Ok(())
 }
 
+/// Delete several saved connections in one rewrite.
+///
+/// Deleting one at a time reloads and rewrites the whole sessions table per
+/// connection, which is quadratic for a large selection. This keeps the same
+/// single-transaction `save_config` path but does it once.
+#[tauri::command]
+pub fn delete_connections(app: tauri::AppHandle, ids: Vec<String>) -> AppResult<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    let targets: std::collections::HashSet<&str> = ids.iter().map(String::as_str).collect();
+    let mut cfg = config::load_config(&app)?;
+    cfg.connections.retain(|c| !targets.contains(c.id.as_str()));
+    config::save_config(&app, &cfg)?;
+    let _ = app.emit("connections-changed", ());
+    schedule_cloud_sync_notify(app.clone());
+    Ok(())
+}
+
 #[tauri::command]
 pub fn get_connection_password_value(
     app: tauri::AppHandle,
