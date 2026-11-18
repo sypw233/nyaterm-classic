@@ -29,6 +29,8 @@ the implementation differs while the behaviour matches.
 
 ### Fixed
 
+- **backup:** Import configuration backups written by the 2.x line. The 2.x writer switched to an `NYASNAP` v2 envelope keyed by Argon2id with the header as AES-GCM associated data; this branch only read the legacy `nonce || ciphertext` SHA-256 form, so every 2.x export failed with `aead::Error`. Read both envelopes, keep writing the current one, and accept the 2.x default `"default"` activity-bar layout string when restoring settings.
+- **terminal:** `git log` and other pager-backed commands no longer open the command-suggestion popup when pager keys such as `d`, `f`, `j` or `k` are pressed.
 - **build:** `scripts/sync-version.mjs` still looked for the pre-rebrand `nyaterm` package name in Cargo.lock and aborted before writing it, so a version bump left the lockfile out of sync. It now resolves the app package name from Cargo.toml.
 - **packaging:** Place the MCP sidecar as `nyaterm-mcp.exe` beside the executable, which is where the portable layout resolves it; previously only the target-triple-suffixed name was shipped, so MCP reported "sidecar is not installed".
 

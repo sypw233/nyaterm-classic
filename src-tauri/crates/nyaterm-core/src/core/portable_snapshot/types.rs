@@ -284,7 +284,30 @@ pub struct PortableUiSettings {
     pub asset_sort_key: Option<String>,
     #[serde(default)]
     pub asset_sort_direction: Option<String>,
+    /// 2.x writes the literal string `"default"` until the panel-visibility
+    /// migration materialises a layout object. Accept both forms so a backup
+    /// exported from that line still imports here.
+    #[serde(default, deserialize_with = "deserialize_activity_bar_layout")]
     pub activity_bar_layout: ActivityBarLayout,
+}
+
+fn deserialize_activity_bar_layout<'de, D>(deserializer: D) -> Result<ActivityBarLayout, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error as _;
+
+    let value = serde_json::Value::deserialize(deserializer)?;
+    match value {
+        serde_json::Value::String(value) if value == "default" => Ok(ActivityBarLayout::default()),
+        serde_json::Value::Object(_) => {
+            serde_json::from_value(value).map_err(|error| D::Error::custom(error.to_string()))
+        }
+        serde_json::Value::Null => Ok(ActivityBarLayout::default()),
+        other => Err(D::Error::custom(format!(
+            "unsupported activity bar layout: {other}"
+        ))),
+    }
 }
 
 fn default_portable_gpu_monitor_interval() -> u32 {
