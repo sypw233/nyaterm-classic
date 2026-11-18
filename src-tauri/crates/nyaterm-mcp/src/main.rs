@@ -2,11 +2,11 @@ mod bridge;
 
 use std::sync::Arc;
 
-use bridge::{BridgeClient, BridgeEndpoint, endpoint_from_environment_or_discovery};
+use bridge::{BridgeClient, BridgeEndpoint};
 use nyaterm_mcp_protocol::{
     EmptyArgs, MCP_TOOL_REGISTRY, McpToolDefinition, OutputReadArgs, PathArgs, SessionArgs,
-    SftpChmodArgs, SftpMkdirArgs, SftpReadTextArgs, SftpRenameArgs, SftpWriteTextArgs,
-    SessionOpenArgs, TerminalExecuteArgs, TerminalRecentOutputArgs, tool,
+    SessionOpenArgs, SftpChmodArgs, SftpMkdirArgs, SftpReadTextArgs, SftpRenameArgs,
+    SftpWriteTextArgs, TerminalExecuteArgs, TerminalRecentOutputArgs, tool,
 };
 use rmcp::model::{
     CallToolRequestParams, CallToolResponse, CallToolResult, Implementation, ListToolsResult,
@@ -128,10 +128,18 @@ fn tool_def<T: JsonSchema>(definition: &McpToolDefinition) -> Tool {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let endpoint = endpoint_from_environment_or_discovery()?;
-    let server = NyaTermMcp::new(endpoint)
-        .serve(rmcp::transport::stdio())
-        .await?;
+    // A discovery-sourced endpoint is re-read on every reconnect, so a
+    // restarted NyaTerm heals the next bridge connection without restarting
+    // this forwarder. Explicit environment endpoints stay fixed.
+    let server = match bridge::resolve_endpoint_source()? {
+        bridge::EndpointSource::Fixed(endpoint) => NyaTermMcp::new(endpoint),
+        bridge::EndpointSource::Discovery { endpoint, path } => {
+            let mut server = NyaTermMcp::new(endpoint);
+            server.bridge = server.bridge.with_discovery_path(path);
+            server
+        }
+    };
+    let server = server.serve(rmcp::transport::stdio()).await?;
     server.waiting().await?;
     Ok(())
 }
@@ -253,10 +261,7 @@ mod tests {
                             }]
                         }),
                         tool::SESSION_OPEN => {
-                            assert_eq!(
-                                request.params["arguments"]["connectionId"],
-                                "connection-1"
-                            );
+                            assert_eq!(request.params["arguments"]["connectionId"], "connection-1");
                             json!({
                                 "sessionId": "session-2",
                                 "connectionId": "connection-1",

@@ -39,7 +39,13 @@ struct Connection {
 
 #[derive(Clone)]
 pub struct BridgeClient {
-    endpoint: BridgeEndpoint,
+    endpoint: Arc<Mutex<BridgeEndpoint>>,
+    /// Where `endpoint` came from. A discovery-sourced endpoint is re-resolved
+    /// on every reconnect: a restarted NyaTerm republishes the discovery
+    /// document with a new port, token and generation, and retrying the dead
+    /// one would keep every external MCP client offline until the forwarder
+    /// itself restarts.
+    discovery_path: Option<std::path::PathBuf>,
     connection: Arc<Mutex<Option<Connection>>>,
     identity: Arc<Mutex<Option<ClientIdentifyParams>>>,
 }
@@ -47,10 +53,33 @@ pub struct BridgeClient {
 impl BridgeClient {
     pub fn new(endpoint: BridgeEndpoint) -> Self {
         Self {
-            endpoint,
+            endpoint: Arc::new(Mutex::new(endpoint)),
+            discovery_path: None,
             connection: Arc::new(Mutex::new(None)),
             identity: Arc::new(Mutex::new(None)),
         }
+    }
+
+    /// Re-resolve the bridge endpoint from the discovery document on every
+    /// reconnect. An unreadable or invalid document keeps the last good
+    /// endpoint, so a transient read failure cannot wedge the bridge.
+    pub fn with_discovery_path(mut self, path: std::path::PathBuf) -> Self {
+        self.discovery_path = Some(path);
+        self
+    }
+
+    /// The endpoint to try next, refreshed from discovery when configured.
+    async fn resolve_endpoint(&self) -> BridgeEndpoint {
+        let Some(path) = self.discovery_path.as_ref() else {
+            return self.endpoint.lock().await.clone();
+        };
+        let mut cached = self.endpoint.lock().await;
+        if let Ok(endpoint) = read_discovery_endpoint(path) {
+            *cached = endpoint.clone();
+            return endpoint;
+        }
+        // A transient read failure keeps the last good endpoint.
+        cached.clone()
     }
 
     pub async fn identify(&self, name: String, version: Option<String>) {
@@ -78,7 +107,7 @@ impl BridgeClient {
         let connection = guard.as_mut().unwrap();
         let result = tokio::select! {
             _ = cancellation.cancelled() => {
-                let endpoint = self.endpoint.clone();
+                let endpoint = self.resolve_endpoint().await;
                 tokio::spawn(async move { let _ = cancel_request(&endpoint, &request_id).await; });
                 *guard = None;
                 return Err(bridge_error("cancelled", "The MCP tool call was cancelled."));
@@ -105,7 +134,10 @@ impl BridgeClient {
         if guard.is_some() {
             return Ok(());
         }
-        let mut connection = connect(&self.endpoint).await.map_err(io_error)?;
+        // A restarted NyaTerm republishes discovery with a new port and token,
+        // so reconnect has to re-read it instead of retrying a dead endpoint.
+        let endpoint = self.resolve_endpoint().await;
+        let mut connection = connect(&endpoint).await.map_err(io_error)?;
         if replay_identity && let Some(identity) = self.identity.lock().await.clone() {
             let params = serde_json::to_value(identity)
                 .map_err(|error| bridge_error("invalid_argument", &error.to_string()))?;
@@ -231,8 +263,48 @@ async fn read_response(connection: &mut Connection) -> std::io::Result<RpcRespon
     serde_json::from_str(line.trim_end()).map_err(std::io::Error::other)
 }
 
-pub fn endpoint_from_environment_or_discovery() -> Result<BridgeEndpoint, Box<dyn std::error::Error>>
-{
+/// Read and validate a discovery document into an endpoint.
+///
+/// Validation is identical to startup so a re-resolved document cannot point
+/// the bridge somewhere the initial check would have rejected.
+fn read_discovery_endpoint(
+    path: &std::path::Path,
+) -> Result<BridgeEndpoint, Box<dyn std::error::Error>> {
+    let document: DiscoveryDocument = serde_json::from_slice(&std::fs::read(path)?)?;
+    if document.version != PROTOCOL_VERSION || document.host != "127.0.0.1" {
+        return Err("Unsupported or unsafe NyaTerm MCP discovery document".into());
+    }
+    Ok(BridgeEndpoint {
+        host: document.host,
+        port: document.port,
+        token: document.token,
+        generation: document.generation,
+    })
+}
+
+/// How the bridge endpoint was obtained.
+pub enum EndpointSource {
+    /// Explicit environment credentials stay fixed for the process lifetime.
+    Fixed(BridgeEndpoint),
+    /// A discovery document is re-read on every reconnect.
+    Discovery {
+        endpoint: BridgeEndpoint,
+        path: std::path::PathBuf,
+    },
+}
+
+/// Resolve the startup endpoint and whether it should be refreshed.
+pub fn resolve_endpoint_source() -> Result<EndpointSource, Box<dyn std::error::Error>> {
+    if let Some(endpoint) = endpoint_from_environment()? {
+        return Ok(EndpointSource::Fixed(endpoint));
+    }
+    let path = discovery_path()?;
+    let endpoint = read_discovery_endpoint(&path)?;
+    Ok(EndpointSource::Discovery { endpoint, path })
+}
+
+/// Explicit `NYATERM_MCP_*` credentials, if the environment supplies them.
+fn endpoint_from_environment() -> Result<Option<BridgeEndpoint>, Box<dyn std::error::Error>> {
     let ephemeral = std::env::var("NYATERM_MCP_EPHEMERAL").as_deref() == Ok("1");
     let host = std::env::var("NYATERM_MCP_HOST").ok();
     let port = std::env::var("NYATERM_MCP_PORT")
@@ -245,26 +317,17 @@ pub fn endpoint_from_environment_or_discovery() -> Result<BridgeEndpoint, Box<dy
         if host != "127.0.0.1" {
             return Err("NyaTerm MCP bridge host must be 127.0.0.1".into());
         }
-        return Ok(BridgeEndpoint {
+        return Ok(Some(BridgeEndpoint {
             host,
             port,
             token,
             generation,
-        });
+        }));
     }
     if ephemeral {
         return Err("NyaTerm ephemeral MCP credential is incomplete or unavailable".into());
     }
-    let document: DiscoveryDocument = serde_json::from_slice(&std::fs::read(discovery_path()?)?)?;
-    if document.version != PROTOCOL_VERSION || document.host != "127.0.0.1" {
-        return Err("Unsupported or unsafe NyaTerm MCP discovery document".into());
-    }
-    Ok(BridgeEndpoint {
-        host: document.host,
-        port: document.port,
-        token: document.token,
-        generation: document.generation,
-    })
+    Ok(None)
 }
 
 fn discovery_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
@@ -504,5 +567,92 @@ mod tests {
         );
         server.await.unwrap();
         assert_eq!(auth_count.load(Ordering::SeqCst), 2);
+    }
+
+    /// A restarted host republishes discovery with a new port. The bridge must
+    /// follow it instead of retrying the dead endpoint forever.
+    #[tokio::test]
+    async fn discovery_is_re_read_so_a_restarted_host_heals_the_bridge() {
+        let stale = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let stale_port = stale.local_addr().unwrap().port();
+        drop(stale);
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let live_port = listener.local_addr().unwrap().port();
+        let auth_count = Arc::new(AtomicUsize::new(0));
+        let server_count = auth_count.clone();
+
+        let directory =
+            std::env::temp_dir().join(format!("nyaterm-mcp-discovery-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("discovery.json");
+        std::fs::write(
+            &path,
+            json!({
+                "version": PROTOCOL_VERSION,
+                "pid": std::process::id(),
+                "host": "127.0.0.1",
+                "port": live_port,
+                "token": "test-token",
+                "generation": "test-generation",
+                "permissionMode": "prompt",
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let (mut lines, mut writer) = authenticate(stream, &server_count).await;
+            let call = request(&mut lines).await;
+            respond(&mut writer, call.id, json!({ "reached": true })).await;
+        });
+
+        // The client starts on the stale endpoint; discovery must redirect it.
+        let client = BridgeClient::new(BridgeEndpoint::for_test(stale_port))
+            .with_discovery_path(path.clone());
+        assert_ne!(stale_port, live_port, "test ports must differ");
+        assert_eq!(
+            client.resolve_endpoint().await.port,
+            live_port,
+            "discovery must override the stale endpoint"
+        );
+        let result = client
+            .call("get_environment", json!({}), CancellationToken::new())
+            .await
+            .expect("bridge follows the republished discovery document");
+        assert_eq!(result["reached"], true);
+
+        server.await.unwrap();
+        assert_eq!(auth_count.load(Ordering::SeqCst), 1);
+        let _ = std::fs::remove_dir_all(&directory);
+    }
+
+    /// An unreadable document must keep the last good endpoint instead of
+    /// dropping the bridge.
+    #[tokio::test]
+    async fn unreadable_discovery_falls_back_to_the_cached_endpoint() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let auth_count = Arc::new(AtomicUsize::new(0));
+        let server_count = auth_count.clone();
+
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let (mut lines, mut writer) = authenticate(stream, &server_count).await;
+            let call = request(&mut lines).await;
+            respond(&mut writer, call.id, json!({ "reached": true })).await;
+        });
+
+        let client = BridgeClient::new(BridgeEndpoint::for_test(port))
+            .with_discovery_path(std::path::PathBuf::from("/nonexistent/discovery.json"));
+        let result = client
+            .call("get_environment", json!({}), CancellationToken::new())
+            .await
+            .expect("cached endpoint survives an unreadable document");
+        assert_eq!(result["reached"], true);
+
+        server.await.unwrap();
+        assert_eq!(auth_count.load(Ordering::SeqCst), 1);
     }
 }
