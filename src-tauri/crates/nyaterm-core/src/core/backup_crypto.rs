@@ -47,9 +47,9 @@ fn derive_legacy_snapshot_key(master_password: &str) -> Key<Aes256Gcm> {
     derive_snapshot_key_with_prefix(LEGACY_CLOUD_SNAPSHOT_KEY_PREFIX, master_password)
 }
 
-/// Trimmed password, matching the 2.x contract. An empty password is rejected
-/// before any key derivation work happens.
-fn password(value: &str) -> AppResult<&str> {
+/// Trimmed password for the versioned (Argon2id) envelope. The 2.x writer
+/// trims before deriving, and rejects a blank password before doing KDF work.
+fn versioned_password(value: &str) -> AppResult<&str> {
     let value = value.trim();
     if value.is_empty() {
         Err(AppError::Crypto(
@@ -61,7 +61,7 @@ fn password(value: &str) -> AppResult<&str> {
 }
 
 pub fn encrypt_snapshot_bytes(plaintext: &[u8], master_password: &str) -> AppResult<Vec<u8>> {
-    let password = password(master_password)?;
+    let password = versioned_password(master_password)?;
     let mut salt = [0u8; 16];
     let mut nonce = [0u8; 12];
     fill_random(&mut salt)?;
@@ -92,21 +92,24 @@ pub fn encrypt_snapshot_bytes(plaintext: &[u8], master_password: &str) -> AppRes
 }
 
 pub fn decrypt_snapshot_bytes(ciphertext: &[u8], master_password: &str) -> AppResult<Vec<u8>> {
-    let password = password(master_password)?;
     if ciphertext.starts_with(MAGIC) {
-        return decrypt_versioned(password, ciphertext);
+        return decrypt_versioned(versioned_password(master_password)?, ciphertext);
     }
 
+    // Legacy envelopes (the only format the original 1.x line ever wrote) key
+    // off the raw password bytes. Do not trim or reject blanks here: that
+    // would change the derived key and break backups exported by any older
+    // build, including ones that used a blank password.
     if ciphertext.len() < 12 + TAG_BYTES {
         return Err(AppError::Crypto(
             "cloud snapshot ciphertext is too short".to_string(),
         ));
     }
 
-    match decrypt_legacy_snapshot_bytes(ciphertext, &derive_snapshot_key(password)) {
+    match decrypt_legacy_snapshot_bytes(ciphertext, &derive_snapshot_key(master_password)) {
         Ok(plaintext) => Ok(plaintext),
         Err(new_error) => {
-            decrypt_legacy_snapshot_bytes(ciphertext, &derive_legacy_snapshot_key(password)).map_err(
+            decrypt_legacy_snapshot_bytes(ciphertext, &derive_legacy_snapshot_key(master_password)).map_err(
                 |legacy_error| {
                     AppError::Crypto(format!(
                         "cloud snapshot decryption failed: NyaTerm key prefix failed ({new_error}); legacy Dragonfly key prefix failed ({legacy_error})"
@@ -233,9 +236,34 @@ mod tests {
     }
 
     #[test]
-    fn blank_password_is_rejected_without_deriving_a_key() {
+    fn blank_password_is_rejected_only_for_the_new_envelope() {
+        // The versioned (2.x) writer trims and requires a non-blank password.
         assert!(encrypt_snapshot_bytes(b"data", "   ").is_err());
         assert!(decrypt_snapshot_bytes(&[0u8; 64], "").is_err());
+    }
+
+    #[test]
+    fn legacy_envelopes_use_raw_password_bytes_including_whitespace() {
+        // The original 1.x line never trimmed and allowed blank passwords.
+        // Its backups must still import with byte-identical key derivation.
+        for password in ["", "   ", " padded ", "regular-password"] {
+            let cipher = Aes256Gcm::new(&derive_snapshot_key(password));
+            let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+            let mut encoded = nonce.to_vec();
+            encoded.extend_from_slice(
+                &cipher
+                    .encrypt(&nonce, b"legacy payload".as_slice())
+                    .unwrap(),
+            );
+
+            // A leading blank password used to be rejected by the new reader
+            // before it could even reach the legacy decryption path.
+            assert_eq!(
+                decrypt_snapshot_bytes(&encoded, password).unwrap(),
+                b"legacy payload",
+                "password {password:?}"
+            );
+        }
     }
 
     #[test]
