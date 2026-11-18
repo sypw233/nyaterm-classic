@@ -56,19 +56,41 @@ jobs:
               check(filename, json.loads(pathlib.Path(filename).read_text())['version'])
           for filename in ['src-tauri/Cargo.toml', 'src-tauri/crates/nyaterm-mcp/Cargo.toml']:
               check(filename, tomllib.loads(pathlib.Path(filename).read_text())['package']['version'])
+
+          # Resolve the app crate name from its manifest instead of hard-coding
+          # it: the crate was renamed to `nyaterm-classic` during the rebrand and
+          # a stale literal here made this job fail with StopIteration.
+          app_name = tomllib.loads(
+              pathlib.Path('src-tauri/Cargo.toml').read_text()
+          )['package']['name']
           for filename, name in [
-              ('src-tauri/Cargo.lock', 'nyaterm'),
+              ('src-tauri/Cargo.lock', app_name),
               ('src-tauri/crates/nyaterm-mcp/Cargo.lock', 'nyaterm-mcp'),
           ]:
               packages = tomllib.loads(pathlib.Path(filename).read_text())['package']
-              check(filename, next(pkg['version'] for pkg in packages if pkg['name'] == name))
-          print(f'Release versions match {version}')
+              matches = [pkg['version'] for pkg in packages if pkg['name'] == name]
+              if not matches:
+                  raise ValueError(f'{filename}: no [[package]] entry named {name!r}')
+              check(filename, matches[0])
+          print(f'Release versions match {version} (app crate {app_name})')
           PY
 
-          git fetch origin archive/tauri-v1:refs/remotes/origin/archive/tauri-v1
+          # The tag must be cut from the Tauri 1.x maintenance line. Accept any
+          # branch that tracks it, because the same commits are published as
+          # both `main` (the repository default) and `archive/tauri-v1`.
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*'
           tag_commit=$(git rev-parse "${GITHUB_REF}^{commit}")
-          if [ "$tag_commit" != "$(git rev-parse HEAD)" ] || ! git merge-base --is-ancestor "$tag_commit" origin/archive/tauri-v1; then
-            echo "::error::The checked-out tag commit must belong to origin/archive/tauri-v1."
+          landed=false
+          for branch in origin/main origin/archive/tauri-v1; do
+            if git rev-parse --verify --quiet "$branch" >/dev/null &&
+               git merge-base --is-ancestor "$tag_commit" "$branch"; then
+              landed=true
+              echo "Tag commit $tag_commit is reachable from $branch"
+              break
+            fi
+          done
+          if [ "$tag_commit" != "$(git rev-parse HEAD)" ] || [ "$landed" != true ]; then
+            echo "::error::The tag commit must belong to the Tauri 1.x maintenance line (origin/main or origin/archive/tauri-v1)."
             exit 1
           fi
 
