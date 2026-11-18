@@ -965,11 +965,20 @@ export interface RemoteStatsMemory {
   cached: number;
 }
 
+export type RemoteStatsNetworkRateStatus =
+  | "warming_up"
+  | "available"
+  | "counter_reset"
+  | "interrupted"
+  | "unavailable";
+
 export interface RemoteStatsNetwork {
   nic: string;
   state: string;
   rx_bytes_per_sec: number;
   tx_bytes_per_sec: number;
+  /** Why this sample may not be a fresh, trustworthy rate. */
+  rate_status?: RemoteStatsNetworkRateStatus;
 }
 
 export interface RemoteStatsNetworkSummary {

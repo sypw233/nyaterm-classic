@@ -8,6 +8,8 @@ use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, OwnedMutexGuard};
 
 const MAX_SAMPLE_WINDOW: Duration = Duration::from_secs(5 * 60);
+/// Below this window, scheduler jitter dominates and a rate would be noise.
+const MIN_NETWORK_SAMPLE_WINDOW: Duration = Duration::from_millis(100);
 const SAMPLE_TTL: Duration = Duration::from_secs(10 * 60);
 const DISK_REFRESH_INTERVAL: Duration = Duration::from_secs(30);
 /// `who` is comparatively expensive and login sessions change slowly, so the
@@ -69,6 +71,26 @@ pub struct NetworkInfo {
     pub state: String,
     pub rx_bytes_per_sec: f64,
     pub tx_bytes_per_sec: f64,
+    /// Why this sample may not be a fresh, trustworthy rate.
+    #[serde(default)]
+    pub rate_status: NetworkRateStatus,
+}
+
+/// Validity of a network rate sample.
+///
+/// `WarmingUp` means there is no previous counter to subtract yet, `Available`
+/// means the rate is real. The remaining states explain a zero instead of a
+/// fabricated spike: a counter that went backwards, a sampling gap longer than
+/// the staleness window, or a window too short to divide by.
+#[derive(serde::Serialize, Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum NetworkRateStatus {
+    #[default]
+    WarmingUp,
+    Available,
+    CounterReset,
+    Interrupted,
+    Unavailable,
 }
 
 #[derive(serde::Serialize, Default, Clone)]
@@ -474,20 +496,44 @@ fn apply_network_rates(
     stats: &mut RemoteStats,
 ) {
     let elapsed = sample_window.as_secs_f64();
-    if elapsed <= 0.0 || elapsed > MAX_SAMPLE_WINDOW.as_secs_f64() {
-        return;
-    }
+    // A gap longer than the staleness window means the counters may have rolled
+    // over or the host was unreachable; report zeros instead of a spike.
+    let interrupted = sample_window > MAX_SAMPLE_WINDOW;
+    // Dividing two sub-100ms readings amplifies scheduler jitter into a spike.
+    let too_short = sample_window < MIN_NETWORK_SAMPLE_WINDOW;
 
     for net in &mut stats.networks {
         let Some(current) = current_networks.get(&net.nic) else {
             continue;
         };
-        let Some(previous) = previous.networks.get(&net.nic) else {
+        let Some(previous_counters) = previous.networks.get(&net.nic) else {
+            net.rx_bytes_per_sec = 0.0;
+            net.tx_bytes_per_sec = 0.0;
+            net.rate_status = NetworkRateStatus::WarmingUp;
             continue;
         };
 
-        net.rx_bytes_per_sec = current.rx_bytes.saturating_sub(previous.rx_bytes) as f64 / elapsed;
-        net.tx_bytes_per_sec = current.tx_bytes.saturating_sub(previous.tx_bytes) as f64 / elapsed;
+        net.rx_bytes_per_sec = 0.0;
+        net.tx_bytes_per_sec = 0.0;
+        net.rate_status = if interrupted {
+            NetworkRateStatus::Interrupted
+        } else if too_short || elapsed <= 0.0 {
+            NetworkRateStatus::Unavailable
+        } else {
+            match (
+                current.rx_bytes.checked_sub(previous_counters.rx_bytes),
+                current.tx_bytes.checked_sub(previous_counters.tx_bytes),
+            ) {
+                (Some(rx), Some(tx)) => {
+                    net.rx_bytes_per_sec = rx as f64 / elapsed;
+                    net.tx_bytes_per_sec = tx as f64 / elapsed;
+                    NetworkRateStatus::Available
+                }
+                // A counter that went backwards is not a rate. Zero the pair
+                // rather than clamping one side to a misleading value.
+                _ => NetworkRateStatus::CounterReset,
+            }
+        };
     }
 }
 
@@ -1143,6 +1189,7 @@ pub fn parse_stats_output(output: &str) -> AppResult<ParsedRemoteStats> {
                         state: cols[2].to_string(),
                         rx_bytes_per_sec: 0.0,
                         tx_bytes_per_sec: 0.0,
+                        rate_status: NetworkRateStatus::WarmingUp,
                     });
                 }
             }
@@ -1154,6 +1201,9 @@ pub fn parse_stats_output(output: &str) -> AppResult<ParsedRemoteStats> {
                         state: cols[2].to_string(),
                         rx_bytes_per_sec: cols[3].parse().unwrap_or(0.0),
                         tx_bytes_per_sec: cols[4].parse().unwrap_or(0.0),
+                        // Legacy NETWORK rows already carry a rate, so it is
+                        // the best available value even without counters.
+                        rate_status: NetworkRateStatus::Available,
                     });
                 }
             }
@@ -1342,7 +1392,9 @@ mod tests {
         assert_eq!(unparsable.users_status, LoggedInUsersStatus::Failed);
         assert!(unparsable.users.is_empty());
 
-        let empty = parse_stats_output("USERS_STATUS\tavailable\n").unwrap().stats;
+        let empty = parse_stats_output("USERS_STATUS\tavailable\n")
+            .unwrap()
+            .stats;
         assert_eq!(empty.users_status, LoggedInUsersStatus::Available);
         assert!(empty.users.is_empty());
     }
@@ -1367,7 +1419,8 @@ mod tests {
     }
 
     #[test]
-    fn parse_stats_output_parses_complete_snapshot() {        let parsed = parse_stats_output(
+    fn parse_stats_output_parses_complete_snapshot() {
+        let parsed = parse_stats_output(
             "SYSTEM\tnode-1\t12345\tUbuntu 24.04\tx86_64\n\
              LOAD\t0.10\t0.20\t0.30\n\
              CPU\tAMD Ryzen\t8\n\
@@ -1898,5 +1951,152 @@ mod tests {
         );
 
         assert!(parsed.is_err());
+    }
+
+    fn network_sample(
+        counters: &[(&str, u64, u64)],
+        updated_at: Instant,
+    ) -> super::CachedRemoteSample {
+        super::CachedRemoteSample {
+            static_info: None,
+            disks: None,
+            disk_attempted_at: None,
+            users: Vec::new(),
+            users_status: LoggedInUsersStatus::NotCollected,
+            users_attempted_at: None,
+            cpu_snapshot: None,
+            networks: counters
+                .iter()
+                .map(|(nic, rx, tx)| {
+                    (
+                        (*nic).to_string(),
+                        super::NetworkCounters {
+                            rx_bytes: *rx,
+                            tx_bytes: *tx,
+                        },
+                    )
+                })
+                .collect(),
+            updated_at,
+        }
+    }
+
+    fn network_stats(nics: &[&str]) -> super::RemoteStats {
+        let mut stats = super::RemoteStats::default();
+        stats.networks = nics
+            .iter()
+            .map(|nic| super::NetworkInfo {
+                nic: (*nic).to_string(),
+                state: "up".to_string(),
+                rx_bytes_per_sec: 0.0,
+                tx_bytes_per_sec: 0.0,
+                rate_status: super::NetworkRateStatus::WarmingUp,
+            })
+            .collect();
+        stats
+    }
+
+    #[test]
+    fn network_rate_divides_the_counter_delta_by_the_window() {
+        let now = Instant::now();
+        let previous = network_sample(&[("eth0", 1_000, 2_000)], now);
+        let mut stats = network_stats(&["eth0"]);
+
+        super::apply_network_rates(
+            &previous,
+            Duration::from_secs(2),
+            &network_sample(&[("eth0", 5_000, 4_000)], now).networks,
+            &mut stats,
+        );
+
+        assert_eq!(
+            stats.networks[0].rate_status,
+            super::NetworkRateStatus::Available
+        );
+        assert_eq!(stats.networks[0].rx_bytes_per_sec, 2_000.0);
+        assert_eq!(stats.networks[0].tx_bytes_per_sec, 1_000.0);
+    }
+
+    #[test]
+    fn network_rate_does_not_report_a_spike_when_counters_go_backwards() {
+        // A NIC reset, reboot, or a sysinfo read returning zero produces a
+        // smaller counter. Neither clamping nor wrapping is a real rate.
+        let now = Instant::now();
+        let previous = network_sample(&[("eth0", 9_000_000, 9_000_000)], now);
+        let mut stats = network_stats(&["eth0"]);
+
+        super::apply_network_rates(
+            &previous,
+            Duration::from_secs(3),
+            &network_sample(&[("eth0", 0, 0)], now).networks,
+            &mut stats,
+        );
+
+        assert_eq!(
+            stats.networks[0].rate_status,
+            super::NetworkRateStatus::CounterReset
+        );
+        assert_eq!(stats.networks[0].rx_bytes_per_sec, 0.0);
+        assert_eq!(stats.networks[0].tx_bytes_per_sec, 0.0);
+    }
+
+    #[test]
+    fn network_rate_marks_a_long_gap_as_interrupted() {
+        let now = Instant::now();
+        let previous = network_sample(&[("eth0", 1_000, 1_000)], now);
+        let mut stats = network_stats(&["eth0"]);
+
+        super::apply_network_rates(
+            &previous,
+            Duration::from_secs(10 * 60),
+            &network_sample(&[("eth0", 9_000_000, 9_000_000)], now).networks,
+            &mut stats,
+        );
+
+        assert_eq!(
+            stats.networks[0].rate_status,
+            super::NetworkRateStatus::Interrupted
+        );
+        assert_eq!(stats.networks[0].rx_bytes_per_sec, 0.0);
+    }
+
+    #[test]
+    fn network_rate_ignores_a_too_short_window() {
+        let now = Instant::now();
+        let previous = network_sample(&[("eth0", 1_000, 1_000)], now);
+        let mut stats = network_stats(&["eth0"]);
+
+        super::apply_network_rates(
+            &previous,
+            Duration::from_millis(5),
+            &network_sample(&[("eth0", 9_000_000, 9_000_000)], now).networks,
+            &mut stats,
+        );
+
+        assert_eq!(
+            stats.networks[0].rate_status,
+            super::NetworkRateStatus::Unavailable
+        );
+        assert_eq!(stats.networks[0].rx_bytes_per_sec, 0.0);
+    }
+
+    #[test]
+    fn network_rate_warms_up_without_a_previous_counter() {
+        let now = Instant::now();
+        let previous = network_sample(&[], now);
+        let mut stats = network_stats(&["eth0"]);
+
+        super::apply_network_rates(
+            &previous,
+            Duration::from_secs(3),
+            &network_sample(&[("eth0", 1_000, 1_000)], now).networks,
+            &mut stats,
+        );
+
+        assert_eq!(
+            stats.networks[0].rate_status,
+            super::NetworkRateStatus::WarmingUp
+        );
+        assert_eq!(stats.networks[0].rx_bytes_per_sec, 0.0);
     }
 }
