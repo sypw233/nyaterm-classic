@@ -187,6 +187,7 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
     word_separators: " ()[]{}\"':=,;|&<>",
     alt_as_meta: false,
     mouse_events_require_alt: false,
+    terminal_right_click_alt_forces_local: true,
     ime_compatibility: false,
     default_encoding: "UTF-8",
     tab_double_click_action: DEFAULT_TAB_DOUBLE_CLICK_ACTION,

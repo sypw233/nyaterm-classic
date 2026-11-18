@@ -2782,6 +2782,7 @@ export default function XTerminal({
       moveInputCursor,
       pasteText,
       pasteClipboard,
+      getMouseTrackingMode: () => terminal.modes.mouseTrackingMode,
     });
 
     if (restoringInitialSnapshot) {

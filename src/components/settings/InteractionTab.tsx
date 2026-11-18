@@ -105,6 +105,18 @@ export function InteractionTab() {
             onChange={(v) => updateInteraction({ mouse_events_require_alt: v })}
           />
         </SettingRow>
+
+        <SettingRow
+          label={t("settings.rightClickAltForcesLocal")}
+          desc={t("settings.rightClickAltForcesLocalDesc")}
+        >
+          <SettingSwitch
+            checked={interaction.terminal_right_click_alt_forces_local}
+            onChange={(v) =>
+              updateInteraction({ terminal_right_click_alt_forces_local: v })
+            }
+          />
+        </SettingRow>
       </SettingSection>
 
       <SettingSection

@@ -10,9 +10,17 @@ function createHarness(
     isMacOS?: boolean;
     isWindows?: boolean;
     rightClickAction?: TerminalRightClickAction;
+    mouseTrackingMode?: "none" | "x10" | "vt200" | "drag" | "any";
+    altForcesLocalMenu?: boolean;
   } = {},
 ) {
-  const { isMacOS = false, isWindows = true, rightClickAction = "menu" } = options;
+  const {
+    isMacOS = false,
+    isWindows = true,
+    rightClickAction = "menu",
+    mouseTrackingMode = "none",
+    altForcesLocalMenu = true,
+  } = options;
   const containerEl = document.createElement("div");
   const xtermTarget = document.createElement("div");
   const textarea = document.createElement("textarea");
@@ -41,7 +49,10 @@ function createHarness(
     visibleRef: { current: true },
     terminalAppSettingsRef: {
       current: {
-        interaction: { terminal_right_click_action: rightClickAction },
+        interaction: {
+          terminal_right_click_action: rightClickAction,
+          terminal_right_click_alt_forces_local: altForcesLocalMenu,
+        },
         keybindings: {},
       } as TerminalAppSettings,
     },
@@ -60,6 +71,7 @@ function createHarness(
     moveInputCursor: vi.fn(),
     pasteText,
     pasteClipboard,
+    getMouseTrackingMode: () => mouseTrackingMode,
   });
 
   return {
@@ -297,6 +309,99 @@ describe("installXTerminalSelectionController", () => {
 
     expect(pasteClipboard).not.toHaveBeenCalled();
     expect(terminal.focus).not.toHaveBeenCalled();
+    controller.dispose();
+  });
+
+  it("swallows the right-click when the application is not using the mouse", () => {
+    const { controller, pasteClipboard, terminal, xtermTarget } = createHarness({
+      mouseTrackingMode: "none",
+      rightClickAction: "menu",
+    });
+    const xtermMouseDown = vi.fn();
+    xtermTarget.addEventListener("mousedown", xtermMouseDown);
+
+    const event = dispatchMouse(xtermTarget, "mousedown", 2);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(xtermMouseDown).not.toHaveBeenCalled();
+    expect(terminal.focus).toHaveBeenCalled();
+    // menu mode leaves rendering to Radix; it must not paste behind our back.
+    expect(pasteClipboard).not.toHaveBeenCalled();
+    controller.dispose();
+  });
+
+  it.each(["x10", "vt200", "drag", "any"] as const)(
+    "forwards the right-click to the application in %s mouse mode",
+    (mouseTrackingMode) => {
+      const { controller, pasteClipboard, xtermTarget } = createHarness({
+        mouseTrackingMode,
+        rightClickAction: "menu",
+      });
+      const xtermMouseDown = vi.fn();
+      xtermTarget.addEventListener("mousedown", xtermMouseDown);
+
+      const event = dispatchMouse(xtermTarget, "mousedown", 2);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(xtermMouseDown).toHaveBeenCalledOnce();
+      expect(pasteClipboard).not.toHaveBeenCalled();
+      controller.dispose();
+    },
+  );
+
+  it("lets Alt force the local menu while the application uses the mouse", () => {
+    const { controller, xtermTarget } = createHarness({
+      mouseTrackingMode: "vt200",
+      rightClickAction: "menu",
+      altForcesLocalMenu: true,
+    });
+    const xtermMouseDown = vi.fn();
+    xtermTarget.addEventListener("mousedown", xtermMouseDown);
+
+    const event = new MouseEvent("mousedown", {
+      bubbles: true,
+      cancelable: true,
+      button: 2,
+      altKey: true,
+    });
+    xtermTarget.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(xtermMouseDown).not.toHaveBeenCalled();
+    controller.dispose();
+  });
+
+  it("ignores Alt when the escape hatch is disabled", () => {
+    const { controller, xtermTarget } = createHarness({
+      mouseTrackingMode: "vt200",
+      rightClickAction: "menu",
+      altForcesLocalMenu: false,
+    });
+    const xtermMouseDown = vi.fn();
+    xtermTarget.addEventListener("mousedown", xtermMouseDown);
+
+    const event = new MouseEvent("mousedown", {
+      bubbles: true,
+      cancelable: true,
+      button: 2,
+      altKey: true,
+    });
+    xtermTarget.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(xtermMouseDown).toHaveBeenCalledOnce();
+    controller.dispose();
+  });
+
+  it("pastes on right-click in paste mode when the application is idle", () => {
+    const { controller, pasteClipboard, xtermTarget } = createHarness({
+      mouseTrackingMode: "none",
+      rightClickAction: "paste",
+    });
+
+    dispatchMouse(xtermTarget, "mousedown", 2);
+
+    expect(pasteClipboard).toHaveBeenCalledOnce();
     controller.dispose();
   });
 });

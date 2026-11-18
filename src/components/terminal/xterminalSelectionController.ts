@@ -7,6 +7,10 @@ import {
   getMouseBufferPosition,
   type InputSelectionRange,
 } from "./terminalInputSelection";
+import {
+  type MouseTrackingMode,
+  routeTerminalRightClick,
+} from "./terminalRightClickRouting";
 
 interface MutableRef<T> {
   current: T;
@@ -38,6 +42,8 @@ interface InstallXTerminalSelectionControllerParams {
   moveInputCursor: (targetCursor: number) => void;
   pasteText: (text: string) => void;
   pasteClipboard: () => Promise<void>;
+  /** Current mouse tracking mode reported by xterm for the running application. */
+  getMouseTrackingMode: () => MouseTrackingMode;
 }
 
 export function installXTerminalSelectionController({
@@ -63,6 +69,7 @@ export function installXTerminalSelectionController({
   moveInputCursor,
   pasteText,
   pasteClipboard,
+  getMouseTrackingMode,
 }: InstallXTerminalSelectionControllerParams) {
   let primaryMouseDown: { x: number; y: number } | null = null;
   let terminalHasFocus = document.activeElement === terminal.textarea;
@@ -121,14 +128,69 @@ export function installXTerminalSelectionController({
     if (e.button === 1) e.preventDefault();
   };
 
-  const handleWindowsMouseDownCapture = (e: MouseEvent) => {
-    const shouldBlockRightClickPaste =
-      e.button === 2 &&
-      terminalAppSettingsRef.current.interaction.terminal_right_click_action === "paste";
-    if (e.button !== 1 && !shouldBlockRightClickPaste) return;
+  /**
+   * Right-click routing, captured before the event can reach xterm.
+   *
+   * When the running application enabled mouse reporting, a right-click is
+   * the application's; we let it through and stay quiet. Otherwise the click
+   * is ours and must be swallowed here, because preventing `contextmenu`
+   * alone does not stop the `mousedown` xterm turns into a mouse report —
+   * that mismatch is what produced both an application response and a local
+   * menu for a single click.
+   */
+  const handleTerminalMouseDownCapture = (e: MouseEvent) => {
+    if (e.button === 1) {
+      // Middle-click paste stays a Windows-only capture so other platforms
+      // keep letting xterm see the button, matching previous behavior.
+      if (isWindows) {
+        handleTerminalMouseDown(e);
+        terminal.focus();
+        e.stopPropagation();
+      }
+      return;
+    }
+
+    if (e.button !== 2) return;
+
+    const decision = resolveRightClick(e);
+    if (decision.owner !== "local") return;
+
+    e.preventDefault();
+    e.stopPropagation();
     handleTerminalMouseDown(e);
     terminal.focus();
+
+    if (
+      terminalAppSettingsRef.current?.interaction?.terminal_right_click_action ===
+      "paste"
+    ) {
+      pasteClipboard().catch(() => {});
+    }
+  };
+
+  /**
+   * Block the local context menu for a right-click that belongs to the
+   * application. Without this the pointer event would be forwarded to the
+   * application *and* Radix would still open NyaTerm's menu on `contextmenu`,
+   * which is the double response being fixed.
+   */
+  const handleTerminalContextMenuCapture = (e: MouseEvent) => {
+    if (e.button !== 2 && e.button !== 0) return;
+    if (resolveRightClick(e).owner !== "remote") return;
+    e.preventDefault();
     e.stopPropagation();
+  };
+
+  const resolveRightClick = (e: MouseEvent) => {
+    const interaction = terminalAppSettingsRef.current?.interaction;
+    return routeTerminalRightClick({
+      button: 2,
+      altKey: e.altKey,
+      mouseTrackingMode: getMouseTrackingMode(),
+      rightClickAction: interaction?.terminal_right_click_action ?? "menu",
+      altForcesLocalMenu:
+        interaction?.terminal_right_click_alt_forces_local ?? true,
+    });
   };
 
   const handleTerminalMouseUp = (e: MouseEvent) => {
@@ -283,6 +345,12 @@ export function installXTerminalSelectionController({
     pasteClipboard().catch(() => {});
   };
 
+  containerEl.addEventListener("mousedown", handleTerminalMouseDownCapture, true);
+  containerEl.addEventListener(
+    "contextmenu",
+    handleTerminalContextMenuCapture,
+    true,
+  );
   containerEl.addEventListener("mousedown", handleTerminalMouseDown);
   containerEl.addEventListener("mouseup", handleTerminalMouseUp);
   containerEl.addEventListener("pointercancel", handleTerminalPointerCancel);
@@ -292,7 +360,6 @@ export function installXTerminalSelectionController({
     document.addEventListener("mousemove", handleMacReleasedMouseMove, true);
   }
   if (isWindows) {
-    containerEl.addEventListener("mousedown", handleWindowsMouseDownCapture, true);
     terminal.textarea?.addEventListener("focus", handleTerminalFocus);
     terminal.textarea?.addEventListener("blur", handleTerminalBlur);
     window.addEventListener("keydown", handleSyntheticWinVPaste, true);
@@ -302,6 +369,16 @@ export function installXTerminalSelectionController({
 
   return {
     dispose: () => {
+      containerEl.removeEventListener(
+        "mousedown",
+        handleTerminalMouseDownCapture,
+        true,
+      );
+      containerEl.removeEventListener(
+        "contextmenu",
+        handleTerminalContextMenuCapture,
+        true,
+      );
       containerEl.removeEventListener("mousedown", handleTerminalMouseDown);
       containerEl.removeEventListener("mouseup", handleTerminalMouseUp);
       containerEl.removeEventListener(
@@ -318,7 +395,6 @@ export function installXTerminalSelectionController({
         );
       }
       if (isWindows) {
-        containerEl.removeEventListener("mousedown", handleWindowsMouseDownCapture, true);
         terminal.textarea?.removeEventListener("focus", handleTerminalFocus);
         terminal.textarea?.removeEventListener("blur", handleTerminalBlur);
         window.removeEventListener("keydown", handleSyntheticWinVPaste, true);
