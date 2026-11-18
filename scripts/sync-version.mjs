@@ -27,16 +27,25 @@ sidecarCargo = sidecarCargo.replace(
 writeFileSync(sidecarManifestPath, sidecarCargo);
 
 // Change the version in Cargo.lock
+// The app crate was renamed to `nyaterm-classic` during the classic rebrand, so
+// resolve the package name from Cargo.toml instead of hard-coding the old one.
 function updateNyaTermVersion(version) {
   const filePath = 'src-tauri/Cargo.lock';
   const content = readFileSync(filePath, 'utf-8');
+  const manifest = readFileSync('src-tauri/Cargo.toml', 'utf-8');
+  const nameMatch = manifest.match(/\[package\]\s*\nname\s*=\s*"([^"]+)"/);
+  if (!nameMatch) {
+    throw new Error('Could not read the app package name from src-tauri/Cargo.toml');
+  }
+  const packageName = nameMatch[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-  const pattern =
-    /(\[\[package\]\]\r?\nname = "nyaterm"\r?\nversion = ")([^"]*)(")/;
+  const pattern = new RegExp(
+    `(\\[\\[package\\]\\]\\r?\\nname = "${packageName}"\\r?\\nversion = ")([^"]*)(")`
+  );
 
   if (!pattern.test(content)) {
     throw new Error(
-      'Could not find the version field for [[package]] name = "nyaterm" in src-tauri/Cargo.lock'
+      `Could not find the version field for [[package]] name = "${packageName}" in src-tauri/Cargo.lock`
     );
   }
 

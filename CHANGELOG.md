@@ -4,24 +4,33 @@ All notable changes to this project will be documented in this file.
 
 This changelog is inferred from release bump commits in git history (for example `chore: bump version to vX.Y.Z`) and grouped by Conventional Commit type.
 
-## [Unreleased]
+## [1.3.3] - 2026-11-18
+
+This release syncs several capabilities from the 2.x line into this
+Tauri/React codebase. Each one was reimplemented here rather than copied, so
+the implementation differs while the behaviour matches.
 
 ### Added
 
-- **ai:** Per-credential custom HTTP request headers (name/value, up to 32 per provider). Values are encrypted at rest, masked in the settings API, and applied to chat, agent, and model-discovery requests; managed transport headers such as `Host` and `Content-Length` are rejected.
-- **themes:** Import Windows Terminal color schemes, including JSONC files with comments and trailing commas. Every scheme in the file becomes a custom NyaTerm theme.
-- **files:** Add a read-only, virtualized HEX viewer for binary files, reachable from the preview's "View as HEX" action; it supports offset jump and warns when the file is truncated.
-- **themes:** Add the missing Dracula Light, WindTerm Dark, and WindTerm Light built-in themes.
-- **monitoring:** Show logged-in users (account plus session count) on the remote resource panel. The `who` probe is time-bounded, runs on its own 30-second cadence, and reports "unavailable"/"failed" instead of silently showing an empty list.
-- **search:** Rank saved-connection results by text relevance (exact > prefix > substring, name/host > type > description > id, with tag and group hits promoted) while searching the start page; the chosen sort order still applies when no query is active.
+- **ai:** *(from 2.0.0)* Per-credential custom HTTP request headers (name/value, up to 32 per provider). Values are encrypted at rest, masked in the settings API, and applied to chat, agent, and model-discovery requests; managed transport headers such as `Host` and `Content-Length` are rejected.
+- **themes:** *(from 2.x preview.7)* Import Windows Terminal color schemes, including JSONC files with comments and trailing commas. Every scheme in the file becomes a custom NyaTerm theme.
+- **files:** *(from 2.x preview.5)* Add a read-only, virtualized HEX viewer for binary files, reachable from the preview's "View as HEX" action; it supports offset jump and warns when the file is truncated.
+- **themes:** *(from 2.0.2)* Add the missing Dracula Light, WindTerm Dark, and WindTerm Light built-in themes.
+- **monitoring:** *(from 2.0.2)* Show logged-in users (account plus session count) on the remote resource panel. The `who` probe is time-bounded, runs on its own 30-second cadence, and reports "unavailable"/"failed" instead of silently showing an empty list.
+- **search:** *(from 2.0.5)* Rank saved-connection results by text relevance (exact > prefix > substring, name/host > type > description > id, with tag and group hits promoted) while searching the start page; the chosen sort order still applies when no query is active.
 
 ### Changed
 
-- **terminal:** Stop using `/dev/null` as the zsh injection history file. Zsh creates a lock beside the history file, so an unprivileged user with `HISTSIZE`/`SAVEHIST` set got `locking failed` and the injection leaked into saved history. Push an anonymous in-memory list instead and pop it only when the push succeeded.
-- **ui:** Label 1024-based byte sizes with IEC units (`KiB`, `MiB`, `GiB`, …) instead of the decimal `KB`/`MB`/`GB` names across the resource monitor, header status, transfer panel, process manager, recording panel, update dialog, and asset list. Every one of them paired decimal labels with a 1024 divisor.
+- **terminal:** *(from 2.0.4)* Stop using `/dev/null` as the zsh injection history file. Zsh creates a lock beside the history file, so an unprivileged user with `HISTSIZE`/`SAVEHIST` set got `locking failed` and the injection leaked into saved history. Push an anonymous in-memory list instead and pop it only when the push succeeded.
+- **ui:** *(from 2.0.5)* Label 1024-based byte sizes with IEC units (`KiB`, `MiB`, `GiB`, …) instead of the decimal `KB`/`MB`/`GB` names across the resource monitor, header status, transfer panel, process manager, recording panel, update dialog, and asset list. Every one of them paired decimal labels with a 1024 divisor.
 - **branding:** Rename the application to `nyaterm-classic` (display name "NyaTerm Classic", Tauri identifier `com.kang.nyaterm.classic`) so the 1.x line can coexist with the 2.x GPUI build.
 - **storage:** Move the Desktop data directory to `~/.nyaterm-classic` (previously `~/.nyaterm`) so classic does not contend for the same `nyaterm.redb` file lock as other NyaTerm builds. Existing `~/.nyaterm` data is left untouched; migrate it manually if needed. Internal crate names, MCP sidecar name, and `nyaterm://` deep-link scheme are unchanged.
 - **build:** Add the `custom-protocol` Cargo feature (standard Tauri template entry) so release builds embed the frontend assets instead of falling back to the `localhost:1420` dev URL. Required when building with plain `cargo build` rather than `tauri build`.
+
+### Fixed
+
+- **build:** `scripts/sync-version.mjs` still looked for the pre-rebrand `nyaterm` package name in Cargo.lock and aborted before writing it, so a version bump left the lockfile out of sync. It now resolves the app package name from Cargo.toml.
+- **packaging:** Place the MCP sidecar as `nyaterm-mcp.exe` beside the executable, which is where the portable layout resolves it; previously only the target-triple-suffixed name was shipped, so MCP reported "sidecar is not installed".
 
 ## [1.2.12] - 2026-09-29
 
