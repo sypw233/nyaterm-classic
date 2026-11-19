@@ -49,6 +49,15 @@ interface TerminalOutputDrainOptions<TWriteContext = unknown> {
   getWriteChunkBytes: () => number;
   getForegroundDelayMs?: () => number;
   shouldUseLowLatencyFlush?: () => boolean;
+  /**
+   * When true, never write from a microtask: every foreground write waits for
+   * the next animation frame so all output that arrived in the same frame is
+   * coalesced into one xterm write (and therefore one repaint).
+   *
+   * This trades a little input latency for a large reduction in DOM renderer
+   * work, which is the dominant cost on machines without a GPU.
+   */
+  forceFrameBatching?: () => boolean;
   onAck: (bytes: number) => void;
   onWriteStart?: (payload: QueuedOutputChunk) => TWriteContext;
   onWriteComplete?: (payload: QueuedOutputChunk, context: TWriteContext | undefined) => void;
@@ -313,7 +322,11 @@ export class TerminalOutputDrain<TWriteContext = unknown> {
       return;
     }
 
-    if (this.options.shouldUseLowLatencyFlush?.() && this.hasForegroundTurnBudgetRemaining()) {
+    if (
+      !this.options.forceFrameBatching?.() &&
+      this.options.shouldUseLowLatencyFlush?.() &&
+      this.hasForegroundTurnBudgetRemaining()
+    ) {
       this.microtaskPending = true;
       this.timers.queueMicrotask(() => {
         this.microtaskPending = false;

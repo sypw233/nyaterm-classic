@@ -73,7 +73,7 @@ import type {
   UiConfig,
   WorkspaceSessionType,
 } from "@/types/global";
-import { invoke } from "../lib/invoke";
+import { invoke, setInvokeTraceEnabled } from "../lib/invoke";
 import { logger, setLoggerLevel } from "../lib/logger";
 import { DEFAULT_TERMINAL_FONT_SIZE } from "../lib/terminalFontSize";
 import { getOwnerMainWindowLabel, isPrimaryMainWindow } from "../lib/windowManager";
@@ -174,6 +174,10 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
     show_multi_line_paste_dialog: true,
     paste_image_as_path: true,
     reconnect_restore_cwd: false,
+    render_stats_enabled: false,
+    frame_batched_output: false,
+    tui_frame_limit_enabled: false,
+    tui_max_fps: 20,
   },
   interaction: {
     copy_on_select: false,
@@ -413,6 +417,18 @@ function preserveAppSettingsReferences(prev: AppSettings, next: AppSettings): Ap
 }
 
 /** Provides tabs, appSettings, savedConnections, and dialog state to the app. */
+/**
+ * Apply the log level, keeping per-command invoke tracing independent.
+ *
+ * Invoke tracing would emit two entries for every Tauri call; the settings
+ * dialog alone issues hundreds, which filled the log queue and made the dialog
+ * unresponsive. It stays off unless explicitly enabled, even at debug level.
+ */
+function applyDiagnosticsLevel(level: AppSettings["diagnostics"]["level"]) {
+  setLoggerLevel(level);
+  setInvokeTraceEnabled(false);
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   // Tabs State
   const [tabs, setTabs] = useState<Tab[]>([]);
@@ -479,7 +495,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const normalized = normalizeQuickCommandAppSettings(cfg);
         appSettingsRef.current = normalized;
         setAppSettings(normalized);
-        setLoggerLevel(normalized.diagnostics.level);
+        applyDiagnosticsLevel(normalized.diagnostics.level);
         appSettingsLoaded.current = true;
         setSettingsLoaded(true);
         if (isPrimaryMainWindow() && normalized.security?.enable_startup_lock) {
@@ -519,7 +535,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...nextUpdates,
         });
         appSettingsRef.current = next;
-        setLoggerLevel(next.diagnostics.level);
+        applyDiagnosticsLevel(next.diagnostics.level);
         if (appSettingsLoaded.current) {
           if (appSettingsSaveTimerRef.current) clearTimeout(appSettingsSaveTimerRef.current);
           appSettingsSaveTimerRef.current = setTimeout(() => {
@@ -550,7 +566,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         normalizeQuickCommandAppSettings(next),
       );
       appSettingsRef.current = normalized;
-      setLoggerLevel(normalized.diagnostics.level);
+      applyDiagnosticsLevel(normalized.diagnostics.level);
       return normalized;
     });
   }, []);

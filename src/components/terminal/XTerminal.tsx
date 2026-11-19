@@ -123,6 +123,7 @@ import { createTerminalHistoryRecovery } from "./terminalHistoryRecovery";
 import type { TerminalOutputDrain } from "./terminalOutputDrain";
 import { AlternateScreenStateTracker } from "./alternateScreenStateTracker";
 import type { Dec2026FrameGate } from "./dec2026FrameGate";
+import { observeTerminalRenderStats } from "./terminalRenderStats";
 import { useTerminalExternalDrop } from "./useTerminalExternalDrop";
 import { useTerminalFocusRestore } from "./useTerminalFocusRestore";
 import { useTerminalRefreshEffects } from "./useTerminalRefreshEffects";
@@ -326,6 +327,11 @@ export default function XTerminal({
   const suspendHibernationRef = useRef(suspendHibernation);
   const activeRef = useRef(active);
   const performanceModeRef = useRef<PerformanceMode>("normal");
+  // Mirrors terminal.frame_batched_output so the output drain can read it
+  // without re-subscribing whenever the setting changes.
+  const frameBatchedOutputRef = useRef(false);
+  // Max fps for full-screen TUI repaints; 0 disables the cap entirely.
+  const tuiMaxFpsRef = useRef(0);
   const alternateScreenTrackerRef = useRef(new AlternateScreenStateTracker());
   const handleVisibilityChangeRef = useRef<(() => void) | null>(null);
   const replaceInputCommandRef = useRef<((command: string) => void) | null>(
@@ -650,6 +656,18 @@ export default function XTerminal({
   useEffect(() => {
     terminalAppSettingsRef.current = terminalAppSettings;
   }, [terminalAppSettings]);
+
+  useEffect(() => {
+    frameBatchedOutputRef.current = terminalSettings.frame_batched_output ?? false;
+  }, [terminalSettings.frame_batched_output]);
+
+  useEffect(() => {
+    // The cap only ever applies while an alternate-screen program is active,
+    // so plain shell output is never throttled.
+    tuiMaxFpsRef.current = terminalSettings.tui_frame_limit_enabled
+      ? (terminalSettings.tui_max_fps ?? 20)
+      : 0;
+  }, [terminalSettings.tui_frame_limit_enabled, terminalSettings.tui_max_fps]);
 
   useEffect(() => {
     tRef.current = t;
@@ -2136,6 +2154,8 @@ export default function XTerminal({
       enterOverloadedMode,
       setOutputPressureMode,
       exitOverloadedMode,
+      frameBatchedOutputRef,
+      tuiMaxFpsRef,
     });
 
     writeOrderedTerminalStatus = (data: string) => {
@@ -2989,6 +3009,17 @@ export default function XTerminal({
     sessionId,
     restoringSnapshotRef,
   );
+
+  // Render diagnostics: opt-in per-frame statistics so a slow environment can
+  // be measured instead of guessed at. Off unless the setting is on, because
+  // the aggregation and log sink both cost time.
+  useEffect(() => {
+    if (!terminalInstance || !terminalSettings.render_stats_enabled) return;
+    return observeTerminalRenderStats({
+      sessionId,
+      terminal: terminalInstance,
+    });
+  }, [terminalInstance, sessionId, terminalSettings.render_stats_enabled]);
 
   // isDark is derived from the terminal theme background so built-in rule colors
   // switch automatically when the user changes themes.

@@ -17,6 +17,7 @@ function createHarness(
     writeChunkBytes?: number;
     autoCompleteWrites?: boolean;
     shouldUseLowLatencyFlush?: () => boolean;
+    forceFrameBatching?: () => boolean;
     getForegroundDelayMs?: () => number;
     writeDurationMs?: number;
   } = {},
@@ -53,6 +54,7 @@ function createHarness(
     getWriteChunkBytes: () => options.writeChunkBytes ?? 1024,
     getForegroundDelayMs: options.getForegroundDelayMs,
     shouldUseLowLatencyFlush: options.shouldUseLowLatencyFlush,
+    forceFrameBatching: options.forceFrameBatching,
     onAck: (bytes) => acks.push(bytes),
     onPressureChange: (bytes) => pressure.push(bytes),
     onBackgroundDrain: (stats) => backgroundDrains.push(stats),
@@ -458,6 +460,45 @@ describe("TerminalOutputDrain", () => {
 
     expect(writes).toEqual(["hello"]);
     expect(getFrameCount()).toBe(0);
+  });
+
+  it("waits for a frame instead of using the microtask path when frame batching is on", async () => {
+    const { drain, flushFrame, getFrameCount, writes } = createHarness({
+      shouldUseLowLatencyFlush: () => true,
+      forceFrameBatching: () => true,
+      writeChunkBytes: 16,
+    });
+
+    drain.setMode("foreground");
+    drain.enqueue({ data: "hello", bytes: 5 });
+    await settle();
+
+    // Nothing written yet: the write is deferred to the frame.
+    expect(writes).toEqual([]);
+    expect(getFrameCount()).toBe(1);
+
+    flushFrame();
+    await settle();
+    expect(writes).toEqual(["hello"]);
+  });
+
+  it("coalesces several enqueues into a single framed write", async () => {
+    const { drain, flushFrame, writes } = createHarness({
+      forceFrameBatching: () => true,
+      writeChunkBytes: 1024,
+    });
+
+    drain.setMode("foreground");
+    drain.enqueue({ data: "one", bytes: 3 });
+    drain.enqueue({ data: "two", bytes: 3 });
+    await settle();
+
+    expect(writes).toEqual([]);
+    flushFrame();
+    await settle();
+
+    // One write for the whole frame rather than one per enqueue.
+    expect(writes).toEqual(["onetwo"]);
   });
 
   it("yields to the next frame when a foreground drain turn exhausts its budget", async () => {

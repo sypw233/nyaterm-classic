@@ -115,6 +115,10 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
     show_multi_line_paste_dialog: true,
     paste_image_as_path: true,
     reconnect_restore_cwd: false,
+    render_stats_enabled: false,
+    frame_batched_output: false,
+    tui_frame_limit_enabled: false,
+    tui_max_fps: 20,
   },
   interaction: {
     copy_on_select: false,

@@ -295,6 +295,64 @@ export function TerminalTab() {
           />
         </SettingRow>
 
+        <SettingRow
+          label={t("settings.tuiFrameLimit")}
+          desc={t("settings.tuiFrameLimitDesc")}
+        >
+          <SettingSwitch
+            checked={appSettings.terminal.tui_frame_limit_enabled ?? false}
+            onChange={(v) =>
+              updateAppSettings({
+                terminal: { ...appSettings.terminal, tui_frame_limit_enabled: v },
+              })
+            }
+          />
+        </SettingRow>
+
+        {appSettings.terminal.tui_frame_limit_enabled && (
+          <SettingSelect
+            label={t("settings.tuiMaxFps")}
+            desc={t("settings.tuiMaxFpsDesc")}
+            value={String(appSettings.terminal.tui_max_fps ?? 20)}
+            controlClassName="max-w-sm"
+            onValueChange={(value) =>
+              updateAppSettings({
+                terminal: { ...appSettings.terminal, tui_max_fps: Number(value) },
+              })
+            }
+          >
+            <SelectItem value="10">10 fps</SelectItem>
+            <SelectItem value="15">15 fps</SelectItem>
+            <SelectItem value="20">20 fps</SelectItem>
+            <SelectItem value="30">30 fps</SelectItem>
+            <SelectItem value="60">60 fps</SelectItem>
+          </SettingSelect>
+        )}
+
+        <SettingRow
+          label={t("settings.renderStats")}
+          desc={t("settings.renderStatsDesc")}
+        >
+          <SettingSwitch
+            checked={appSettings.terminal.render_stats_enabled ?? false}
+            onChange={(v) =>
+              updateAppSettings({ terminal: { ...appSettings.terminal, render_stats_enabled: v } })
+            }
+          />
+        </SettingRow>
+
+        <SettingRow
+          label={t("settings.frameBatchedOutput")}
+          desc={t("settings.frameBatchedOutputDesc")}
+        >
+          <SettingSwitch
+            checked={appSettings.terminal.frame_batched_output ?? false}
+            onChange={(v) =>
+              updateAppSettings({ terminal: { ...appSettings.terminal, frame_batched_output: v } })
+            }
+          />
+        </SettingRow>
+
         <SettingRow label={t("settings.showLineNumbers")} desc={t("settings.showLineNumbersDesc")}>
           <SettingSwitch
             checked={appSettings.terminal.show_line_numbers}

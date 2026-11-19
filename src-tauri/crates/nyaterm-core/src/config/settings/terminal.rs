@@ -92,8 +92,29 @@ pub struct TerminalSettings {
     pub paste_image_as_path: bool,
     #[serde(default = "default_false")]
     pub reconnect_restore_cwd: bool,
+    /// Log per-frame terminal render statistics (renderer kind, rows rebuilt,
+    /// write batches). Diagnostic aid for slow/no-GPU environments; the logging
+    /// itself costs time, so it is off by default.
+    #[serde(default = "default_false")]
+    pub render_stats_enabled: bool,
+    /// Coalesce terminal output into at most one xterm write per animation
+    /// frame. Cuts DOM renderer repaints substantially on hosts without GPU
+    /// acceleration, at the cost of a frame of extra latency.
+    #[serde(default = "default_false")]
+    pub frame_batched_output: bool,
+    /// Cap the repaint rate of full-screen TUI programs (vim, htop, btop).
+    /// Off by default: it only ever applies while a full-screen program is
+    /// active, but capping frames is still a visible trade-off, so it is opt-in.
+    #[serde(default = "default_false")]
+    pub tui_frame_limit_enabled: bool,
+    /// Maximum frames per second while `tui_frame_limit_enabled` is on.
+    #[serde(default = "default_tui_max_fps")]
+    pub tui_max_fps: u32,
 }
 
+fn default_tui_max_fps() -> u32 {
+    20
+}
 fn default_scrollback() -> u32 {
     DEFAULT_SCROLLBACK_LINES
 }
@@ -159,6 +180,10 @@ impl Default for TerminalSettings {
             show_multi_line_paste_dialog: true,
             paste_image_as_path: true,
             reconnect_restore_cwd: false,
+            render_stats_enabled: false,
+            frame_batched_output: false,
+            tui_frame_limit_enabled: false,
+            tui_max_fps: default_tui_max_fps(),
         }
     }
 }

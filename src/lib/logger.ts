@@ -19,6 +19,7 @@ type LogDomain =
   | "settings.persistence"
   | "connections.defaults"
   | "terminal.input"
+  | "terminal.render"
   | "terminal.resize"
   | "session.lifecycle"
   | "ssh.auth"

@@ -42,6 +42,13 @@ interface CreateXTerminalOutputControllerParams {
   enterOverloadedMode: () => void;
   setOutputPressureMode: (mode: PerformanceMode) => void;
   exitOverloadedMode: (nextMode?: PerformanceMode) => void;
+  /**
+   * When true, coalesce all output writes into one per animation frame instead
+   * of flushing from a microtask. Reduces DOM renderer repaints on slow hosts.
+   */
+  frameBatchedOutputRef: MutableRef<boolean>;
+  /** Max fps for full-screen TUI repaints; 0 = unlimited. */
+  tuiMaxFpsRef: MutableRef<number>;
 }
 
 export function createXTerminalOutputController({
@@ -62,6 +69,8 @@ export function createXTerminalOutputController({
   enterOverloadedMode,
   setOutputPressureMode,
   exitOverloadedMode,
+  frameBatchedOutputRef,
+  tuiMaxFpsRef,
 }: CreateXTerminalOutputControllerParams) {
   const outputAckLease = outputAckCoordinator.acquire(
     sessionId,
@@ -78,6 +87,7 @@ export function createXTerminalOutputController({
       (outputDrainRef.current?.getQueueBytes() ?? 0) +
       (frameGateRef.current?.getHeldBytes() ?? 0),
     isAlternateScreenActive,
+    getAlternateScreenMaxFps: () => tuiMaxFpsRef.current,
   });
 
   const getWriteChunkBytes = () => outputScheduler.getWriteChunkBytes();
@@ -172,6 +182,7 @@ export function createXTerminalOutputController({
     getWriteChunkBytes,
     getForegroundDelayMs,
     shouldUseLowLatencyFlush,
+    forceFrameBatching: () => frameBatchedOutputRef.current,
     onAck: sendOutputAck,
     onWriteStart: () => {
       outputScheduler.noteWriteStart();

@@ -1472,6 +1472,14 @@ export interface TerminalSettings {
   show_multi_line_paste_dialog: boolean;
   paste_image_as_path: boolean;
   reconnect_restore_cwd: boolean;
+  /** Log per-frame render statistics; off by default because logging costs time. */
+  render_stats_enabled?: boolean;
+  /** Coalesce output into one xterm write per frame; helps hosts without GPU. */
+  frame_batched_output?: boolean;
+  /** Cap repaint rate of full-screen TUI programs. Off by default. */
+  tui_frame_limit_enabled?: boolean;
+  /** Max fps for full-screen TUI repaints while the cap is enabled. */
+  tui_max_fps?: number;
 }
 
 export interface TransferSettings {
