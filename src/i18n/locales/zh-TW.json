@@ -778,6 +778,7 @@
     "removeCustomIcon": "移除自訂圖示",
     "removeTag": "移除標籤 {{tag}}",
     "save": "儲存",
+    "saveAsDefault": "儲存為新建連線的預設設定",
     "savedPassword": "已儲存密碼",
     "saving": "儲存中...",
     "searchOtpEntries": "搜尋 OTP 條目...",

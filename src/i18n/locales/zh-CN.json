@@ -778,6 +778,7 @@
     "removeCustomIcon": "移除自定义图标",
     "removeTag": "移除标签 {{tag}}",
     "save": "保存",
+    "saveAsDefault": "保存为新建连接的默认设置",
     "savedPassword": "已保存密码",
     "saving": "保存中...",
     "searchOtpEntries": "搜索 OTP 条目...",

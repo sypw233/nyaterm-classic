@@ -17,6 +17,7 @@ type LogDomain =
   | "tauri.invoke"
   | "window.lifecycle"
   | "settings.persistence"
+  | "connections.defaults"
   | "terminal.input"
   | "terminal.resize"
   | "session.lifecycle"

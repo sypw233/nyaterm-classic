@@ -48,6 +48,7 @@ import { getCurrentWindow } from "@/lib/backend/platform/window";
 import { runtime, supports } from "@/lib/backend/runtime";
 import { getErrorMessage } from "@/lib/errors";
 import { invoke } from "@/lib/invoke";
+import { logger } from "@/lib/logger";
 import { isWindows } from "@/lib/platform";
 import { validateSshAgentForwardingEndpoints } from "@/lib/sshAgent";
 import type {
@@ -346,6 +347,8 @@ export default function NewSessionPage() {
   const [recordingUseGlobal, setRecordingUseGlobal] = useState(true);
   const [recordingAutoStart, setRecordingAutoStart] = useState(false);
   const [recordingMode, setRecordingMode] = useState<RecordingMode>("transcript");
+  // Also store this connection's parameters as the defaults for its kind.
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
 
   useEffect(() => {
     if (supports("localShell")) {
@@ -645,10 +648,102 @@ export default function NewSessionPage() {
     defaultLocalShell,
   ]);
 
+  // Apply the parameters the user saved as defaults for a connection kind.
+  // Identity fields (name, group, description, tags, icon) stay untouched so a
+  // new connection is still its own entry.
+  const applySessionDefaults = useCallback(
+    async (protocol: EditorProtocol) => {
+      if (editId) return;
+      let template: SavedConnection | null = null;
+      try {
+        template = await invoke<SavedConnection | null>("get_default_session_settings_for", {
+          kind: protocol,
+        });
+      } catch {
+        return;
+      }
+      if (!template) return;
+
+      setEncoding(template.encoding || "global");
+      setRecordingUseGlobal(!template.recording);
+      setProxyId(template.network?.proxy_id || "");
+      setJumpHostId(template.network?.proxy_jump_id || "");
+      setPostLoginEnabled(template.post_login?.enabled ?? false);
+      setPostLoginCommand(template.post_login?.command ?? "");
+      setPostLoginDelayMs(template.post_login?.delay_ms ?? DEFAULT_POST_LOGIN_DELAY_MS);
+
+      if (protocol === "ssh") {
+        setSshPort(template.port || 22);
+        setUsername(template.username || "root");
+        setSshBackspaceMode(template.backspace_mode || "del");
+        setX11Forwarding(template.x11_forwarding ?? false);
+        setAuthAgentEndpoint(template.auth_agent_endpoint ?? { type: "auto" });
+        setAgentForwardingConfig(
+          normalizeSshAgentForwardingConfig(template.agent_forwarding_config),
+        );
+        setSshAlgorithms(normalizeSshAlgorithms(template.ssh_algorithms));
+        setSshProfile(template.ssh_profile || "standard");
+        setSshTerminalType(template.terminal_type || "default");
+        setSftpSettings(normalizeSftpSettings(template.sftp));
+        setRemoteDynamicTabTitle(template.dynamic_tab_title ?? false);
+      } else if (protocol === "telnet") {
+        setTelnetPort(template.port || 23);
+        setTelnetBackspaceMode(template.backspace_mode || "del");
+        setTelnetRawTcpCli(template.raw_tcp_cli ?? false);
+        setTelnetKeepAliveInterval(template.keep_alive_interval ?? 60);
+        setTelnetEnterMode(template.enter_mode || "cr");
+        setTelnetLocalEcho(template.local_echo ?? false);
+        setTelnetLocalLineEdit(template.local_line_edit ?? false);
+        setTelnetForceCharacterAtATime(template.force_character_at_a_time ?? false);
+        setTelnetSendNaws(template.send_naws ?? true);
+        setTelnetSendSga(template.send_sga ?? true);
+      } else if (protocol === "local") {
+        setShellPath(template.shell_path || FALLBACK_LOCAL_SHELL);
+        setShellArgs(template.shell_args || "");
+        setWorkingDir(template.working_dir || "");
+        setDynamicTabTitle(template.dynamic_tab_title ?? false);
+      } else if (protocol === "serial") {
+        setBaudRate(String(template.baud_rate || 115200));
+        setDataBits(String(template.data_bits || 8));
+        setParity(template.parity || "none");
+        setStopBits(template.stop_bits || "1");
+        setSerialBackspaceMode(template.backspace_mode || "ctrl_h");
+        setSerialModemUploadProtocol(template.modem_upload_protocol || "zmodem");
+        setSerialFlowControl(template.flow_control ?? "none");
+      } else if (protocol === "rdp") {
+        setRdpPort(template.port || 3389);
+        setUsername(template.username || DEFAULT_RDP_USERNAME);
+        setRdpDomain(template.domain || "");
+        setRdpUseNla(template.security?.use_nla ?? true);
+        setRdpCertificatePolicy(template.security?.certificate_policy ?? "prompt");
+        setRdpDisplayMode(
+          template.display?.mode === "native" ? "fixed" : (template.display?.mode ?? "fit-window"),
+        );
+        setRdpDisplayWidth(template.display?.width ?? 1920);
+        setRdpDisplayHeight(template.display?.height ?? 1080);
+        setRdpClipboardMode(template.clipboard?.mode ?? "text-only");
+        setRdpReconnectEnabled(template.reconnect?.enabled ?? true);
+        setRdpReconnectMaxAttempts(template.reconnect?.max_attempts ?? 5);
+      } else if (protocol === "vnc") {
+        setVncPort(template.port || 5900);
+        setVncSecurityMode(template.security?.mode ?? "auto");
+        setVncScaleMode(template.display?.scale_mode ?? "fit");
+        setVncShared(template.shared ?? true);
+        setVncViewOnly(template.view_only ?? false);
+        setVncClipboardEnabled(template.clipboard?.enabled ?? true);
+        setVncReconnectEnabled(template.reconnect?.enabled ?? true);
+        setVncReconnectMaxAttempts(template.reconnect?.max_attempts ?? 5);
+      }
+    },
+    [editId],
+  );
+
   const handleTabChange = useCallback(
     (value: string) => {
       resetNavigation();
       setCurrentTab(value as EditorProtocol);
+      // A new connection of this kind starts from the user's saved defaults.
+      void applySessionDefaults(value as EditorProtocol);
       if (value === "telnet") {
         setPasswordSource((current) => (current === "ask" ? "direct" : current));
       }
@@ -658,7 +753,7 @@ export default function NewSessionPage() {
         );
       }
     },
-    [resetNavigation],
+    [applySessionDefaults, resetNavigation],
   );
 
   const serialPortOptions: { unavailable?: boolean; value: string }[] = serialPorts.map((port) => ({
@@ -1241,6 +1336,22 @@ export default function NewSessionPage() {
       };
 
       const savedId = await invoke<string>("save_connection", { connection });
+      if (saveAsDefault) {
+        try {
+          await invoke("save_default_session_settings", {
+            kind: currentTab,
+            connection,
+          });
+        } catch (defaultsError) {
+          // Failing to store defaults must not fail the save itself.
+          logger.warn({
+            domain: "connections.defaults",
+            event: "save_failed",
+            message: "Could not store default session settings",
+            error: defaultsError,
+          });
+        }
+      }
       await emit("session-saved");
       if (autoConnect && (initialData?.id || savedId)) {
         await emit("session-connect-after-edit", {
@@ -1974,6 +2085,14 @@ export default function NewSessionPage() {
           </div>
         )}
         <ActionFooter>
+          <label className="mr-auto inline-flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+            <Switch
+              checked={saveAsDefault}
+              onCheckedChange={setSaveAsDefault}
+              aria-label={t("dialog.saveAsDefault")}
+            />
+            {t("dialog.saveAsDefault")}
+          </label>
           <ActionButton variant="outline" onClick={handleClose}>
             {t("dialog.cancel")}
           </ActionButton>

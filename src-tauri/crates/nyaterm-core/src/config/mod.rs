@@ -6,6 +6,7 @@
 mod cloud_sync;
 mod connection;
 mod credential;
+mod default_session;
 mod key;
 mod note;
 mod otp;
@@ -46,6 +47,11 @@ pub use connection::{
     validate_ssh_agent_endpoint, validate_ssh_agent_endpoint_shape,
     validate_ssh_agent_forwarding_config, validate_ssh_agent_forwarding_shape,
     validate_ssh_agent_settings,
+};
+#[allow(unused_imports)]
+pub use default_session::{
+    DefaultSessionSettings, SessionKind, apply_session_defaults, load_default_session_settings,
+    save_default_session_settings,
 };
 #[allow(unused_imports)]
 pub use credential::{

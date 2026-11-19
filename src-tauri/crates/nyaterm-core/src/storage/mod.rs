@@ -69,6 +69,7 @@ pub enum SettingsDocKey {
     WindowState,
     ProxyGroups,
     TunnelGroups,
+    DefaultSessionSettings,
 }
 impl SettingsDocKey {
     fn storage_key(self) -> &'static str {
@@ -83,6 +84,7 @@ impl SettingsDocKey {
             Self::WindowState => "settings/doc/window-state",
             Self::ProxyGroups => "settings/doc/proxy-groups",
             Self::TunnelGroups => "settings/doc/tunnel-groups",
+            Self::DefaultSessionSettings => "settings/doc/default-session",
         }
     }
 
@@ -95,7 +97,10 @@ impl SettingsDocKey {
             Self::AiHistory => Some(tables::LEGACY_JSON_AI_HISTORY),
             Self::AiAudit => Some(tables::LEGACY_JSON_AI_AUDIT),
             Self::SftpFileBackendCache => Some("file-backend-cache"),
-            Self::WindowState | Self::ProxyGroups | Self::TunnelGroups => None,
+            Self::WindowState
+            | Self::ProxyGroups
+            | Self::TunnelGroups
+            | Self::DefaultSessionSettings => None,
         }
     }
 }

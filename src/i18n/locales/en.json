@@ -779,6 +779,7 @@
     "removeCustomIcon": "Remove custom icon",
     "removeTag": "Remove tag {{tag}}",
     "save": "Save",
+    "saveAsDefault": "Save as default for new connections",
     "savedPassword": "Saved password",
     "saving": "Saving...",
     "searchOtpEntries": "Search OTP entries...",

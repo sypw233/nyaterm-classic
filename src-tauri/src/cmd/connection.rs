@@ -205,6 +205,52 @@ pub fn save_connection(app: tauri::AppHandle, connection: SavedConnection) -> Ap
     Ok(id)
 }
 
+/// Default session settings per connection kind, applied to new connections.
+#[tauri::command]
+pub fn get_default_session_settings() -> AppResult<config::DefaultSessionSettings> {
+    config::load_default_session_settings()
+}
+
+/// The stored template for one kind, if the user saved one.
+#[tauri::command]
+pub fn get_default_session_settings_for(kind: String) -> AppResult<Option<SavedConnection>> {
+    let kind = config::SessionKind::from_str(&kind)
+        .ok_or_else(|| AppError::Config(format!("unknown connection kind: {kind}")))?;
+    Ok(config::load_default_session_settings()?.get(kind).cloned())
+}
+
+#[tauri::command]
+pub fn save_default_session_settings(
+    app: tauri::AppHandle,
+    kind: String,
+    connection: SavedConnection,
+) -> AppResult<()> {
+    let kind = config::SessionKind::from_str(&kind)
+        .ok_or_else(|| AppError::Config(format!("unknown connection kind: {kind}")))?;
+    validate_local_terminal_config(&connection)?;
+    // The stored payload is a template, not a saved connection: identity fields
+    // would only leak one sample connection's name into every new one.
+    let mut template = connection;
+    template.name.clear();
+    template.group_id = None;
+    template.description = None;
+    template.tags.clear();
+    template.icon = None;
+    template.icon_auto_detect = None;
+    template.sort_order = 0;
+    template.id = String::new();
+    template.created_at_ms = None;
+    template.updated_at_ms = None;
+    template.last_used_at_ms = None;
+    template.asset = None;
+
+    let mut settings = config::load_default_session_settings()?;
+    settings.set(kind, template);
+    config::save_default_session_settings(&settings)?;
+    schedule_cloud_sync_notify(app);
+    Ok(())
+}
+
 fn update_connection_icon_in_config(
     cfg: &mut config::AppConfig,
     connection_id: &str,

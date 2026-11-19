@@ -112,6 +112,29 @@ pub async fn route(
             let mut config=config::load_config(&())?;config.connections.retain(|c|!targets.contains(c.id.as_str()));config::save_config(&(),&config)?;
             state.broadcast("connections-changed",Value::Null).await;Value::Null
         },
+        "get_default_session_settings" => {
+            config::load_default_session_settings()?
+        },
+        "get_default_session_settings_for" => {
+            let kind=config::SessionKind::from_str(&text(&args,"kind")?).ok_or_else(||WebError::bad("unknown connection kind"))?;
+            json!(config::load_default_session_settings()?.get(kind).cloned())
+        },
+        "save_default_session_settings" => {
+            let _guard=state.mutation.lock().await;
+            let kind_value=text(&args,"kind")?;
+            let kind=config::SessionKind::from_str(&kind_value).ok_or_else(||WebError::bad("unknown connection kind"))?;
+            let connection:config::SavedConnection=argument(&args,"connection")?;
+            let mut template=connection;
+            template.name.clear();template.group_id=None;template.description=None;
+            template.tags.clear();template.icon=None;template.icon_auto_detect=None;
+            template.sort_order=0;template.id=String::new();
+            template.created_at_ms=None;template.updated_at_ms=None;
+            template.last_used_at_ms=None;template.asset=None;
+            let mut settings=config::load_default_session_settings()?;
+            settings.set(kind,template);
+            config::save_default_session_settings(&settings)?;
+            Value::Null
+        },
         "update_connection_icon" | "update_connection_asset_from_monitoring" => {
             let _guard=state.mutation.lock().await;let mut cfg=config::load_config(&())?;
             let id=text(&args,"connectionId")?;
