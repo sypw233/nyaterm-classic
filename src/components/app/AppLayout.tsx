@@ -698,9 +698,12 @@ export default function AppLayout({
               void bounceTopModalWindow();
             }}
             style={{
-              backgroundColor: "rgba(0, 0, 0, 0.3)",
-              backdropFilter: "blur(4px)",
-              WebkitBackdropFilter: "blur(4px)",
+              // No backdrop-filter here on purpose. A full-window blur forces the
+              // compositor to gaussian-blur every pixel on every frame, which is
+              // extremely slow on software-rendered (no GPU) hosts and made modal
+              // child windows such as Settings feel frozen. A flat dim achieves
+              // the same visual separation at effectively zero cost.
+              backgroundColor: "rgba(0, 0, 0, 0.45)",
             }}
           />
         )}

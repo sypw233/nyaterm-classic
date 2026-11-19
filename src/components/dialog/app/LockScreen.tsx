@@ -121,9 +121,9 @@ export default function LockScreen({ hasPassword, onUnlock, onRequestClose }: Lo
     <div
       className="fixed inset-0 z-[9999] flex flex-col"
       style={{
+        // Opaque enough that a backdrop blur adds nothing visible, while still
+        // costing a full-window gaussian blur per frame on software renderers.
         backgroundColor: "rgba(0, 0, 0, 0.85)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
       }}
     >
       {!isMacOS && (

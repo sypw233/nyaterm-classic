@@ -630,7 +630,7 @@ export default function SettingsPage() {
 
             <div className="flex flex-1 min-h-0 min-w-0 flex-col">
               <div
-                className="flex shrink-0 items-center justify-between border-b border-border/70 bg-background/90 px-4 py-4 backdrop-blur sm:px-6 sm:py-5"
+                className="flex shrink-0 items-center justify-between border-b border-border/70 bg-background/90 px-4 py-4 sm:px-6 sm:py-5"
                 data-tauri-drag-region
               >
                 <h3 className="text-lg font-semibold sm:text-2xl">{activeTabConfig?.label}</h3>

@@ -16,7 +16,7 @@
         "title": "NyaTerm Classic",
         "width": 1280,
         "height": 800,
-        "transparent": true,
+        "transparent": false,
         "visible": false,
         "decorations": false,
         "create": false,

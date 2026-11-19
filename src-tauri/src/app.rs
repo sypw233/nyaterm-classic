@@ -9,16 +9,48 @@ use crate::runtime::AppRuntime;
 fn main_window_config<R: tauri::Runtime>(
     manager: &impl Manager<R>,
 ) -> Result<tauri::utils::config::WindowConfig, Box<dyn std::error::Error>> {
-    manager
+    let mut config = manager
         .config()
         .app
         .windows
         .iter()
         .find(|window| window.label == crate::window_state::MAIN_WINDOW_LABEL)
         .cloned()
-        .ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::NotFound, "main window config not found").into()
-        })
+        .ok_or_else(|| -> Box<dyn std::error::Error> {
+            Box::new(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "main window config not found",
+            ))
+        })?;
+
+    // The transparent flag is fixed at window creation and cannot be changed at
+    // runtime. Creating a transparent window unconditionally forces the
+    // compositor to alpha-blend the whole surface against the desktop on every
+    // frame, which is a pure-CPU cost on software-rendered (no GPU) hosts and
+    // makes even static UI such as the settings window feel frozen.
+    //
+    // Only opt into it when the user actually configured a translucent window.
+    // This is read once at startup, so the existing "requires restart" note on
+    // the appearance setting still applies.
+    config.transparent = should_use_transparent_window(manager);
+
+    Ok(config)
+}
+
+/// True when the saved appearance settings ask for a translucent window.
+///
+/// Errors are treated as "no transparency": a broken settings read must not
+/// silently put the app back on the expensive compositing path.
+fn should_use_transparent_window<R: tauri::Runtime>(manager: &impl Manager<R>) -> bool {
+    let app = manager.app_handle();
+    let Ok(settings) = crate::config::load_app_settings(app) else {
+        return false;
+    };
+    let appearance = &settings.appearance;
+    crate::platform::WindowTransparency::from_settings(
+        &appearance.window_transparency,
+        appearance.window_transparency_tint,
+    ) == crate::platform::WindowTransparency::Transparent
 }
 
 fn apply_main_window_options<'a, R: tauri::Runtime, M: Manager<R>>(
