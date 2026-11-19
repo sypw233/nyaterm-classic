@@ -10,7 +10,24 @@ concurrency:
   group: web-checks-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  frontend:
+  # One job per check, run in parallel on purpose. Chaining lint -> i18n ->
+  # test -> build in a single job means the first failure skips the rest, so a
+  # lint error hides every test failure for as long as it stays red. That is
+  # exactly how the IEC-unit and asset-search test regressions stayed invisible.
+  checks:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: lint
+            run: pnpm lint
+          - name: i18n
+            run: pnpm i18n:check && pnpm i18n:keys
+          - name: test
+            run: pnpm test --run --maxWorkers=4
+          - name: build
+            run: pnpm build:web
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -22,10 +39,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm i18n:check && pnpm i18n:keys
-      - run: pnpm test --run --maxWorkers=4
-      - run: pnpm build:web
+      - run: ${{ matrix.run }}
   rust:
     runs-on: ubuntu-latest
     steps:
