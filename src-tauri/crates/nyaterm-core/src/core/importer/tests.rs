@@ -166,6 +166,72 @@ mod tests {
 "##;
 
     #[test]
+    fn windterm_imports_shell_sessions_as_local_terminals() {
+        let prepared = parse_windterm_content(
+            r#"
+[
+  {
+    "session.protocol": "Shell",
+    "session.target": "/bin/zsh",
+    "session.label": "Dev shell",
+    "session.group": "Work > Local",
+    "process.arguments": "-l",
+    "process.workingDirectory": "$(HomeDir)/projects"
+  }
+]
+"#,
+        )
+        .expect("parse windterm sessions");
+
+        assert_eq!(prepared.connections.len(), 1);
+        assert_eq!(prepared.connections[0].name, "Dev shell");
+        assert_eq!(
+            prepared.connections[0].group_path.as_deref(),
+            Some(["Work".to_string(), "Local".to_string()].as_slice())
+        );
+        let home = dirs::home_dir()
+            .map(|home| home.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        match &prepared.connections[0].config {
+            ConnectionType::LocalTerminal {
+                shell_path,
+                shell_args,
+                working_dir,
+                ..
+            } => {
+                assert_eq!(shell_path, "/bin/zsh");
+                assert_eq!(shell_args, "-l");
+                assert_eq!(
+                    working_dir.as_deref(),
+                    Some(format!("{home}/projects").as_str())
+                );
+            }
+            other => panic!("unexpected config: {other:?}"),
+        }
+        // A local shell has no credentials of its own.
+        assert!(prepared.connections[0].auth.is_none());
+    }
+
+    #[test]
+    fn windterm_ignores_non_ssh_non_shell_protocols() {
+        let prepared = parse_windterm_content(
+            r#"
+[
+  { "session.protocol": "Telnet", "session.target": "192.168.1.20" },
+  { "session.protocol": "SSH", "session.target": "192.168.1.10" }
+]
+"#,
+        )
+        .expect("parse windterm sessions");
+
+        assert_eq!(prepared.connections.len(), 1);
+        assert!(matches!(
+            &prepared.connections[0].config,
+            ConnectionType::Ssh { host, .. } if host == "192.168.1.10"
+        ));
+    }
+
+    #[test]
     fn windterm_import_splits_user_at_host_targets() {
         let prepared = parse_windterm_content(
             r#"
@@ -652,6 +718,111 @@ mod tests {
             .encrypt_padded_mut::<Pkcs7>(&mut buffer, plaintext.len())
             .expect("encrypt windterm payload");
         base64::Engine::encode(&base64::engine::general_purpose::STANDARD, ciphertext)
+    }
+
+    #[test]
+    fn windterm_one_key_accounts_become_saved_passwords() {
+        let crypto = derive_windterm_crypto("fingerprint-1", "");
+        let encrypted = encrypt_windterm_auto_login_for_test(
+            r#"{"Password":"one-key-secret","session.user":"deploy"}"#,
+            &crypto,
+        );
+        let dir = std::env::temp_dir().join(format!(
+            "nyaterm-windterm-onekey-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|elapsed| elapsed.as_nanos())
+                .unwrap_or_default()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let one_keys = format!(
+            r#"[{{"name":"Deploy account","type":"AccountOneKey","uuid":"uuid-1","auth":{encrypted:?}}}]"#
+        );
+        std::fs::write(dir.join("onekeys.config"), one_keys).unwrap();
+        let sessions_path = dir.join("user.sessions");
+        let content = r#"
+[
+  {
+    "session.protocol": "SSH",
+    "session.target": "192.168.1.10",
+    "session.label": "Prod",
+    "session.oneKey": "uuid-1"
+  },
+  {
+    "session.protocol": "SSH",
+    "session.target": "192.168.1.11",
+    "session.label": "Prod 2",
+    "session.oneKey": "uuid-1"
+  }
+]
+"#;
+
+        let prepared = parse_windterm_content_with_crypto(
+            content,
+            Some(&crypto),
+            Some(sessions_path.as_path()),
+        )
+        .expect("parse windterm sessions");
+
+        assert_eq!(prepared.connections.len(), 2);
+        // One saved account shared by both sessions.
+        assert_eq!(prepared.passwords.len(), 1);
+        let account = &prepared.passwords[0];
+        assert_eq!(account.name, "Deploy account");
+        assert_eq!(account.username, "deploy");
+        assert_eq!(
+            account.password.as_deref(),
+            Some("test-encrypted:one-key-secret")
+        );
+        for connection in &prepared.connections {
+            let auth = connection.auth.as_ref().expect("auth");
+            assert_eq!(auth.mode, "password");
+            assert_eq!(auth.account_id.as_deref(), Some(account.id.as_str()));
+            assert_eq!(auth.password_source.as_deref(), Some("account"));
+            // The password lives on the account, not on each connection.
+            assert!(auth.password.is_none());
+        }
+
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn windterm_one_key_without_auth_is_skipped_without_failing() {
+        let dir = std::env::temp_dir().join(format!(
+            "nyaterm-windterm-onekey-bad-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|elapsed| elapsed.as_nanos())
+                .unwrap_or_default()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("onekeys.config"),
+            r#"[{"name":"Broken","type":"OtherOneKey","uuid":"uuid-9","auth":"unused"}]"#,
+        )
+        .unwrap();
+        let sessions_path = dir.join("user.sessions");
+        let content = r#"
+[
+  {
+    "session.protocol": "SSH",
+    "session.target": "192.168.1.10",
+    "session.oneKey": "uuid-9"
+  }
+]
+"#;
+
+        let prepared =
+            parse_windterm_content_with_crypto(content, None, Some(sessions_path.as_path()))
+                .expect("parse windterm sessions");
+        assert_eq!(prepared.connections.len(), 1);
+        assert!(prepared.passwords.is_empty());
+        // The session still imports; only the account link is dropped.
+        assert_eq!(prepared.connections[0].auth.as_ref().map(|a| a.mode.as_str()), Some("none"));
+
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]

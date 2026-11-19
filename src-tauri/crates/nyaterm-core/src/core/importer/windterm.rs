@@ -38,6 +38,127 @@ fn parse_windterm_content_with_crypto(
     parse_windterm_content_impl(content, crypto, source_path, true)
 }
 
+/// WindTerm stores reusable one-key logins in a sibling `onekeys.config`.
+/// Each entry's `auth` is the same AES-CBC payload as `session.autoLogin`.
+fn load_windterm_one_keys(
+    source_path: Option<&Path>,
+    crypto: Option<&WindtermCrypto>,
+) -> Vec<WindtermOneKeyAccount> {
+    let Some(directory) = source_path.and_then(Path::parent) else {
+        return Vec::new();
+    };
+    let Some(path) = find_windterm_sibling(directory, "onekeys.config") else {
+        return Vec::new();
+    };
+    let Ok(content) = std::fs::read_to_string(&path) else {
+        return Vec::new();
+    };
+    let Ok(entries) = serde_json::from_str::<Vec<serde_json::Value>>(&content) else {
+        return Vec::new();
+    };
+    let mut accounts = Vec::new();
+    for entry in entries {
+        let uuid = entry
+            .get("uuid")
+            .and_then(|value| value.as_str())
+            .and_then(normalize_windterm_string_ref);
+        let Some(uuid) = uuid else { continue };
+        let kind = entry
+            .get("type")
+            .and_then(|value| value.as_str())
+            .and_then(normalize_windterm_string_ref);
+        // `SshOneKey` and `AccountOneKey` both describe reusable logins. Other
+        // kinds belong to protocols this importer does not create.
+        if kind.is_some_and(|kind| {
+            !kind.eq_ignore_ascii_case("SshOneKey") && !kind.eq_ignore_ascii_case("AccountOneKey")
+        }) {
+            continue;
+        }
+        let Some(payload) = entry
+            .get("auth")
+            .and_then(|value| value.as_str())
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .and_then(|raw| decode_windterm_auth_payload(raw, crypto))
+        else {
+            continue;
+        };
+        let Some(username) = ["session.user", "user", "username", "login", "account"]
+            .iter()
+            .find_map(|key| payload.get(*key))
+            .and_then(|value| value.as_str())
+            .and_then(normalize_windterm_string_ref)
+        else {
+            continue;
+        };
+        let password = ["Password", "password", "pass", "secret"]
+            .iter()
+            .find_map(|key| payload.get(*key))
+            .and_then(|value| value.as_str())
+            .and_then(normalize_windterm_string_ref);
+        let name = entry
+            .get("name")
+            .and_then(|value| value.as_str())
+            .and_then(normalize_windterm_string_ref)
+            .unwrap_or(username)
+            .to_string();
+        accounts.push(WindtermOneKeyAccount {
+            uuid: uuid.to_string(),
+            name,
+            username: username.to_string(),
+            password: password.map(str::to_string),
+        });
+    }
+    accounts
+}
+
+/// Decode a WindTerm credential payload: either plain JSON or an encrypted
+/// base64 blob sealed with the profile fingerprint.
+fn decode_windterm_auth_payload(
+    raw: &str,
+    crypto: Option<&WindtermCrypto>,
+) -> Option<serde_json::Map<String, serde_json::Value>> {
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(raw) {
+        return value.as_object().cloned();
+    }
+    let crypto = crypto?;
+    let ciphertext =
+        base64::Engine::decode(&base64::engine::general_purpose::STANDARD, raw).ok()?;
+    let plaintext = decrypt_windterm_auto_login(&ciphertext, crypto).ok()?;
+    let text = String::from_utf8(plaintext).ok()?;
+    serde_json::from_str::<serde_json::Value>(&text)
+        .ok()?
+        .as_object()
+        .cloned()
+}
+
+/// WindTerm writes these files with inconsistent case on Windows.
+fn find_windterm_sibling(directory: &Path, expected: &str) -> Option<std::path::PathBuf> {
+    let exact = directory.join(expected);
+    if exact.is_file() {
+        return Some(exact);
+    }
+    std::fs::read_dir(directory)
+        .ok()?
+        .flatten()
+        .map(|entry| entry.path())
+        .find(|path| {
+            path.is_file()
+                && path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.eq_ignore_ascii_case(expected))
+        })
+}
+
+#[derive(Debug, Clone)]
+struct WindtermOneKeyAccount {
+    uuid: String,
+    name: String,
+    username: String,
+    password: Option<String>,
+}
+
 fn parse_windterm_content_impl(
     content: &str,
     crypto: Option<&WindtermCrypto>,
@@ -51,12 +172,31 @@ fn parse_windterm_content_impl(
     let mut ssh_keys = Vec::new();
     let mut key_ids: HashMap<(String, Option<String>), String> = HashMap::new();
     let mut connections = Vec::new();
+    let one_keys = load_windterm_one_keys(source_path, crypto);
+    let mut passwords: Vec<config::SavedPassword> = Vec::new();
+    // One saved account per one-key entry, reused by every session that
+    // references it so the user sees one credential instead of duplicates.
+    let mut account_ids: HashMap<String, String> = HashMap::new();
 
     for entry in &entries {
         let protocol = entry
             .get("session.protocol")
             .and_then(|v| v.as_str())
             .unwrap_or("");
+        // WindTerm models a local terminal as a `Shell` session whose target is
+        // the executable and whose `process.*` fields carry the command line
+        // and working directory.
+        if protocol.eq_ignore_ascii_case("Shell") {
+            if let Some(connection) = prepare_windterm_local_shell(entry) {
+                if let Some(path) = &connection.group_path {
+                    if !groups.contains(path) {
+                        groups.push(path.clone());
+                    }
+                }
+                connections.push(connection);
+            }
+            continue;
+        }
         if !protocol.eq_ignore_ascii_case("SSH") {
             continue;
         }
@@ -126,15 +266,55 @@ fn parse_windterm_content_impl(
             .get("ssh.x11")
             .and_then(|value| value.as_bool())
             .unwrap_or(false);
-        let auth = prepare_windterm_auth(
-            allow_local_files,
-            entry,
-            auto_login.as_ref(),
-            source_path,
-            &name,
-            &mut ssh_keys,
-            &mut key_ids,
-        )?;
+        // A session that points at a one-key login uses that saved account
+        // instead of embedding its own password.
+        let linked_one_key = entry
+            .get("session.oneKey")
+            .and_then(|value| value.as_str())
+            .and_then(normalize_windterm_string_ref)
+            .and_then(|uuid| one_keys.iter().find(|account| account.uuid == uuid));
+        let auth = match linked_one_key {
+            Some(account) => {
+                let account_id = account_ids
+                    .entry(account.uuid.clone())
+                    .or_insert_with(|| {
+                        let id = uuid::Uuid::new_v4().to_string();
+                        passwords.push(config::SavedPassword {
+                            id: id.clone(),
+                            sort_order: 0,
+                            name: account.name.clone(),
+                            username: account.username.clone(),
+                            password: account
+                                .password
+                                .as_deref()
+                                .and_then(|password| encrypt_import_secret(password).ok()),
+                            has_password: account.password.is_some(),
+                        });
+                        id
+                    })
+                    .clone();
+                ConnectionAuth {
+                    mode: "password".to_string(),
+                    account_id: Some(account_id),
+                    password_source: Some("account".to_string()),
+                    password_id: None,
+                    password: None,
+                    key_id: None,
+                    otp_id: None,
+                    auto_fill_otp: false,
+                    has_password: false,
+                }
+            }
+            None => prepare_windterm_auth(
+                allow_local_files,
+                entry,
+                auto_login.as_ref(),
+                source_path,
+                &name,
+                &mut ssh_keys,
+                &mut key_ids,
+            )?,
+        };
 
         connections.push(PreparedJsonConnection {
             name,
@@ -161,10 +341,58 @@ fn parse_windterm_content_impl(
 
     Ok(PreparedJsonImport {
         groups,
-        passwords: Vec::new(),
+        passwords,
         ssh_keys,
         connections,
     })
+}
+
+/// WindTerm's `Shell` sessions are local terminals: `target` is the executable,
+/// `process.arguments` the extra command line and `process.workingDirectory`
+/// the start directory. Only `$(HomeDir)`/`${HomeDir}` are expanded; other
+/// WindTerm variables point at its own installation and are kept verbatim.
+fn prepare_windterm_local_shell(entry: &serde_json::Value) -> Option<PreparedJsonConnection> {
+    let text = |key: &str| {
+        entry
+            .get(key)
+            .and_then(|value| value.as_str())
+            .and_then(normalize_windterm_string_ref)
+            .map(str::to_string)
+    };
+    let target = text("session.target")?;
+    let name = text("session.label").unwrap_or_else(|| target.clone());
+    if name.is_empty() {
+        return None;
+    }
+    Some(PreparedJsonConnection {
+        name,
+        config: ConnectionType::LocalTerminal {
+            shell_path: expand_windterm_home(&target),
+            shell_args: text("process.arguments")
+                .map(|args| expand_windterm_home(&args))
+                .unwrap_or_default(),
+            working_dir: text("process.workingDirectory").map(|dir| expand_windterm_home(&dir)),
+            ai_execution_profile: AiExecutionProfile::Auto,
+            encoding: String::new(),
+            dynamic_tab_title: false,
+        },
+        group_path: parse_windterm_group_path(entry),
+        description: text("session.description"),
+        tags: Vec::new(),
+        sort_order: 0,
+        icon: text("session.icon"),
+        auth: None,
+    })
+}
+
+fn expand_windterm_home(value: &str) -> String {
+    let Some(home) = dirs::home_dir() else {
+        return value.to_string();
+    };
+    let home = home.to_string_lossy();
+    value
+        .replace("$(HomeDir)", &home)
+        .replace("${HomeDir}", &home)
 }
 
 fn parse_windterm_target(target: &str) -> (String, String) {
