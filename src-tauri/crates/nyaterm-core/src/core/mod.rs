@@ -4,6 +4,7 @@ pub use recording::{ExistingFileBehavior, RecordingMode, RotationPolicy};
 pub mod ai;
 pub mod capabilities;
 pub mod monitoring;
+pub mod path_completion;
 pub mod quick_commands;
 pub mod translate;
 

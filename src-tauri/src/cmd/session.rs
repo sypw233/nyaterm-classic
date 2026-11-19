@@ -1318,6 +1318,12 @@ pub async fn close_session(
         other => other,
     };
 
+    // The listing cache belongs to this session; drop it so a reused id cannot
+    // show another host's directory contents.
+    if let Some(cache) = app.try_state::<Arc<crate::cmd::path_completion::PathCompletionCache>>() {
+        cache.clear_session(&session_id);
+    }
+
     // Concurrently tidy up any downloaded/watcher temporary files stored in the OS temp directory
     tauri::async_runtime::spawn(async move {
         if let Ok(temp_dir) = app.path().temp_dir() {

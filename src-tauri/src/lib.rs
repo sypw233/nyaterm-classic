@@ -22,6 +22,7 @@ use tauri::Manager;
 
 use crate::cmd::app::AppLockState;
 use crate::cmd::docker::DockerSudoManager;
+use crate::cmd::path_completion::PathCompletionCache;
 use crate::core::ai::AgentApprovalManager;
 use crate::core::mcp::McpManager;
 use crate::core::monitoring::stats::RemoteStatsSampler;
@@ -62,6 +63,7 @@ pub fn run() {
     let transfer_duplicate_manager = Arc::new(TransferDuplicateManager::new());
     let docker_sudo_manager = Arc::new(DockerSudoManager::new());
     let remote_stats_sampler = Arc::new(RemoteStatsSampler::default());
+    let path_completion_cache = Arc::new(PathCompletionCache::default());
     let app_lock_state = AppLockState::default();
     let external_open_state = external_open::ExternalOpenState::default();
     let portable_update_state = portable_updater::PortableUpdateState::default();
@@ -121,6 +123,7 @@ pub fn run() {
         .manage(transfer_duplicate_manager.clone())
         .manage(docker_sudo_manager.clone())
         .manage(remote_stats_sampler.clone())
+        .manage(path_completion_cache.clone())
         .manage(mcp_manager.clone())
         .manage(plugin_manager)
         .manage(app_lock_state)
@@ -303,6 +306,7 @@ pub fn run() {
             cmd::session::fuzzy_search_history,
             cmd::session::fuzzy_search_commands,
             cmd::session::fuzzy_search_candidates,
+            cmd::path_completion::path_completion_candidates,
             cmd::session::start_recording,
             cmd::session::stop_recording,
             cmd::session::finish_recording_scope,

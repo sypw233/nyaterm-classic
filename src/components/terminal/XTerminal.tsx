@@ -795,6 +795,7 @@ export default function XTerminal({
     commandSuggestionsEnabled,
     commandSuggestionMinChars,
     commandSuggestionMaxChars,
+    sessionId,
   );
 
   const canDetectCredentialPrompt = useCallback(() => {

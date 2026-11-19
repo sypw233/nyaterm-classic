@@ -34,7 +34,7 @@ it("keeps command suggestion searches available on desktop", async () => {
     current: { ...createTerminalInputState(), value: "ls", cursor: 2 },
   };
   const { result } = renderHook(() =>
-    useCommandHistory({ current: null }, inputStateRef, vi.fn(), () => true, true, 1, 100),
+    useCommandHistory({ current: null }, inputStateRef, vi.fn(), () => true, true, 1, 100, "session-1"),
   );
   act(() => result.current.triggerSearch({ manual: true }));
   await waitFor(() => expect(result.current.showSuggestions).toBe(true));
@@ -69,6 +69,7 @@ it.each([
         true,
         1,
         100,
+        "session-1",
       ),
     );
 

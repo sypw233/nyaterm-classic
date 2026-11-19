@@ -7,9 +7,23 @@ import {
   normalizeCommandSuggestionMinChars,
 } from "@/lib/interactionSettings";
 import { invoke } from "@/lib/invoke";
+import {
+  COMMAND_SUGGESTION_LIMIT,
+  mergeCommandSuggestions,
+} from "@/lib/commandSuggestionMerge";
+import { shouldQueryPathCompletion } from "@/lib/pathCompletionInput";
 import { getTrackedCommand, type TerminalInputState } from "@/lib/terminalInputTracker";
 import type { SuggestionCursorPosition } from "@/lib/terminalSuggestionPosition";
 import type { FuzzyResult, QuickCommandsConfig } from "@/types/global";
+
+/** One path-completion row, already expressed as a complete replacement line. */
+interface PathCandidate {
+  command: string;
+  display: string;
+  indices: number[];
+  score: number;
+  is_dir: boolean;
+}
 
 interface XTermCoreWithRenderDimensions {
   _core?: {
@@ -32,6 +46,8 @@ interface CommandHistorySearchOptions {
 
 const EMPTY_MANUAL_HISTORY_LIMIT = 8;
 const EMPTY_MANUAL_QUICK_COMMAND_LIMIT = 8;
+/** Path rows shown at once; enough for a directory without crowding the list. */
+const PATH_CANDIDATE_LIMIT = 12;
 
 function isWithinCommandLengthLimits(command: string, minLength: number, maxLength: number) {
   const length = command.trim().length;
@@ -52,6 +68,7 @@ export function useCommandHistory(
   enabled: boolean,
   minCommandLength: number,
   maxCommandLength: number,
+  sessionId: string,
 ) {
   const suggestionsEnabled = enabled && supports("commandSuggestions");
   const [suggestions, setSuggestions] = useState<FuzzyResult[]>([]);
@@ -70,12 +87,17 @@ export function useCommandHistory(
   const minCommandLengthRef = useRef(normalizeCommandSuggestionMinChars(minCommandLength));
   const maxCommandLengthRef = useRef(normalizeCommandSuggestionMaxChars(maxCommandLength));
   const searchRequestIdRef = useRef(0);
+  const sessionIdRef = useRef(sessionId);
   const deletedHistoryCommandsRef = useRef(new Set<string>());
   const deletedHistoryCommandTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   useEffect(() => {
     enabledRef.current = suggestionsEnabled;
   }, [suggestionsEnabled]);
+
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
 
   const getCursorViewportPosition = useCallback((): SuggestionCursorPosition => {
     try {
@@ -156,6 +178,10 @@ export function useCommandHistory(
       }
 
       const pattern = getTrackedCommand(inputStateRef.current);
+      // Path completion needs the raw line: a trailing space is meaningful
+      // (`cd ` lists the cwd, `cd` is still being typed) and the tracked
+      // command used for fuzzy matching is trimmed.
+      const rawInput = inputStateRef.current.value;
       if (!pattern.trim() && options.manual) {
         try {
           const [history, quickCommands] = await Promise.all([
@@ -218,8 +244,17 @@ export function useCommandHistory(
         return;
       }
       try {
-        // Parallel search across all suggestion providers.
-        // To add a new provider, append another invoke() call here.
+        // Path completion may list a remote directory, so it is published as a
+        // separate, later update. Waiting for it would delay history and
+        // quick-command rows that are already available locally.
+        const pathCompletion =
+          supports("pathCompletion") && shouldQueryPathCompletion(rawInput)
+            ? invoke<PathCandidate[]>("path_completion_candidates", {
+                sessionId: sessionIdRef.current,
+                input: rawInput,
+                limit: PATH_CANDIDATE_LIMIT,
+              }).catch(() => [] as PathCandidate[])
+            : Promise.resolve([] as PathCandidate[]);
         const [historyResults, commandResults] = await Promise.all([
           invoke<FuzzyResult[]>("fuzzy_search_history", {
             pattern,
@@ -233,30 +268,47 @@ export function useCommandHistory(
           return;
         }
 
-        // Merge, sort by score descending, and cap total
-        const merged = [...historyResults, ...commandResults]
-          .filter(
-            (result) =>
-              result.source !== "history" || !deletedHistoryCommandsRef.current.has(result.command),
-          )
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 12);
+        // History rows the user just deleted are dropped before the cap so
+        // they cannot take a slot from a live provider.
+        const publish = (pathResults: PathCandidate[]) => {
+          if (requestId !== searchRequestIdRef.current || !enabledRef.current) {
+            return;
+          }
+          // Path rows carry the whole replacement line, so they need no extra
+          // fill step; history and catalog rows follow when the user typed a
+          // directory part.
+          const pathSuggestions: FuzzyResult[] = pathResults.map((candidate) => ({
+            command: candidate.command,
+            display: candidate.display,
+            indices: candidate.indices,
+            score: candidate.score,
+            source: "path",
+          }));
+          const merged = mergeCommandSuggestions(
+            [
+              pathSuggestions,
+              historyResults.filter(
+                (result) => !deletedHistoryCommandsRef.current.has(result.command),
+              ),
+              commandResults,
+            ],
+            COMMAND_SUGGESTION_LIMIT,
+          );
 
-        if (!enabledRef.current) {
-          dismissSuggestions();
-          return;
-        }
+          suggestionsRef.current = merged;
+          selectedIndexRef.current = -1;
+          showSuggestionsRef.current = merged.length > 0;
+          setSuggestions(merged);
+          setSelectedIndex(-1);
+          setShowSuggestions(merged.length > 0);
 
-        suggestionsRef.current = merged;
-        selectedIndexRef.current = -1;
-        showSuggestionsRef.current = merged.length > 0;
-        setSuggestions(merged);
-        setSelectedIndex(-1);
-        setShowSuggestions(merged.length > 0);
+          if (merged.length > 0) {
+            setCursorPosition(getCursorViewportPosition());
+          }
+        };
 
-        if (merged.length > 0) {
-          setCursorPosition(getCursorViewportPosition());
-        }
+        publish([]);
+        void pathCompletion.then(publish);
       } catch {
         // Ignore errors
       }

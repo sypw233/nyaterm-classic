@@ -342,6 +342,7 @@ describe("browser backend boundary", () => {
         true,
         1,
         100,
+        "session-1",
       ),
     );
     act(() => {

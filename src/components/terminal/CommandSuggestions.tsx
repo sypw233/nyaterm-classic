@@ -1,6 +1,12 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { MdDelete, MdFlashOn, MdHistory, MdTipsAndUpdates } from "react-icons/md";
+import {
+  MdDelete,
+  MdFlashOn,
+  MdHistory,
+  MdInsertDriveFile,
+  MdTipsAndUpdates,
+} from "react-icons/md";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -24,6 +30,7 @@ interface CommandSuggestionsProps {
 const SOURCE_ICON: Record<string, React.ElementType> = {
   history: MdHistory,
   quickCommand: MdFlashOn,
+  path: MdInsertDriveFile,
 };
 
 /** Render a single suggestion with matched characters highlighted. */

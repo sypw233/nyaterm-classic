@@ -30,6 +30,7 @@ export type Capability =
   | "legacyEncoding"
   | "shellIntegration"
   | "commandSuggestions"
+  | "pathCompletion"
   | "terminalHistory"
   | "recursiveTransfers"
   | "sshExtensions";
