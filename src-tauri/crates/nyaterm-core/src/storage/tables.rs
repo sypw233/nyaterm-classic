@@ -4,6 +4,10 @@ use serde::{Deserialize, Serialize};
 use sha1::Sha1;
 
 pub(super) const DATABASE_FILE: &str = "nyaterm.redb";
+
+/// The database file name, for callers outside this module that must name it
+/// (for example to tell the user which file a rebuild would replace).
+pub const DATABASE_FILE_NAME: &str = DATABASE_FILE;
 pub(super) const SCHEMA_VERSION: u32 = 3;
 pub(super) const META_SCHEMA_VERSION: &str = "schema_version";
 pub(super) const META_MASTER_KEY: &str = "security/master_key";

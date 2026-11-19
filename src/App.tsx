@@ -8,6 +8,7 @@ import AppLayout from "./components/app/AppLayout";
 import AppPanelContent from "./components/app/AppPanelContent";
 import ActivityBarResetDialog from "./components/dialog/app/ActivityBarResetDialog";
 import AppOverlayDialogs from "./components/dialog/app/AppOverlayDialogs";
+import StorageRecoveryDialog from "./components/dialog/app/StorageRecoveryDialog";
 import { McpApprovalHost } from "./components/dialog/app/McpApprovalHost";
 import type { VncServerKeyVerifyRequest } from "./components/dialog/connections/VncServerKeyVerifyDialog";
 import type { RdpCertificateVerifyRequest } from "./components/dialog/connections/RdpCertificateVerifyDialog";
@@ -3539,6 +3540,7 @@ function App() {
         }}
       />
       <McpApprovalHost />
+      <StorageRecoveryDialog />
       <AppOverlayDialogs
         t={t}
         showSessionQuickSwitcher={showSessionQuickSwitcher}

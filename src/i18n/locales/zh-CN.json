@@ -2998,6 +2998,30 @@
     "lock": "锁定屏幕",
     "memUsage": "内存占用"
   },
+  "storageRecovery": {
+    "confirmAction": "确认重建",
+    "confirmDescription": "将创建一个新的空数据库，当前文件保留为备份。此操作在应用内无法撤销。",
+    "confirmTitle": "确定重建数据库？",
+    "dataDirectory": "数据目录",
+    "databaseFile": "数据库文件",
+    "health": {
+      "corrupt": "数据库文件为空或已损坏。",
+      "data_invalid": "数据库中的记录无法解码。",
+      "healthy": "数据库正常。",
+      "in_use": "数据库已在另一个 NyaTerm 窗口中打开。",
+      "missing": "数据库文件不存在。",
+      "unavailable": "无法打开数据库。",
+      "upgrade_required": "该数据库由更新版本的 NyaTerm 创建。"
+    },
+    "notRebuildable": "该数据库无法自动重建。请先从数据目录备份，并反馈问题后再替换。",
+    "openDirectory": "打开数据目录",
+    "rebuild": "重建数据库",
+    "rebuildExplanation": "数据库缺失或已损坏。重建会创建一个新的空数据库，并把当前文件改名留作备份；其中的连接、设置与凭据将无法再读取。",
+    "rebuilt": "数据库已重建。",
+    "rebuiltWithArchive": "数据库已重建，原文件保留在 {{path}}。",
+    "retry": "重试",
+    "title": "无法打开数据库"
+  },
   "suggestions": {
     "deleteHistory": "删除历史命令",
     "dismiss": "关闭",

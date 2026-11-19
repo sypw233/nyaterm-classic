@@ -3001,6 +3001,30 @@
     "lock": "Lock Screen",
     "memUsage": "Memory Usage"
   },
+  "storageRecovery": {
+    "confirmAction": "Rebuild",
+    "confirmDescription": "A new empty database will be created and the current file kept as a backup. This cannot be undone from inside the app.",
+    "confirmTitle": "Rebuild the database?",
+    "dataDirectory": "Data directory",
+    "databaseFile": "Database file",
+    "health": {
+      "corrupt": "The database file is empty or damaged.",
+      "data_invalid": "Records inside the database could not be decoded.",
+      "healthy": "The database is healthy.",
+      "in_use": "The database is open in another NyaTerm window.",
+      "missing": "The database file does not exist.",
+      "unavailable": "The database could not be opened.",
+      "upgrade_required": "The database was created by a newer version of NyaTerm."
+    },
+    "notRebuildable": "This database cannot be rebuilt automatically. Back it up from the data directory and report the problem before replacing it.",
+    "openDirectory": "Open Data Directory",
+    "rebuild": "Rebuild Database",
+    "rebuildExplanation": "The database is missing or damaged. Rebuilding creates a new, empty database and moves the current file aside as a backup; saved connections, settings and credentials in it become unavailable.",
+    "rebuilt": "Database rebuilt.",
+    "rebuiltWithArchive": "Database rebuilt. The previous file was kept at {{path}}.",
+    "retry": "Retry",
+    "title": "Database could not be opened"
+  },
   "suggestions": {
     "deleteHistory": "Delete history command",
     "dismiss": "dismiss",

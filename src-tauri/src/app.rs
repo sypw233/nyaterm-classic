@@ -277,7 +277,9 @@ pub fn setup(
     runtime.ensure_directories()?;
     let portable_key_path = runtime.portable_key_path().map(ToOwned::to_owned);
     crate::utils::crypto::set_portable_key_path(portable_key_path);
-    crate::storage::init(runtime.config_dir())?;
+    // A missing or corrupt database must not abort startup: the only way to
+    // ask the user whether to rebuild it is to open a window first.
+    crate::core::storage_recovery::open_or_record(&runtime.config_dir().to_path_buf())?;
     app.manage(runtime.clone());
 
     let settings_load = crate::config::load_app_settings(app.handle());

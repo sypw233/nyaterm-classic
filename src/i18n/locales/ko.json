@@ -2998,6 +2998,30 @@
     "lock": "화면 잠금",
     "memUsage": "메모리 사용량"
   },
+  "storageRecovery": {
+    "confirmAction": "재구성",
+    "confirmDescription": "새 빈 데이터베이스가 만들어지고 현재 파일은 백업으로 보관됩니다. 앱 안에서는 되돌릴 수 없습니다.",
+    "confirmTitle": "데이터베이스를 재구성할까요?",
+    "dataDirectory": "데이터 디렉터리",
+    "databaseFile": "데이터베이스 파일",
+    "health": {
+      "corrupt": "데이터베이스 파일이 비어 있거나 손상되었습니다.",
+      "data_invalid": "데이터베이스의 레코드를 디코딩할 수 없습니다.",
+      "healthy": "데이터베이스가 정상입니다.",
+      "in_use": "데이터베이스가 다른 NyaTerm 창에서 열려 있습니다.",
+      "missing": "데이터베이스 파일이 없습니다.",
+      "unavailable": "데이터베이스를 열 수 없습니다.",
+      "upgrade_required": "이 데이터베이스는 더 새로운 버전의 NyaTerm에서 만들어졌습니다."
+    },
+    "notRebuildable": "이 데이터베이스는 자동으로 재구성할 수 없습니다. 데이터 디렉터리에서 백업한 뒤 문제를 알려 주세요.",
+    "openDirectory": "데이터 디렉터리 열기",
+    "rebuild": "데이터베이스 재구성",
+    "rebuildExplanation": "데이터베이스가 없거나 손상되었습니다. 재구성하면 새 빈 데이터베이스가 만들어지고 현재 파일은 백업으로 보관됩니다. 저장된 연결, 설정 및 자격 증명은 더 이상 읽을 수 없습니다.",
+    "rebuilt": "데이터베이스를 재구성했습니다.",
+    "rebuiltWithArchive": "데이터베이스를 재구성했습니다. 이전 파일은 {{path}}에 보관되었습니다.",
+    "retry": "다시 시도",
+    "title": "데이터베이스를 열 수 없습니다"
+  },
   "suggestions": {
     "deleteHistory": "기록 명령 삭제",
     "dismiss": "닫기",

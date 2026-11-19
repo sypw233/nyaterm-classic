@@ -10,6 +10,7 @@ mod master_key;
 mod migration;
 mod notes;
 mod rdp_known_hosts;
+mod rebuild;
 mod sessions;
 mod settings_impl;
 mod tables;
@@ -21,6 +22,10 @@ mod tests;
 
 pub use known_hosts::KnownHostEntry;
 pub use rdp_known_hosts::RdpCertificateMetadata;
+pub use rebuild::{
+    DatabaseHealth, DatabaseRebuildTicket, inspect_database, prepare_rebuild, rebuild_database,
+};
+pub use tables::DATABASE_FILE_NAME;
 
 #[allow(unused_imports)]
 pub use tables::{
@@ -32,7 +37,7 @@ pub use tables::{
 };
 
 use crate::error::{AppError, AppResult};
-use redb::Database;
+use redb::{Database, ReadableDatabase};
 use serde::{Serialize, de::DeserializeOwned};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -118,6 +123,19 @@ pub fn init(config_dir: &Path) -> AppResult<()> {
     if STORAGE.set(storage).is_err() {
         tracing::debug!("redb storage was already initialized");
     }
+    Ok(())
+}
+
+/// Open an existing database just far enough to classify its failure.
+///
+/// Never creates or repairs anything, so a probe cannot turn a damaged file
+/// into a working one and hide the problem from the recovery UI.
+pub(crate) fn probe_open(db_path: &Path) -> AppResult<()> {
+    let db = Database::open(db_path).map_err(storage_error)?;
+    // A readable header alone says nothing about the schema; ask for it so a
+    // newer-layout database reports as an upgrade rather than "unavailable".
+    let txn = db.begin_read().map_err(storage_error)?;
+    drop(txn);
     Ok(())
 }
 
@@ -402,6 +420,24 @@ impl Storage {
         fs::create_dir_all(config_dir)?;
         Self::open_path(&config_dir.join(DATABASE_FILE))
     }
+
+    /// Open a database that lives at an explicit path inside `data_dir`.
+    ///
+    /// Used by the rebuild flow to stage a replacement beside the live file.
+    /// The caller validates and closes the returned store before publishing it.
+    pub fn open_in_dir_staged(data_dir: &Path, staged_path: &Path) -> AppResult<Self> {
+        fs::create_dir_all(data_dir)?;
+        // Never reuse a leftover staging file: it would be opened as existing
+        // data and could be published in place of a fresh database.
+        if staged_path.exists() {
+            return Err(AppError::Storage(format!(
+                "staging file already exists: {}",
+                staged_path.display()
+            )));
+        }
+        Self::open_path(staged_path)
+    }
+
     fn open_path(db_path: &Path) -> AppResult<Self> {
         let pending_migration_backup = if db_path.exists() {
             backup_database_before_migration_if_needed(db_path)?

@@ -29,6 +29,7 @@ mod session;
 pub mod sftp;
 pub mod ssh;
 pub mod ssh_config;
+pub mod storage_recovery;
 pub(crate) mod terminal_session;
 pub(crate) mod tmux;
 pub mod translate;
