@@ -1,16 +1,19 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { formatBytes } from "./byteSize";
 import { logger } from "./logger";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Byte-size for display. Delegates to the shared IEC formatter: the value is
+ * always 1024-based, so labelling it `KB`/`MB` would understate the real size,
+ * and three copies of this helper had drifted apart.
+ */
 export function formatSize(bytes: number): string {
-  if (bytes === 0) return "-";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return formatBytes(bytes);
 }
 
 export function shellQuote(value: string): string {

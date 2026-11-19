@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supports } from "@/lib/backend/runtime";
+import { formatBytes } from "@/lib/byteSize";
 import { useTranslation } from "react-i18next";
 import { MdFolder, MdInsertDriveFile, MdRefresh } from "react-icons/md";
 import { toast } from "sonner";
@@ -37,10 +38,7 @@ interface PropertiesDialogProps {
 }
 
 function formatSize(bytes: number): string {
-  if (bytes === 0) return "0 Bytes";
-  if (bytes < 1024) return `${bytes} Bytes`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return formatBytes(bytes);
 }
 
 function formatTime(unix: number): string {

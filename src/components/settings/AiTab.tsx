@@ -3139,7 +3139,7 @@ export function AiRulesTab() {
     <div className="space-y-5">
       <SettingSection title={t("ai.rules")}>
         <SettingNumberInput
-          label={`${t("ai.maxAiFileSize")} (MB)`}
+          label={`${t("ai.maxAiFileSize")} (MiB)`}
           desc={t("ai.maxAiFileSizeDesc")}
           min={1}
           max={256}
