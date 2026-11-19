@@ -2572,6 +2572,37 @@ function FileExplorerPane({
       return;
     }
 
+    // Upload and download mirror the context-menu actions; they are bound to
+    // F3/F4 so the file list can be driven without a mouse.
+    if (
+      matchesKeyEvent(
+        resolveShortcutKeys("fileExplorer.upload", appSettings.keybindings),
+        event.nativeEvent,
+      ) &&
+      canUseRemoteTransfer &&
+      !inlineRenameState
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      void handleUploadFiles();
+      return;
+    }
+
+    if (
+      matchesKeyEvent(
+        resolveShortcutKeys("fileExplorer.downloadSelected", appSettings.keybindings),
+        event.nativeEvent,
+      ) &&
+      canUseRemoteTransfer &&
+      selectedRealFiles.length > 0 &&
+      !inlineRenameState
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      void handleDownloadSelected();
+      return;
+    }
+
     if (
       event.key !== "Delete" ||
       event.altKey ||

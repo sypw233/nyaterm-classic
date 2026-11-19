@@ -1356,6 +1356,7 @@
     "resume": "Resume",
     "resumeAll": "Resume All",
     "retry": "Retry",
+    "revealLocalFile": "Show in File Manager",
     "saveAs": "Save as: {{path}}",
     "savePath": "Save to: {{path}}",
     "transferring": "Transferring",
@@ -2680,6 +2681,7 @@
       "copyFiles": "Copy Files",
       "copySelectedSavedConnections": "Copy Selected Saved Connections",
       "cutFiles": "Cut Files",
+      "downloadSelectedFiles": "Download Selected",
       "duplicateSession": "Duplicate Session",
       "duplicateSessionWithCommand": "Duplicate Session and Run Command",
       "lockScreen": "Lock Screen",
@@ -2706,6 +2708,7 @@
       "togglePaneFocus": "Focus Active Pane",
       "toggleRecording": "Start/Stop Recording Log",
       "toggleRightSidebar": "Right Sidebar",
+      "uploadFiles": "Upload Files",
       "zoomIn": "Zoom In",
       "zoomOut": "Zoom Out"
     },

@@ -1356,6 +1356,7 @@
     "resume": "Резюме",
     "resumeAll": "Возобновить все",
     "retry": "Повторить попытку",
+    "revealLocalFile": "Показать в файловом менеджере",
     "saveAs": "Сохранить как: {{path}}",
     "savePath": "Сохранить в: {{path}}",
     "transferring": "Перенос",
@@ -2681,6 +2682,7 @@
       "copyFiles": "Копирование файлов",
       "copySelectedSavedConnections": "Копировать выбранные сохраненные соединения",
       "cutFiles": "Вырезать файлы",
+      "downloadSelectedFiles": "Скачать выбранное",
       "duplicateSession": "Дублировать сеанс",
       "duplicateSessionWithCommand": "Дублировать сеанс и выполнить команду",
       "lockScreen": "Экран блокировки",
@@ -2707,6 +2709,7 @@
       "togglePaneFocus": "Переключить фокус панели",
       "toggleRecording": "Начать или остановить запись",
       "toggleRightSidebar": "Показать или скрыть правую боковую панель",
+      "uploadFiles": "Загрузить файлы",
       "zoomIn": "Увеличить",
       "zoomOut": "Уменьшить масштаб"
     },

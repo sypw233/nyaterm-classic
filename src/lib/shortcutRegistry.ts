@@ -286,6 +286,20 @@ export const SHORTCUT_REGISTRY: ShortcutDefinition[] = [
     defaultKeys: "F2",
     contextual: true,
   },
+  {
+    id: "fileExplorer.upload",
+    category: "fileExplorer",
+    labelKey: "settings.shortcutLabels.uploadFiles",
+    defaultKeys: "F3",
+    contextual: true,
+  },
+  {
+    id: "fileExplorer.downloadSelected",
+    category: "fileExplorer",
+    labelKey: "settings.shortcutLabels.downloadSelectedFiles",
+    defaultKeys: "F4",
+    contextual: true,
+  },
 
   // --- Saved Connections ---
   {

@@ -1355,6 +1355,7 @@
     "resume": "재개",
     "resumeAll": "모두 재개",
     "retry": "재시도",
+    "revealLocalFile": "파일 관리자에서 보기",
     "saveAs": "다른 이름으로 저장: {{path}}",
     "savePath": "저장 위치: {{path}}",
     "transferring": "전송 중",
@@ -2677,6 +2678,7 @@
       "copyFiles": "파일 복사",
       "copySelectedSavedConnections": "선택한 저장된 연결 복사",
       "cutFiles": "파일 잘라내기",
+      "downloadSelectedFiles": "선택 항목 다운로드",
       "duplicateSession": "세션 복제",
       "duplicateSessionWithCommand": "세션 복제 및 명령 실행",
       "lockScreen": "화면 잠금",
@@ -2703,6 +2705,7 @@
       "togglePaneFocus": "활성 창에 집중",
       "toggleRecording": "녹화 로그 시작/중지",
       "toggleRightSidebar": "오른쪽 사이드바",
+      "uploadFiles": "파일 업로드",
       "zoomIn": "확대",
       "zoomOut": "축소"
     },

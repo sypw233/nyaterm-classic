@@ -1355,6 +1355,7 @@
     "resume": "继续",
     "resumeAll": "全部继续",
     "retry": "重试",
+    "revealLocalFile": "在文件管理器中显示",
     "saveAs": "另存为：{{path}}",
     "savePath": "保存至：{{path}}",
     "transferring": "传输中",
@@ -2677,6 +2678,7 @@
       "copyFiles": "复制文件",
       "copySelectedSavedConnections": "复制选中的已保存连接",
       "cutFiles": "剪切文件",
+      "downloadSelectedFiles": "下载选中项",
       "duplicateSession": "复制会话",
       "duplicateSessionWithCommand": "复制会话并执行命令",
       "lockScreen": "锁定屏幕",
@@ -2703,6 +2705,7 @@
       "togglePaneFocus": "专注当前窗格",
       "toggleRecording": "开始/停止录制日志",
       "toggleRightSidebar": "切换右侧边栏",
+      "uploadFiles": "上传文件",
       "zoomIn": "放大",
       "zoomOut": "缩小"
     },

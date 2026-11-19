@@ -1355,6 +1355,7 @@
     "resume": "繼續",
     "resumeAll": "全部繼續",
     "retry": "重試",
+    "revealLocalFile": "在檔案管理員中顯示",
     "saveAs": "另存為：{{path}}",
     "savePath": "儲存至：{{path}}",
     "transferring": "傳輸中",
@@ -2677,6 +2678,7 @@
       "copyFiles": "複製檔案",
       "copySelectedSavedConnections": "複製選取的已儲存連線",
       "cutFiles": "剪下檔案",
+      "downloadSelectedFiles": "下載選取項目",
       "duplicateSession": "複製工作階段",
       "duplicateSessionWithCommand": "複製工作階段並執行命令",
       "lockScreen": "鎖定螢幕",
@@ -2703,6 +2705,7 @@
       "togglePaneFocus": "專注目前窗格",
       "toggleRecording": "開始/停止錄製日誌",
       "toggleRightSidebar": "切換右側邊欄",
+      "uploadFiles": "上傳檔案",
       "zoomIn": "放大",
       "zoomOut": "縮小"
     },
