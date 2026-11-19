@@ -4,6 +4,64 @@ All notable changes to this project will be documented in this file.
 
 This changelog is inferred from release bump commits in git history (for example `chore: bump version to vX.Y.Z`) and grouped by Conventional Commit type.
 
+## [1.3.4] - 2026-11-19
+
+This release is primarily a terminal-rendering performance pass, driven by
+measurements taken on a virtual machine without GPU acceleration.
+
+### Added
+
+- **terminal:** Add an opt-in render statistics log. Every five seconds it
+  records the renderer actually in use, the number of frames, rows repainted
+  per second, and how many frames repainted the whole viewport. The renderer is
+  identified by structure (a WebGL context, or the DOM row container) rather
+  than by class name, because production builds are minified and report
+  mangled names.
+- **terminal:** Add a **Limit full-screen TUI frame rate** setting (off by
+  default, 10/15/20/30/60 fps). It caps how often full-screen programs such as
+  vim, htop and btop repaint, and only applies while such a program is active,
+  so ordinary shell output is never throttled.
+- **terminal:** Add a **Batch terminal output per frame** setting. It defers
+  every output write to the next animation frame instead of flushing from a
+  microtask, collapsing a burst of output into a single write and repaint. This
+  markedly reduces CPU when output arrives in many small pieces.
+
+### Changed
+
+- **window:** Only create a transparent main window when the appearance settings
+  actually ask for a translucent one. The window was previously transparent
+  unconditionally, which forced the compositor to alpha-blend the whole surface
+  against the desktop on every frame — a pure-CPU cost on hosts without GPU
+  acceleration. The flag is read at startup because it cannot change at runtime,
+  matching the existing "requires restart" note.
+
+### Fixed
+
+- **window:** Remove two backdrop blurs that covered most of the window. The
+  modal child-window scrim blurred the entire main window behind it, which made
+  the Settings window feel frozen; a flat dim gives the same separation for
+  free. The lock screen blurred a background that was already 85% opaque.
+- **logging:** Stop emitting two debug entries for every Tauri command. Opening
+  the Settings window issues hundreds of calls, which filled the frontend log
+  queue and flushed multi-megabyte batches over IPC, stalling the UI. Command
+  tracing is now an independent switch, off by default; errors are still always
+  logged.
+- **terminal:** Make the alternate-screen repaint cap actually engage. It
+  previously only triggered once the output queue exceeded 32 KiB, but a typical
+  TUI frame is far smaller, so the cap never ran. It now applies whenever a cap
+  is configured.
+
+### Tooling
+
+- Add `scripts/terminal-load-test.py`, a synthetic terminal load generator with
+  five output shapes (spinner, progress, stream, fullscreen, dashboard) and
+  configurable frame rate and colour density, plus
+  `scripts/windows-sample-cpu.ps1` and
+  `scripts/windows-check-render-process.ps1` for measuring CPU on Windows.
+  Rendering happens in WebView2 child processes, so the scripts measure the
+  whole process tree and break the total down by process type. See
+  `docs/terminal-performance-testing.md`.
+
 ## [1.3.3] - 2026-11-18
 
 This release syncs several capabilities from the 2.x line into this
