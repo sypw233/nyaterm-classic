@@ -216,6 +216,34 @@ function addSuffixCandidate(candidates: Set<string>, source: string, prefix: str
   }
 }
 
+/**
+ * Whether a Tab-completed line may be learned as history.
+ *
+ * After Tab the tracker holds the text typed before completion, and the echo
+ * line holds whatever the shell produced. A completion only extends that text,
+ * so a line that does not start with the original input is echo noise (a
+ * partially redrawn prompt, a stale line, unrelated output) and must not be
+ * recorded as a command the user ran.
+ */
+export function canLearnTabCompletedCommand(
+  state: TerminalInputState,
+  command: string,
+): boolean {
+  const tracked = state.value.trim();
+  const candidate = command.trim();
+  return (
+    state.desynced &&
+    state.desyncReason === "tab" &&
+    !state.multiline &&
+    !state.pasteMode &&
+    state.cursor === state.value.length &&
+    tracked.length > 0 &&
+    candidate.length > 0 &&
+    !/[\x00-\x1f\x7f]/u.test(candidate) &&
+    candidate.startsWith(tracked)
+  );
+}
+
 function chooseTerminalLineCommand(
   previousValue: string,
   lineContent: string,
@@ -248,6 +276,12 @@ function chooseTerminalLineCommand(
   for (const candidate of candidates) {
     const command = sanitizeTerminalCommand(candidate);
     if (!command) {
+      continue;
+    }
+
+    // A completion only extends what was typed. Anything else is echo noise,
+    // and learning it would record a command the user never ran.
+    if (previousValue.trim() && !command.startsWith(previousValue.trim())) {
       continue;
     }
 

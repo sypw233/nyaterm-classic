@@ -94,6 +94,23 @@ describe("terminal command tracker recovery", () => {
     }
   });
 
+  it("does not learn a Tab echo line that does not extend the typed prefix", () => {
+    // A completion only extends what was typed. A redrawn prompt, a stale
+    // line, or unrelated output must not become a history entry.
+    for (const line of ["$ other command", "$ ls -la", "$ cd /tmp"]) {
+      const desynced = applyTerminalInputData(typeInput("gi"), "\t");
+      const recovered = resyncFromTerminalLine(desynced, line);
+      expect(recovered, line).toBeNull();
+    }
+  });
+
+  it("learns a Tab echo line that extends the typed prefix", () => {
+    const desynced = applyTerminalInputData(typeInput("gi"), "\t");
+    const recovered = resyncFromTerminalLine(desynced, "$ git log --oneline");
+    expect(recovered?.value).toBe("git log --oneline");
+    expect(canRegisterCommandFromTracker(recovered!)).toBe(true);
+  });
+
   it("keeps an unverified nonempty Tab completion suppressed", () => {
     const desynced = applyTerminalInputData(typeInput("old"), "\t");
     expect(resyncFromTerminalLine(desynced, "unknown> changed")).toBeNull();
