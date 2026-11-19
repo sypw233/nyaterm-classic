@@ -1,3 +1,4 @@
+import { revealItemInDir } from "@/lib/backend/platform/opener";
 import { supports } from "@/lib/backend/runtime";
 import { downloadDir } from "@/lib/backend/platform/path";
 import {
@@ -18,6 +19,7 @@ import {
   MdDownload,
   MdFolder,
   MdFolderOff,
+  MdFolderOpen,
   MdPause,
   MdPlayArrow,
   MdPlaylistRemove,
@@ -127,6 +129,7 @@ function TransferRow({
   onCancel,
   onDelete,
   onOpenTargetDirectory,
+  onRevealLocalFile,
 }: {
   item: TransferItem;
   selected: boolean;
@@ -137,6 +140,7 @@ function TransferRow({
   onCancel: (id: string) => void;
   onDelete: (item: TransferItem) => void;
   onOpenTargetDirectory: (id: string) => void;
+  onRevealLocalFile: (path: string) => void;
 }) {
   const { t } = useTranslation();
   const DirIcon =
@@ -451,6 +455,16 @@ function TransferRow({
                   <MdFolder className="mr-2 text-[0.875rem]" />
                   {t("fileTransfer.openTargetDirectory")}
                 </ContextMenuItem>
+                {isLocalDownload &&
+                  item.localPath &&
+                  item.status === "completed" && (
+                    <ContextMenuItem
+                      onClick={() => onRevealLocalFile(item.localPath)}
+                    >
+                      <MdFolderOpen className="mr-2 text-[0.875rem]" />
+                      {t("fileTransfer.revealLocalFile")}
+                    </ContextMenuItem>
+                  )}
               </>
             )}
             <ContextMenuSeparator />
@@ -707,6 +721,17 @@ export default function FileTransfer({ activeSessionId }: FileTransferProps) {
     }
   }, []);
 
+  // Reveal one completed download in the OS file manager. The opener wrapper
+  // already degrades to a no-op outside Desktop, so this never touches native
+  // APIs from the Web build.
+  const handleRevealLocalFile = useCallback(async (path: string) => {
+    try {
+      await revealItemInDir(path);
+    } catch (error) {
+      toast.error(String(error));
+    }
+  }, []);
+
   return (
     <aside
       className="nyaterm-wallpaper-transparent-surface h-full flex flex-col overflow-hidden"
@@ -798,6 +823,7 @@ export default function FileTransfer({ activeSessionId }: FileTransferProps) {
                 onOpenTargetDirectory={(id) =>
                   void handleOpenTargetDirectory(id)
                 }
+                onRevealLocalFile={(path) => void handleRevealLocalFile(path)}
               />
             ))}
           </div>
