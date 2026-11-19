@@ -95,4 +95,64 @@ describe("useCredentialAutofill prompt detection gate", () => {
       expect(result.current.panelState?.matches).toEqual([credential]);
     });
   });
+
+  it("throttles prompt scans but still detects a prompt arriving during a burst", async () => {
+    const hookRefs = refs();
+    const { result } = renderHook(() =>
+      useCredentialAutofill(
+        hookRefs.terminalRef,
+        hookRefs.sessionIdRef,
+        hookRefs.activeRef,
+        hookRefs.visibleRef,
+        hookRefs.performanceModeRef,
+        () => true,
+      ),
+    );
+
+    // A repainting TUI emits many batches in quick succession. The prompt is in
+    // the last one, so a trailing scan must still pick it up.
+    act(() => {
+      result.current.feedOutput("\u001b[2J\u001b[1;1Hworking");
+      result.current.feedOutput("\r\nstill working");
+      result.current.feedOutput("\r\nPassword:");
+    });
+
+    await waitFor(() => {
+      expect(result.current.panelState?.kind).toBe("password");
+    });
+    expect(result.current.panelState?.matches).toEqual([credential]);
+  });
+
+  it("drops a pending throttled scan once detection is no longer allowed", async () => {
+    let canDetect = true;
+    const hookRefs = refs();
+    const { result, rerender } = renderHook(() =>
+      useCredentialAutofill(
+        hookRefs.terminalRef,
+        hookRefs.sessionIdRef,
+        hookRefs.activeRef,
+        hookRefs.visibleRef,
+        hookRefs.performanceModeRef,
+        () => canDetect,
+      ),
+    );
+
+    act(() => {
+      // The first batch scans immediately; the second falls inside the throttle
+      // window and is deferred.
+      result.current.feedOutput("working");
+      result.current.feedOutput("\r\nPassword:");
+    });
+
+    // Close the gate before the deferred scan fires; the stale prompt must not
+    // pop the panel afterwards.
+    canDetect = false;
+    rerender();
+    act(() => {
+      result.current.feedOutput("x");
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(result.current.panelState).toBeNull();
+  });
 });

@@ -49,4 +49,31 @@ describe("AlternateScreenStateTracker", () => {
     tracker.setXtermBufferType("alternate");
     expect(tracker.isAlternateScreenActive()).toBe(true);
   });
+
+  it("leaves state untouched for output that carries no escape byte", () => {
+    const tracker = new AlternateScreenStateTracker();
+
+    tracker.ingest("\x1b[?1049h");
+    expect(tracker.isAlternateScreenActive()).toBe(true);
+
+    // A plain line cannot change the mode; the fast path must not clear the
+    // current state or invent a pending sequence.
+    const snapshot = tracker.ingest("plain log output without escapes\n");
+    expect(snapshot.alternateScreen).toBe(true);
+    expect(snapshot.pendingSequence).toBe("");
+
+    tracker.ingest("\x1b[?1049l");
+    expect(tracker.isAlternateScreenActive()).toBe(false);
+    expect(tracker.ingest("more plain output").alternateScreen).toBe(false);
+  });
+
+  it("still resolves a sequence split across an escape-free chunk", () => {
+    const tracker = new AlternateScreenStateTracker();
+
+    expect(tracker.ingest("\x1b[?104").alternateScreen).toBe(false);
+    // No ESC in this chunk, but the carried-over partial sequence must be
+    // completed rather than skipped by the fast path.
+    expect(tracker.ingest("9h").alternateScreen).toBe(true);
+    expect(tracker.snapshot().pendingSequence).toBe("");
+  });
 });

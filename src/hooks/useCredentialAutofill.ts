@@ -14,7 +14,16 @@ import {
 import { invoke } from "@/lib/invoke";
 import { sendSessionInput } from "@/lib/sessionInput";
 import type { SuggestionCursorPosition } from "@/lib/terminalSuggestionPosition";
+import { TrailingThrottle } from "@/lib/trailingThrottle";
 import type { SavedCredential } from "@/types/global";
+
+/**
+ * Minimum spacing between prompt-detection scans. Terminal output arrives in
+ * many small batches (a repainting TUI can produce dozens per second), but a
+ * credential prompt is a static line, so scanning at that rate only burns CPU
+ * on ANSI stripping and regex work.
+ */
+const CREDENTIAL_DETECT_INTERVAL_MS = 50;
 
 interface XTermCoreWithRenderDimensions {
   _core?: {
@@ -88,6 +97,10 @@ export function useCredentialAutofill(
   const detectPromptRef = useRef<((snapshot: string) => Promise<void>) | null>(null);
   const feedOutputRef = useRef<((payload: string) => void) | null>(null);
   const handleSelectRef = useRef<((credential: SavedCredential) => Promise<void>) | null>(null);
+  const detectThrottleRef = useRef<TrailingThrottle | null>(null);
+  if (detectThrottleRef.current === null) {
+    detectThrottleRef.current = new TrailingThrottle(CREDENTIAL_DETECT_INTERVAL_MS);
+  }
 
   const loadCredentials = useCallback(async (force = false) => {
     if (credentialsLoadedRef.current && !force) return;
@@ -375,6 +388,16 @@ export function useCredentialAutofill(
     detectPromptRef.current = detectPrompt;
   }, [detectPrompt]);
 
+  const clearDetectThrottle = useCallback(() => {
+    detectThrottleRef.current?.cancel();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearDetectThrottle();
+    };
+  }, [clearDetectThrottle]);
+
   const feedOutputImpl = useCallback(
     (payload: string) => {
       if (performanceModeRef.current !== "normal") return;
@@ -383,6 +406,7 @@ export function useCredentialAutofill(
         outputBufferRef.current = "";
         recentPromptsRef.current.clear();
         detectionPendingRef.current = false;
+        clearDetectThrottle();
         return;
       }
 
@@ -391,9 +415,16 @@ export function useCredentialAutofill(
       outputBufferRef.current = `${outputBufferRef.current}${visible}`.slice(-4096);
 
       if (panelStateRef.current || sendingRef.current) return;
-      void detectPrompt(outputBufferRef.current);
+
+      // A password prompt is a static line, so re-scanning every output batch
+      // buys nothing: TUIs repaint far faster than a prompt can appear. Keep
+      // the buffer accumulating and detect on a short trailing throttle; the
+      // pending scan always sees the newest buffer.
+      detectThrottleRef.current?.request(() => {
+        void detectPrompt(outputBufferRef.current);
+      });
     },
-    [activeRef, visibleRef, performanceModeRef, canDetectPrompt, detectPrompt],
+    [activeRef, visibleRef, performanceModeRef, canDetectPrompt, clearDetectThrottle, detectPrompt],
   );
 
   useEffect(() => {
@@ -415,9 +446,10 @@ export function useCredentialAutofill(
     detectionPendingRef.current = false;
     recentPromptsRef.current.clear();
     sendingRef.current = false;
+    clearDetectThrottle();
     setPanelState(null);
     setSelectedIndex(-1);
-  }, []);
+  }, [clearDetectThrottle]);
 
   return {
     panelState,

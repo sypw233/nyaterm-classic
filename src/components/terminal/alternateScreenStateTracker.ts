@@ -40,6 +40,13 @@ export class AlternateScreenStateTracker {
   ingest(data: string): AlternateScreenStateSnapshot {
     if (!data) return this.snapshot();
 
+    // Ordinary shell output almost never carries an ESC, and the scan below is
+    // per-character. When there is no escape byte (and no partial sequence
+    // carried over from the previous chunk) nothing can change.
+    if (this.pendingSequence === "" && data.indexOf("\x1b") === -1) {
+      return this.snapshot();
+    }
+
     const text = `${this.pendingSequence}${data}`;
     this.pendingSequence = "";
 

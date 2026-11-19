@@ -367,12 +367,16 @@ export class Dec2026FrameGate {
 
   enqueue(chunk: QueuedOutputChunk) {
     if (this.disposed || chunk.bytes <= 0 || !chunk.data) return;
-    if (chunk.bytes !== utf8ByteLength(chunk.data)) {
-      this.failOpen("byte-mismatch");
+    // Fast path: with the gate off there is nothing to validate or scan, so
+    // skip the UTF-8 re-encode that every other mode needs. Production builds
+    // default to "off", and terminal output is high-frequency, so this is the
+    // hottest path in the whole gate.
+    if (this.options.mode === "off") {
       this.options.forward(chunk);
       return;
     }
-    if (this.options.mode === "off") {
+    if (chunk.bytes !== utf8ByteLength(chunk.data)) {
+      this.failOpen("byte-mismatch");
       this.options.forward(chunk);
       return;
     }

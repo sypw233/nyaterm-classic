@@ -121,6 +121,19 @@ describe("Dec2026FrameGate detector", () => {
     expect(joined()).toContain(`${begin}first${begin}nested`);
     expect(gate.snapshot().failOpenCandidates).toBeGreaterThanOrEqual(2);
   });
+
+  it("forwards untouched when the gate is off, without validating the byte count", () => {
+    const { enqueue, forwarded, joined } = createHarness({ mode: "off" });
+    const payload = frame("kept as-is");
+
+    // A wrong byte count would fail open in every other mode; with the gate off
+    // the chunk must reach the drain unchanged and unreported.
+    enqueue(payload, 1);
+
+    expect(joined()).toBe(payload);
+    expect(forwarded).toHaveLength(1);
+    expect(forwarded[0].bytes).toBe(1);
+  });
 });
 
 describe("Dec2026FrameGate classification", () => {
