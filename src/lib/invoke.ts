@@ -139,6 +139,21 @@ export const invokeHealthTracker = new InvokeHealthTracker({
 });
 
 /**
+ * Per-command invoke tracing is opt-in and separate from the general log level.
+ *
+ * Every Tauri call would otherwise emit two debug entries. The settings dialog
+ * alone issues hundreds of calls, which flooded the log queue (thousands of
+ * entries, a multi-megabyte file) and made the dialog feel frozen. Errors are
+ * still always logged regardless of this flag.
+ */
+let invokeTraceEnabled = false;
+
+/** Enable or disable per-command invoke tracing. */
+export function setInvokeTraceEnabled(enabled: boolean): void {
+  invokeTraceEnabled = enabled;
+}
+
+/**
  * Typed wrapper around Tauri's `invoke()` with built-in error logging.
  *
  * Usage:
@@ -152,27 +167,31 @@ export async function invoke<T>(cmd: string, args?: Record<string, unknown>): Pr
   invokeHealthTracker.start(requestId, cmd);
 
   try {
-    logger.debug({
-      domain: "tauri.invoke",
-      event: "command.start",
-      message: `Command "${cmd}" started`,
-      ids: { request_id: requestId },
-      data: {
-        command: cmd,
-        args: argsSummary,
-      },
-    });
+    if (invokeTraceEnabled) {
+      logger.debug({
+        domain: "tauri.invoke",
+        event: "command.start",
+        message: `Command "${cmd}" started`,
+        ids: { request_id: requestId },
+        data: {
+          command: cmd,
+          args: argsSummary,
+        },
+      });
+    }
     const result = await tauriInvoke<T>(cmd, args, { requestId });
-    logger.debug({
-      domain: "tauri.invoke",
-      event: "command.success",
-      message: `Command "${cmd}" succeeded`,
-      ids: { request_id: requestId },
-      data: {
-        command: cmd,
-        duration_ms: Math.round(performance.now() - startedAt),
-      },
-    });
+    if (invokeTraceEnabled) {
+      logger.debug({
+        domain: "tauri.invoke",
+        event: "command.success",
+        message: `Command "${cmd}" succeeded`,
+        ids: { request_id: requestId },
+        data: {
+          command: cmd,
+          duration_ms: Math.round(performance.now() - startedAt),
+        },
+      });
+    }
     return result;
   } catch (error) {
     logger.error({
