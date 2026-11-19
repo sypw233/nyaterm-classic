@@ -1,5 +1,5 @@
-use crate::error::AppResult;
-use redb::ReadableTable;
+use crate::error::{AppError, AppResult};
+use redb::{ReadableDatabase, ReadableTable, ReadableTableMetadata};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 
@@ -7,14 +7,115 @@ use super::Storage;
 use super::tables::*;
 use super::util::*;
 
+/// Persisted command-history rows kept on disk. The in-memory list is trimmed
+/// separately; this bound is what stops the table from growing forever.
+const HISTORY_RETENTION_LIMIT: usize = 5000;
+
 impl Storage {
     pub fn append_command_history(
         &self,
         item: &crate::core::history::HistoryEntry,
     ) -> AppResult<()> {
+        {
+            let txn = self.db.begin_write().map_err(storage_error)?;
+            save_history_entry_in_txn(&txn, item)?;
+            txn.commit().map_err(storage_error)?;
+        }
+        // Trim after the append so the table never exceeds the limit even
+        // between two writes.
+        self.enforce_history_retention()?;
+        Ok(())
+    }
+
+    /// Keep the persisted command history bounded.
+    ///
+    /// The table previously grew without limit: the in-memory list was trimmed
+    /// but every appended entry stayed on disk forever. Deleting rows is
+    /// irreversible, so an oversized table is first copied to a verified
+    /// recovery file; if that copy fails the rows are kept and the caller
+    /// continues with a warning rather than losing data.
+    fn enforce_history_retention(&self) -> AppResult<()> {
+        let raw_count = {
+            let txn = self.db.begin_read().map_err(storage_error)?;
+            match txn.open_table(COMMAND_HISTORY_TABLE) {
+                Ok(table) => table.len().map_err(storage_error)?,
+                Err(redb::TableError::TableDoesNotExist(_)) => return Ok(()),
+                Err(error) => return Err(storage_error(error)),
+            }
+        };
+        if raw_count <= HISTORY_RETENTION_LIMIT as u64 {
+            return Ok(());
+        }
+        self.backup_command_history()?;
+
         let txn = self.db.begin_write().map_err(storage_error)?;
-        save_history_entry_in_txn(&txn, item)?;
+        let mut stale_keys = Vec::new();
+        {
+            let table = txn
+                .open_table(COMMAND_HISTORY_TABLE)
+                .map_err(storage_error)?;
+            let mut entries = Vec::new();
+            for entry in table.iter().map_err(storage_error)? {
+                let (key, value) = entry.map_err(storage_error)?;
+                let item: crate::core::history::HistoryEntry = deserialize_json(value.value())?;
+                entries.push((key.value().to_string(), item.last_used_at_ms));
+            }
+            entries.sort_by(|left, right| right.1.cmp(&left.1));
+            // Keep the most recently used entries; drop the tail.
+            stale_keys.extend(
+                entries
+                    .into_iter()
+                    .skip(HISTORY_RETENTION_LIMIT)
+                    .map(|(key, _)| key),
+            );
+        }
+        {
+            let mut table = txn
+                .open_table(COMMAND_HISTORY_TABLE)
+                .map_err(storage_error)?;
+            for key in stale_keys {
+                table.remove(key.as_str()).map_err(storage_error)?;
+            }
+        }
         txn.commit().map_err(storage_error)?;
+        Ok(())
+    }
+
+    /// Copy the whole database beside the live file before deleting history.
+    /// A backup that cannot be read back is treated as no backup at all.
+    fn backup_command_history(&self) -> AppResult<()> {
+        let source = self.db_path.as_path();
+        if !source.is_file() {
+            return Err(AppError::Storage(
+                "history store file is missing".to_string(),
+            ));
+        }
+        let directory = source.parent().ok_or_else(|| {
+            AppError::Storage("history store has no parent directory".to_string())
+        })?;
+        let stamp = current_time_ms();
+        let target = directory.join(format!("nyaterm-history-backup-{stamp}.redb"));
+        std::fs::copy(source, &target)?;
+        // Verify the copy is a readable database with the same entry count.
+        let verify = redb::Database::open(&target).map_err(storage_error)?;
+        let verify_txn = verify.begin_read().map_err(storage_error)?;
+        let copied = match verify_txn.open_table(COMMAND_HISTORY_TABLE) {
+            Ok(table) => table.len().map_err(storage_error)?,
+            Err(redb::TableError::TableDoesNotExist(_)) => 0,
+            Err(error) => return Err(storage_error(error)),
+        };
+        let live_txn = self.db.begin_read().map_err(storage_error)?;
+        let live = match live_txn.open_table(COMMAND_HISTORY_TABLE) {
+            Ok(table) => table.len().map_err(storage_error)?,
+            Err(redb::TableError::TableDoesNotExist(_)) => 0,
+            Err(error) => return Err(storage_error(error)),
+        };
+        if copied != live {
+            return Err(AppError::Storage(format!(
+                "history safety backup at {} has {copied} entries but the live store has {live}",
+                target.display()
+            )));
+        }
         Ok(())
     }
     pub fn list_recent_command_history(

@@ -814,3 +814,88 @@ fn existing_v3_storage_creates_vnc_table_and_preserves_local_trust_on_reopen() {
     drop(storage);
     fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn command_history_retention_bounds_the_persisted_table_and_keeps_a_backup() {
+    let (dir, storage) = test_storage("history-retention");
+    // One more than the limit so the very next append has to trim.
+    const LIMIT: usize = 5000;
+    for index in 0..=LIMIT {
+        storage
+            .append_command_history(&crate::core::history::HistoryEntry {
+                command: format!("retention-command-{index}"),
+                last_used_at_ms: index as u64,
+                use_count: 1,
+            })
+            .expect("append history");
+    }
+
+    let remaining = storage.list_recent_command_history(usize::MAX).unwrap();
+    assert_eq!(
+        remaining.len(),
+        LIMIT,
+        "the persisted table must stay bounded"
+    );
+    // The oldest entries are the ones dropped.
+    assert!(
+        remaining
+            .iter()
+            .all(|entry| entry.command != "retention-command-0")
+    );
+    assert!(
+        remaining
+            .iter()
+            .any(|entry| entry.command == format!("retention-command-{LIMIT}"))
+    );
+
+    let backups: Vec<_> = fs::read_dir(&dir)
+        .unwrap()
+        .filter_map(Result::ok)
+        .filter(|entry| {
+            entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with("nyaterm-history-backup-")
+        })
+        .collect();
+    assert!(!backups.is_empty(), "trimming must leave a recovery copy");
+
+    drop(storage);
+    fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn command_history_retention_leaves_a_small_table_untouched() {
+    let (dir, storage) = test_storage("history-retention-small");
+    for index in 0..10 {
+        storage
+            .append_command_history(&crate::core::history::HistoryEntry {
+                command: format!("small-command-{index}"),
+                last_used_at_ms: index as u64,
+                use_count: 1,
+            })
+            .expect("append history");
+    }
+    assert_eq!(
+        storage
+            .list_recent_command_history(usize::MAX)
+            .unwrap()
+            .len(),
+        10
+    );
+    // No backup is written below the limit.
+    let backups = fs::read_dir(&dir)
+        .unwrap()
+        .filter_map(Result::ok)
+        .filter(|entry| {
+            entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with("nyaterm-history-backup-")
+        })
+        .count();
+    assert_eq!(backups, 0);
+
+    drop(storage);
+    fs::remove_dir_all(dir).unwrap();
+}
