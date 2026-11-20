@@ -107,6 +107,24 @@ pub struct TerminalSettings {
     /// active, but capping frames is still a visible trade-off, so it is opt-in.
     #[serde(default = "default_false")]
     pub tui_frame_limit_enabled: bool,
+    /// Engage the repaint cap automatically when the terminal's own repaint
+    /// rate stays above `tui_adaptive_threshold_rows` for several samples, and
+    /// release it once the rate falls back. Only the terminal's own workload is
+    /// consulted, never system-wide CPU.
+    #[serde(default = "default_false")]
+    pub tui_adaptive_enabled: bool,
+    /// Repaint rate, in rows per second, above which the cap engages.
+    #[serde(default = "default_tui_adaptive_threshold")]
+    pub tui_adaptive_threshold_rows: u32,
+    /// What to do with terminal rendering while the window is not focused:
+    /// "none" keeps full speed, "cap" limits the frame rate, "pause" stops
+    /// repainting entirely until focus returns.
+    #[serde(default = "default_background_render_policy")]
+    pub background_render_policy: String,
+    /// Frame rate cap used while the window is unfocused and the policy is
+    /// "cap". 1 is the minimum so output still makes visible progress.
+    #[serde(default = "default_background_max_fps")]
+    pub background_max_fps: u32,
     /// Maximum frames per second while `tui_frame_limit_enabled` is on.
     #[serde(default = "default_tui_max_fps")]
     pub tui_max_fps: u32,
@@ -114,6 +132,15 @@ pub struct TerminalSettings {
 
 fn default_tui_max_fps() -> u32 {
     20
+}
+fn default_tui_adaptive_threshold() -> u32 {
+    240
+}
+fn default_background_render_policy() -> String {
+    "none".to_string()
+}
+fn default_background_max_fps() -> u32 {
+    5
 }
 fn default_scrollback() -> u32 {
     DEFAULT_SCROLLBACK_LINES
@@ -183,6 +210,10 @@ impl Default for TerminalSettings {
             render_stats_enabled: false,
             frame_batched_output: false,
             tui_frame_limit_enabled: false,
+            tui_adaptive_enabled: false,
+            tui_adaptive_threshold_rows: default_tui_adaptive_threshold(),
+            background_render_policy: default_background_render_policy(),
+            background_max_fps: default_background_max_fps(),
             tui_max_fps: default_tui_max_fps(),
         }
     }

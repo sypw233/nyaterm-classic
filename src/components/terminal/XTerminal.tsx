@@ -124,6 +124,8 @@ import type { TerminalOutputDrain } from "./terminalOutputDrain";
 import { AlternateScreenStateTracker } from "./alternateScreenStateTracker";
 import type { Dec2026FrameGate } from "./dec2026FrameGate";
 import { observeTerminalRenderStats } from "./terminalRenderStats";
+import { AdaptiveFrameLimit } from "./adaptiveFrameLimit";
+import { FrameRateGate } from "./frameRateGate";
 import { useTerminalExternalDrop } from "./useTerminalExternalDrop";
 import { useTerminalFocusRestore } from "./useTerminalFocusRestore";
 import { useTerminalRefreshEffects } from "./useTerminalRefreshEffects";
@@ -331,7 +333,13 @@ export default function XTerminal({
   // without re-subscribing whenever the setting changes.
   const frameBatchedOutputRef = useRef(false);
   // Max fps for full-screen TUI repaints; 0 disables the cap entirely.
+  // Written by the effect below, which combines the manual cap with the
+  // adaptive one.
   const tuiMaxFpsRef = useRef(0);
+  // Shared so the effect can reconfigure without recreating the sampler.
+  const adaptiveFrameLimitRef = useRef<AdaptiveFrameLimit | null>(null);
+  // Throttles (or pauses) rendering while the window is unfocused.
+  const backgroundGateRef = useRef(new FrameRateGate({ fps: 0 }));
   const alternateScreenTrackerRef = useRef(new AlternateScreenStateTracker());
   const handleVisibilityChangeRef = useRef<(() => void) | null>(null);
   const replaceInputCommandRef = useRef<((command: string) => void) | null>(
@@ -664,10 +672,116 @@ export default function XTerminal({
   useEffect(() => {
     // The cap only ever applies while an alternate-screen program is active,
     // so plain shell output is never throttled.
-    tuiMaxFpsRef.current = terminalSettings.tui_frame_limit_enabled
+    const manualFps = terminalSettings.tui_frame_limit_enabled
       ? (terminalSettings.tui_max_fps ?? 20)
       : 0;
-  }, [terminalSettings.tui_frame_limit_enabled, terminalSettings.tui_max_fps]);
+    // The adaptive sampler owns tuiMaxFpsRef when enabled; otherwise the manual
+    // value applies directly.
+    if (!terminalSettings.tui_adaptive_enabled) {
+      adaptiveFrameLimitRef.current?.reset();
+      tuiMaxFpsRef.current = manualFps;
+    }
+  }, [
+    terminalSettings.tui_frame_limit_enabled,
+    terminalSettings.tui_max_fps,
+    terminalSettings.tui_adaptive_enabled,
+  ]);
+
+  // Adaptive repaint cap: sample the terminal's own repaint rate and engage a
+  // frame cap when it stays high. Only the terminal's workload is consulted,
+  // never system CPU, so unrelated processes cannot throttle it.
+  useEffect(() => {
+    if (!terminalInstance || !terminalSettings.tui_adaptive_enabled) {
+      adaptiveFrameLimitRef.current = null;
+      return;
+    }
+
+    const cappedFps = terminalSettings.tui_frame_limit_enabled
+      ? (terminalSettings.tui_max_fps ?? 20)
+      : 15;
+    const limit =
+      adaptiveFrameLimitRef.current ??
+      new AdaptiveFrameLimit({
+        thresholdRowsPerSecond: terminalSettings.tui_adaptive_threshold_rows ?? 240,
+        cappedFps,
+      });
+    limit.configure({
+      thresholdRowsPerSecond: terminalSettings.tui_adaptive_threshold_rows ?? 240,
+      cappedFps,
+    });
+    adaptiveFrameLimitRef.current = limit;
+
+    // One sample window; short enough to react within a second or two, long
+    // enough that a single burst does not dominate.
+    const SAMPLE_MS = 1000;
+    let rowsInWindow = 0;
+    const disposeRender = terminalInstance.onRender(({ start, end }) => {
+      rowsInWindow += Math.max(0, end - start + 1);
+    });
+
+    const timer = window.setInterval(() => {
+      const rowsPerSecond = (rowsInWindow * 1000) / SAMPLE_MS;
+      rowsInWindow = 0;
+      tuiMaxFpsRef.current = limit.sample(rowsPerSecond);
+    }, SAMPLE_MS);
+
+    return () => {
+      window.clearInterval(timer);
+      disposeRender.dispose();
+      tuiMaxFpsRef.current = 0;
+    };
+  }, [
+    terminalInstance,
+    terminalSettings.tui_adaptive_enabled,
+    terminalSettings.tui_adaptive_threshold_rows,
+    terminalSettings.tui_frame_limit_enabled,
+    terminalSettings.tui_max_fps,
+  ]);
+
+  // Background render policy: while the window is unfocused, either cap the
+  // repaint rate or pause it. Parsing still happens at a reduced cadence so the
+  // buffer stays correct and a refocused window catches up quickly.
+  useEffect(() => {
+    const policy = terminalSettings.background_render_policy ?? "none";
+    const fps = terminalSettings.background_max_fps ?? 5;
+    const gate = backgroundGateRef.current;
+
+    const apply = (focused: boolean) => {
+      if (focused || policy === "none") {
+        gate.setPaused(false);
+        gate.configure(0);
+        return;
+      }
+      if (policy === "pause") {
+        gate.setPaused(true);
+        return;
+      }
+      gate.setPaused(false);
+      gate.configure(fps);
+    };
+
+    apply(document.hasFocus());
+
+    let unlisten: (() => void) | undefined;
+    import("@/lib/backend/platform/window")
+      .then(({ getCurrentWindow }) =>
+        getCurrentWindow()
+          .onFocusChanged(({ payload: focused }) => apply(focused))
+          .then((dispose) => {
+            unlisten = dispose;
+          }),
+      )
+      .catch(() => {});
+
+    return () => {
+      unlisten?.();
+      gate.setPaused(false);
+      gate.configure(0);
+    };
+  }, [
+    terminalSettings.background_render_policy,
+    terminalSettings.background_max_fps,
+  ]);
 
   useEffect(() => {
     tRef.current = t;
@@ -2156,6 +2270,7 @@ export default function XTerminal({
       exitOverloadedMode,
       frameBatchedOutputRef,
       tuiMaxFpsRef,
+      backgroundGateRef,
     });
 
     writeOrderedTerminalStatus = (data: string) => {

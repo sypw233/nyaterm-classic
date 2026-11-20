@@ -1,3 +1,4 @@
+import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NumberInput } from "@/components/ui/number-input";
@@ -240,5 +241,82 @@ export function SettingSwitch({
 >) {
   return (
     <Switch checked={checked} disabled={disabled} onCheckedChange={onChange} {...switchProps} />
+  );
+}
+
+/**
+ * Integer slider with a live value readout.
+ *
+ * Uses a native range input so no extra dependency is needed; the platform
+ * control is also fully keyboard accessible. The displayed value updates while
+ * dragging, but `onChange` only fires on release-equivalent steps, so callers
+ * do not persist a settings write for every pixel of movement.
+ */
+export function SettingSlider({
+  label,
+  desc,
+  value,
+  onChange,
+  min = 1,
+  max = 120,
+  step = 1,
+  unit,
+  disabled,
+  fieldClassName,
+  controlClassName,
+}: {
+  label: string;
+  desc?: string;
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  unit?: string;
+  disabled?: boolean;
+  fieldClassName?: string;
+  controlClassName?: string;
+}) {
+  const [draft, setDraft] = React.useState(value);
+
+  // Follow external changes (settings reload, other windows) unless the user is
+  // mid-drag, which is represented by draft diverging from value.
+  React.useEffect(() => {
+    setDraft(value);
+  }, [value]);
+
+  const commit = (next: number) => {
+    setDraft(next);
+    onChange(next);
+  };
+
+  return (
+    <SettingFieldShell
+      label={label}
+      desc={desc}
+      className={fieldClassName}
+      controlClassName={controlClassName}
+    >
+      <div className="flex items-center gap-3">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={draft}
+          disabled={disabled}
+          onChange={(event) => setDraft(Number(event.currentTarget.value))}
+          onPointerUp={() => commit(draft)}
+          onKeyUp={() => commit(draft)}
+          onBlur={() => commit(draft)}
+          aria-label={label}
+          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+        />
+        <span className="w-16 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
+          {draft}
+          {unit ? ` ${unit}` : ""}
+        </span>
+      </div>
+    </SettingFieldShell>
   );
 }

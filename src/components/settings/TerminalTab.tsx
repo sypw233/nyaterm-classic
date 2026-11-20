@@ -28,6 +28,7 @@ import {
   SettingRow,
   SettingSection,
   SettingSelect,
+  SettingSlider,
   SettingSwitch,
 } from "./SettingFormItems";
 
@@ -310,23 +311,93 @@ export function TerminalTab() {
         </SettingRow>
 
         {appSettings.terminal.tui_frame_limit_enabled && (
-          <SettingSelect
+          <SettingSlider
             label={t("settings.tuiMaxFps")}
             desc={t("settings.tuiMaxFpsDesc")}
-            value={String(appSettings.terminal.tui_max_fps ?? 20)}
+            min={1}
+            max={60}
+            step={1}
+            unit="fps"
+            value={appSettings.terminal.tui_max_fps ?? 20}
             controlClassName="max-w-sm"
-            onValueChange={(value) =>
+            onChange={(v) =>
               updateAppSettings({
-                terminal: { ...appSettings.terminal, tui_max_fps: Number(value) },
+                terminal: { ...appSettings.terminal, tui_max_fps: v },
               })
             }
-          >
-            <SelectItem value="10">10 fps</SelectItem>
-            <SelectItem value="15">15 fps</SelectItem>
-            <SelectItem value="20">20 fps</SelectItem>
-            <SelectItem value="30">30 fps</SelectItem>
-            <SelectItem value="60">60 fps</SelectItem>
-          </SettingSelect>
+          />
+        )}
+
+        <SettingRow
+          label={t("settings.tuiAdaptive")}
+          desc={t("settings.tuiAdaptiveDesc")}
+        >
+          <SettingSwitch
+            checked={appSettings.terminal.tui_adaptive_enabled ?? false}
+            onChange={(v) =>
+              updateAppSettings({
+                terminal: { ...appSettings.terminal, tui_adaptive_enabled: v },
+              })
+            }
+          />
+        </SettingRow>
+
+        {appSettings.terminal.tui_adaptive_enabled && (
+          <SettingSlider
+            label={t("settings.tuiAdaptiveThreshold")}
+            desc={t("settings.tuiAdaptiveThresholdDesc")}
+            min={20}
+            max={2000}
+            step={20}
+            unit="rows/s"
+            value={appSettings.terminal.tui_adaptive_threshold_rows ?? 240}
+            controlClassName="max-w-sm"
+            onChange={(v) =>
+              updateAppSettings({
+                terminal: {
+                  ...appSettings.terminal,
+                  tui_adaptive_threshold_rows: v || 240,
+                },
+              })
+            }
+          />
+        )}
+
+        <SettingSelect
+          label={t("settings.backgroundRenderPolicy")}
+          desc={t("settings.backgroundRenderPolicyDesc")}
+          value={appSettings.terminal.background_render_policy ?? "none"}
+          controlClassName="max-w-sm"
+          onValueChange={(value) =>
+            updateAppSettings({
+              terminal: {
+                ...appSettings.terminal,
+                background_render_policy: value as "none" | "cap" | "pause",
+              },
+            })
+          }
+        >
+          <SelectItem value="none">{t("settings.backgroundRenderNone")}</SelectItem>
+          <SelectItem value="cap">{t("settings.backgroundRenderCap")}</SelectItem>
+          <SelectItem value="pause">{t("settings.backgroundRenderPause")}</SelectItem>
+        </SettingSelect>
+
+        {appSettings.terminal.background_render_policy === "cap" && (
+          <SettingSlider
+            label={t("settings.backgroundMaxFps")}
+            desc={t("settings.backgroundMaxFpsDesc")}
+            min={1}
+            max={60}
+            step={1}
+            unit="fps"
+            value={appSettings.terminal.background_max_fps ?? 5}
+            controlClassName="max-w-sm"
+            onChange={(v) =>
+              updateAppSettings({
+                terminal: { ...appSettings.terminal, background_max_fps: v },
+              })
+            }
+          />
         )}
 
         <SettingRow

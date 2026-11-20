@@ -12,12 +12,24 @@ import {
 } from "./terminalOutputDrain";
 import { TerminalOutputScheduler } from "./terminalOutputScheduling";
 import { TerminalOutputPressureTracker } from "./terminalOutputPressure";
+import type { FrameRateGate } from "./frameRateGate";
 import type { HibernationPhase } from "./xterminalInternalTypes";
 import type { PerformanceMode } from "./xterminalTypes";
 
 interface MutableRef<T> {
   current: T;
 }
+
+/**
+ * How long a paused (unfocused) terminal waits before retrying a write.
+ *
+ * Rendering is not abandoned while paused: output still needs to be parsed and
+ * appended to the buffer so the terminal is correct when focus returns. This
+ * value only controls how often the drain retries, so it should be long enough
+ * to keep CPU near idle but short enough that a resumed window catches up
+ * promptly.
+ */
+const PAUSED_RETRY_MS = 250;
 
 interface CreateXTerminalOutputControllerParams {
   sessionId: string;
@@ -49,6 +61,11 @@ interface CreateXTerminalOutputControllerParams {
   frameBatchedOutputRef: MutableRef<boolean>;
   /** Max fps for full-screen TUI repaints; 0 = unlimited. */
   tuiMaxFpsRef: MutableRef<number>;
+  /**
+   * Frame gate applied while the window is unfocused. Configured from the
+   * background render policy; also used to pause rendering completely.
+   */
+  backgroundGateRef: MutableRef<FrameRateGate>;
 }
 
 export function createXTerminalOutputController({
@@ -71,6 +88,7 @@ export function createXTerminalOutputController({
   exitOverloadedMode,
   frameBatchedOutputRef,
   tuiMaxFpsRef,
+  backgroundGateRef,
 }: CreateXTerminalOutputControllerParams) {
   const outputAckLease = outputAckCoordinator.acquire(
     sessionId,
@@ -166,7 +184,15 @@ export function createXTerminalOutputController({
   };
 
   const getForegroundDelayMs = () => {
-    return outputScheduler.getForegroundDelayMs();
+    // Two independent caps can apply at once; the slower one wins.
+    const alternateDelay = outputScheduler.getForegroundDelayMs();
+    const backgroundDelay = backgroundGateRef.current.delayMs();
+    if (backgroundDelay === null) {
+      // Rendering is paused while unfocused. Returning a large delay keeps the
+      // existing scheduling path intact without spinning.
+      return PAUSED_RETRY_MS;
+    }
+    return Math.max(alternateDelay, backgroundDelay);
   };
 
   const updateOutputDrainMode = () => {
@@ -195,6 +221,9 @@ export function createXTerminalOutputController({
         getCurrentAbsoluteLine(),
         context.ts,
       );
+      // Release the next unfocused-window frame only after this write lands, so
+      // the cap measures actual rendering cadence rather than scheduling.
+      backgroundGateRef.current.noteFrame();
       maybeRecoverPerformanceMode();
       refreshOutputPressureMode();
     },

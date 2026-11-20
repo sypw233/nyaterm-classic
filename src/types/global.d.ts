@@ -1478,6 +1478,14 @@ export interface TerminalSettings {
   frame_batched_output?: boolean;
   /** Cap repaint rate of full-screen TUI programs. Off by default. */
   tui_frame_limit_enabled?: boolean;
+  /** Engage the cap automatically based on the terminal's own repaint rate. */
+  tui_adaptive_enabled?: boolean;
+  /** Repaint rate (rows/second) above which the adaptive cap engages. */
+  tui_adaptive_threshold_rows?: number;
+  /** Rendering behaviour while the window is unfocused. */
+  background_render_policy?: "none" | "cap" | "pause";
+  /** Frame rate cap while unfocused and the policy is "cap". */
+  background_max_fps?: number;
   /** Max fps for full-screen TUI repaints while the cap is enabled. */
   tui_max_fps?: number;
 }
