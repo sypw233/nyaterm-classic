@@ -47,9 +47,30 @@ describe("bare shell prompt detection", () => {
       "$ ",
       "PS C:\\work>",
       "C:\\work>",
+      "console:/ #",
+      "switch#",
+      "router(config)#",
+      "console:/ # ",
     ]) {
       expect(isBareShellPrompt(line), line).toBe(true);
     }
+  });
+
+  it("strips device CLI prompts before recording a command", () => {
+    expect(stripTerminalCommandPrompt("console:/ # ls")).toBe("ls");
+    expect(stripTerminalCommandPrompt("switch# show version")).toBe(
+      "show version",
+    );
+    expect(stripTerminalCommandPrompt("router(config)# show run")).toBe(
+      "show run",
+    );
+    expect(stripTerminalCommandPrompt("console:/ #")).toBe("");
+    expect(sanitizeTerminalCommand("console:/ # ls")).toBe("ls");
+  });
+
+  it("does not treat device prompts as command text when the marker is internal", () => {
+    expect(stripTerminalCommandPrompt("echo $DISPLAY")).toBe("echo $DISPLAY");
+    expect(stripTerminalCommandPrompt("echo foo # bar")).toBe("echo foo # bar");
   });
 
   it("does not treat command output as a prompt", () => {

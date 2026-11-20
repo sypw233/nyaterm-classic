@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 This changelog is inferred from release bump commits in git history (for example `chore: bump version to vX.Y.Z`) and grouped by Conventional Commit type.
 
+## [Unreleased]
+
+### Fixed
+
+- **command history:** Ignore bare device-style CLI prompts such as `console:/ #` when recording history. Interactive serial and network-device sessions previously learned the idle prompt as a command each time Enter was pressed on an empty line; the prompt is now stripped in both the frontend tracker and the backend store, while a real command typed after the prompt is still recorded.
+
+### Added
+
+- **command history:** Right-click an entry in the History panel to copy the full command text (including commands truncated in the list), jump the terminal scrollback to where that command was executed, or send it again. Jumping reuses the terminal's command-location markers and briefly highlights the target line.
+
 ## [1.3.5] - 2026-11-20
 
 Another terminal-rendering performance pass on the same no-GPU virtual machine.

@@ -53,6 +53,31 @@ mod tests {
             sanitize_history_command("PS C:\\Users\\CoderKang>   "),
             None
         );
+        // Device-style CLI prompts must not be learned as commands.
+        assert_eq!(sanitize_history_command("console:/ #"), None);
+        assert_eq!(sanitize_history_command("switch#"), None);
+        assert_eq!(sanitize_history_command("router(config)#   "), None);
+    }
+
+    #[test]
+    fn strips_device_cli_prompts_before_commands() {
+        assert_eq!(
+            sanitize_history_command("console:/ # ls"),
+            Some("ls".to_string())
+        );
+        assert_eq!(
+            sanitize_history_command("switch# show version"),
+            Some("show version".to_string())
+        );
+        assert_eq!(
+            sanitize_history_command("router(config)# show run"),
+            Some("show run".to_string())
+        );
+        // A marker inside shell text must not be mistaken for a prompt.
+        assert_eq!(
+            sanitize_history_command("echo $DISPLAY"),
+            Some("echo $DISPLAY".to_string())
+        );
     }
 
     #[test]

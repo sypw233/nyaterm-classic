@@ -3,7 +3,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { UnicodeGraphemesAddon } from "@xterm/addon-unicode-graphemes";
-import { Terminal } from "@xterm/xterm";
+import { Terminal, type IMarker } from "@xterm/xterm";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -55,6 +55,7 @@ import { isMacOS, isWindows } from "@/lib/platform";
 import { openSendCommandPanel } from "@/lib/sendCommandPanelEvents";
 import {
   buildTerminalCommandInput,
+  listenSessionCommandNavigate,
   listenSessionInputPreview,
   normalizeTerminalCommandInput,
   type SendSessionInputOptions,
@@ -66,7 +67,10 @@ import {
 } from "@/lib/sessionInput";
 import { buildWordCompletionKeystrokes } from "@/lib/wordCompletion";
 import { registerTerminalContextProvider } from "@/lib/terminalContext";
-import { isBareShellPrompt, stripTerminalCommandPrompt } from "@/lib/terminalCommand";
+import {
+  isBareShellPrompt,
+  stripTerminalCommandPrompt,
+} from "@/lib/terminalCommand";
 import { resolveTerminalFontSize } from "@/lib/terminalFontSize";
 import {
   applyTerminalInputData,
@@ -194,6 +198,8 @@ type SearchAddonWithLifecycle = SearchAddon & {
  * detection), fuzzy command history suggestions, and resize/fit. Key props: sessionId, active.
  */
 const MAX_WRAPPED_LINE_LOOKBACK_ROWS = 512;
+// Bound the number of command-location markers kept for history-panel jumps.
+const MAX_TRACKED_COMMANDS = 500;
 
 function XTerminal({
   sessionId,
@@ -340,6 +346,15 @@ function XTerminal({
   const frameGateRef = useRef<Dec2026FrameGate | null>(null);
   const lineTimestampsRef = useRef<Map<number, number>>(new Map());
   const gutterLineOffsetRef = useRef(0);
+  // Command executions seen in this terminal, in order, with a marker pointing
+  // at the prompt line where each command was typed. Used by the history panel
+  // to jump back to a command's original location in scrollback.
+  const executedCommandsRef = useRef<
+    Array<{
+      command: string;
+      marker: IMarker | null;
+    }>
+  >([]);
   const sessionTypeRef = useRef(sessionType);
   const sessionNameRef = useRef(sessionName);
   const connectionIdRef = useRef(connectionId);
@@ -2195,6 +2210,26 @@ function XTerminal({
       setCommandSuggestionSuppressed(
         commandStartsSuggestionSuppressingProgram(command),
       );
+      // OSC 133 / backend confirmation covers commands sent from the UI
+      // (history panel, quick commands), which never pass through onData.
+      // Record their location here too; guard against duplicates with the
+      // keyboard path by matching the most recent entry at the same line.
+      const normalized = command.trim();
+      if (!normalized || !isTerminalAlive()) return;
+      const line = getAbsCursorLine();
+      const last =
+        executedCommandsRef.current[executedCommandsRef.current.length - 1];
+      if (last?.command === normalized && last.marker?.line === line) return;
+      executedCommandsRef.current.push({
+        command: normalized,
+        marker: terminal.registerMarker(0) ?? null,
+      });
+      if (executedCommandsRef.current.length > MAX_TRACKED_COMMANDS) {
+        const removed = executedCommandsRef.current.shift();
+        if (removed?.marker && !removed.marker.isDisposed) {
+          removed.marker.dispose();
+        }
+      }
     };
 
     const resetCommandSuggestionSuppression = () => {
@@ -2634,6 +2669,30 @@ function XTerminal({
     const removePreviewListener = listenSessionInputPreview(
       sessionId,
       handleInputPreview,
+    );
+
+    // The history panel asks us to reveal a command's original location.
+    // The command's scrollback marker is registered when it is submitted.
+    const removeNavigateListener = listenSessionCommandNavigate(
+      sessionId,
+      (command) => {
+        if (!isTerminalAlive()) return;
+        const normalized = command.trim();
+        // History is newest-first; jump to the most recent execution of the
+        // same command, matching the entry the user clicked.
+        let target: number | null = null;
+        for (let i = executedCommandsRef.current.length - 1; i >= 0; i -= 1) {
+          const entry = executedCommandsRef.current[i];
+          if (entry.command !== normalized) continue;
+          if (entry.marker?.isDisposed || entry.marker === null) continue;
+          target = entry.marker.line;
+          break;
+        }
+        if (target === null || !Number.isFinite(target)) return;
+        terminal.scrollToLine(target);
+        highlightLines([target]);
+        focusTerminal();
+      },
     );
 
     const dataDisposable = terminal.onData((data) => {
@@ -3128,6 +3187,11 @@ function XTerminal({
       trimDisposable?.dispose();
       removeLinkPopup();
       removePreviewListener();
+      removeNavigateListener();
+      for (const entry of executedCommandsRef.current) {
+        if (entry.marker && !entry.marker.isDisposed) entry.marker.dispose();
+      }
+      executedCommandsRef.current = [];
       unregisterTerminalContext();
       unregisterReconnectCapture();
 

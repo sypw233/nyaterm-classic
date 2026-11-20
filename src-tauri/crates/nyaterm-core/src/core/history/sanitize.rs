@@ -16,6 +16,31 @@ fn strip_known_prompt_prefix(input: &str) -> Option<&str> {
         .or_else(|| strip_posix_prompt(input))
         .or_else(|| strip_powershell_prompt(input))
         .or_else(|| strip_windows_prompt(input))
+        .or_else(|| strip_cli_prompt(input))
+}
+
+/// Strip device-style CLI prompts such as `console:/ #`, `switch#` or
+/// `router(config)#`. The prompt is one whitespace-free token ending in `#` or
+/// `$`, optionally separated from the marker by spaces. Requiring whitespace
+/// or end-of-input after the marker keeps shell text like `echo $DISPLAY` and
+/// `echo foo # bar` from being mistaken for a prompt, while still letting a
+/// real command after the prompt (`console:/ # ls`) be recorded.
+fn strip_cli_prompt(input: &str) -> Option<&str> {
+    for (idx, marker) in input.char_indices() {
+        if marker != '#' && marker != '$' {
+            continue;
+        }
+        let after = idx + marker.len_utf8();
+        if after < input.len() && !input[after..].starts_with([' ', '\t']) {
+            continue;
+        }
+        let token = input[..idx].trim_end_matches([' ', '\t']);
+        if token.is_empty() || token.chars().any(char::is_whitespace) {
+            continue;
+        }
+        return Some(input[after..].trim_start_matches([' ', '\t']));
+    }
+    None
 }
 
 fn strip_bracket_prompt(input: &str) -> Option<&str> {

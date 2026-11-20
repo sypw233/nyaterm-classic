@@ -2,6 +2,7 @@ import { invoke } from "./invoke";
 
 const SESSION_INPUT_PREVIEW_EVENT = "nyaterm:session-input-preview";
 const SESSION_COMMAND_HISTORY_EVENT = "nyaterm:session-command-history";
+const SESSION_COMMAND_NAVIGATE_EVENT = "nyaterm:session-command-navigate";
 
 const sessionCommandHistory = new Map<string, string[]>();
 
@@ -19,6 +20,11 @@ interface SessionInputPreviewDetail {
 interface SessionCommandHistoryDetail {
   sessionId: string;
   commands: string[];
+}
+
+interface SessionCommandNavigateDetail {
+  sessionId: string;
+  command: string;
 }
 
 export interface SendSessionInputOptions {
@@ -126,6 +132,46 @@ export function listenSessionCommandHistory(
   window.addEventListener(SESSION_COMMAND_HISTORY_EVENT, listener);
   return () => {
     window.removeEventListener(SESSION_COMMAND_HISTORY_EVENT, listener);
+  };
+}
+
+/**
+ * Ask the terminal to scroll to the last place a history command was executed.
+ */
+export function emitSessionCommandNavigate(
+  sessionId: string,
+  command: string,
+): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent<SessionCommandNavigateDetail>(SESSION_COMMAND_NAVIGATE_EVENT, {
+      detail: { sessionId, command },
+    }),
+  );
+}
+
+export function listenSessionCommandNavigate(
+  sessionId: string,
+  handler: (command: string) => void,
+): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  const listener = (event: Event) => {
+    const customEvent = event as CustomEvent<SessionCommandNavigateDetail>;
+    if (customEvent.detail?.sessionId !== sessionId) {
+      return;
+    }
+    handler(customEvent.detail.command);
+  };
+
+  window.addEventListener(SESSION_COMMAND_NAVIGATE_EVENT, listener);
+  return () => {
+    window.removeEventListener(SESSION_COMMAND_NAVIGATE_EVENT, listener);
   };
 }
 
