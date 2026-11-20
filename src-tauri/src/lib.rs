@@ -303,6 +303,7 @@ pub fn run() {
             cmd::session::list_sessions,
             cmd::session::get_session_cwd_presentation,
             cmd::session::add_command_history,
+            cmd::session::record_confirmed_command_history,
             cmd::session::register_command_submission,
             cmd::session::register_command_confirmation_candidate,
             cmd::session::get_command_history,

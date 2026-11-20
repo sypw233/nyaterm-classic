@@ -1056,6 +1056,35 @@ impl SessionManager {
         self.add_history_entry(command).await;
     }
 
+    /// Records a command the user explicitly sent from the UI (quick commands,
+    /// the history panel, AI command cards).
+    ///
+    /// Such a command is known to have been submitted, so it must not wait for
+    /// a shell echo to confirm it: the echo arrives with prompt decoration and
+    /// is not always an exact match, which used to leave these commands out of
+    /// history until the session ended. The pending candidate for the same
+    /// command is dropped so the later confirmation cannot add it twice.
+    pub async fn record_confirmed_command(&self, session_id: &str, command: String) {
+        let Some(command) = sanitize_history_command(&command) else {
+            return;
+        };
+
+        {
+            let mut submissions = self.command_submissions.lock().await;
+            if let Some(state) = submissions.get_mut(session_id) {
+                state
+                    .pending_candidates
+                    .retain(|pending| pending != &command);
+                if state.last_shell_event.as_deref() == Some(command.as_str()) {
+                    state.last_shell_event = None;
+                }
+            }
+        }
+
+        self.record_command_transcript(session_id, &command);
+        self.add_history_entry(command).await;
+    }
+
     /// Registers a client-side command candidate. Sessions with backend shell
     /// events keep it pending until confirmation; other sessions add directly.
     pub async fn register_command_submission(&self, session_id: &str, command: String) {

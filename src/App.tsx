@@ -1480,6 +1480,17 @@ function App() {
           : ({ kind: "data", data: command } as const),
         registerSubmission: execute ? command : null,
       };
+      // A command sent from the UI is known to have been submitted. Record it
+      // directly so it becomes available to completion immediately, instead of
+      // waiting for a shell echo that may never match exactly.
+      if (execute) {
+        void invoke("record_confirmed_command_history", {
+          sessionId,
+          command,
+        }).catch(() => {
+          // Completion history is auxiliary; never block sending the command.
+        });
+      }
       const peerSessionIds = getQuickCommandPeerSessionIds(sessionId);
       const sendInput =
         peerSessionIds.length > 0
