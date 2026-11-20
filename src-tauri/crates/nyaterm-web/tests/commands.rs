@@ -132,6 +132,19 @@ async fn persistent_web_commands_preserve_contracts_and_verify_real_passwords() 
         StatusCode::NOT_FOUND
     );
     assert_eq!(ok(&app, "get_command_history", json!({})).await, json!([]));
+    assert_eq!(
+        ok(&app, "get_default_session_settings", json!({})).await,
+        json!({"kinds":{}})
+    );
+    assert_eq!(
+        ok(
+            &app,
+            "get_default_session_settings_for",
+            json!({"kind":"ssh"})
+        )
+        .await,
+        Value::Null
+    );
 
     assert_eq!(
         ok(&app, "verify_master_password", json!({"password":"wrong"})).await,

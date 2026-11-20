@@ -113,7 +113,7 @@ pub async fn route(
             state.broadcast("connections-changed",Value::Null).await;Value::Null
         },
         "get_default_session_settings" => {
-            config::load_default_session_settings()?
+            json!(config::load_default_session_settings()?)
         },
         "get_default_session_settings_for" => {
             let kind=config::SessionKind::from_str(&text(&args,"kind")?).ok_or_else(||WebError::bad("unknown connection kind"))?;
