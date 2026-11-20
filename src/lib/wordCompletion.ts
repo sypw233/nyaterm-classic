@@ -218,6 +218,12 @@ export function tokenQuote(token: WordToken, line: string): string | undefined {
  * to interpret cursor movement in the middle of an unsubmitted line, which not
  * every line editor (and none of the Windows consoles) does identically.
  *
+ * A trailing space is appended when the completion sits at the end of the line:
+ * accepting a word is almost always followed by typing the next argument, and
+ * without the separator the next keystroke would extend the completed word.
+ * It is not added when the user is completing mid-line, because the following
+ * text already provides the boundary.
+ *
  * `CURSOR_LEFT` is the ANSI sequence the input tracker already models, so the
  * tracked cursor stays in sync with what the shell receives.
  */
@@ -228,7 +234,16 @@ export function buildWordCompletionKeystrokes(
   quote?: string,
 ): string {
   const edited = applyWordCompletion(line, token, completion, quote);
-  const backSteps = edited.line.length - edited.cursor;
-  return `\u0005\u0015${edited.line}${"\x1b[D".repeat(Math.max(0, backSteps))}`;
+
+  // Only pad when nothing follows the completed word: mid-line completions are
+  // already delimited by the text after them.
+  const atLineEnd = edited.cursor >= edited.line.length;
+  const needsSeparator = atLineEnd && !/\s$/u.test(edited.line);
+  const finalLine = needsSeparator ? `${edited.line} ` : edited.line;
+
+  // The caret belongs right after the word, i.e. before the appended space.
+  const cursor = edited.cursor;
+  const backSteps = finalLine.length - cursor;
+  return `\u0005\u0015${finalLine}${"\x1b[D".repeat(Math.max(0, backSteps))}`;
 }
 

@@ -146,14 +146,14 @@ describe("tokenQuote", () => {
 });
 
 describe("buildWordCompletionKeystrokes", () => {
-  it("rewrites the line and walks the caret back to the insertion point", () => {
+  it("appends a space so the next word can be typed immediately", () => {
     const line = "conda ac";
     const token = tokenizeCommandLine(line)[1];
     const keys = buildWordCompletionKeystrokes(line, token, "activate");
 
-    // Ctrl-E, Ctrl-U, the rewritten line, then one left arrow so the caret
-    // lands right after "activate" (the line ends with it, so there are none).
-    expect(keys).toBe("\u0005\u0015conda activate");
+    // Ctrl-E, Ctrl-U, the rewritten line with a trailing separator, then one
+    // left arrow so the caret sits before that space.
+    expect(keys).toBe("\u0005\u0015conda activate \x1b[D");
     expect(keys.endsWith("\r")).toBe(false);
   });
 
@@ -170,7 +170,17 @@ describe("buildWordCompletionKeystrokes", () => {
     const line = 'echo "ac';
     const token = tokenizeCommandLine(line)[1];
     const keys = buildWordCompletionKeystrokes(line, token, "activate", '"');
-    expect(keys).toBe('\u0005\u0015echo "activate"');
+    expect(keys).toBe('\u0005\u0015echo "activate" \x1b[D');
+  });
+
+  it("does not insert a space when completing mid-line", () => {
+    // The following text already delimits the word, so adding a space would
+    // change the command.
+    const line = "git ch --all";
+    const token = tokenizeCommandLine(line)[1];
+    const keys = buildWordCompletionKeystrokes(line, token, "checkout");
+    const rewritten = keys.replace("\u0005\u0015", "").replace(/\x1b\[D/g, "");
+    expect(rewritten).toBe("git checkout --all");
   });
 
   it("completes a word in the middle of a pipeline without touching the tail", () => {
