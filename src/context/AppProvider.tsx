@@ -182,6 +182,8 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
     background_render_policy: "none",
     background_max_fps: 5,
     tui_max_fps: 20,
+    render_frame_limit_enabled: false,
+    render_max_fps: 30,
   },
   interaction: {
     copy_on_select: false,

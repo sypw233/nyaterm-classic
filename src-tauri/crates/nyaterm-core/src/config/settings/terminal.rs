@@ -128,6 +128,17 @@ pub struct TerminalSettings {
     /// Maximum frames per second while `tui_frame_limit_enabled` is on.
     #[serde(default = "default_tui_max_fps")]
     pub tui_max_fps: u32,
+    /// Cap the repaint rate of *all* terminal output, not only full-screen
+    /// programs. Plain scrolling output still repaints once per animation
+    /// frame, and on a software-rendered host the per-frame cost is fixed
+    /// regardless of how many rows changed, so a frame cap is the only lever
+    /// that reduces CPU for ordinary `cat`/build-log traffic.
+    #[serde(default = "default_false")]
+    pub render_frame_limit_enabled: bool,
+    /// Frame rate cap applied by `render_frame_limit_enabled`. 30 keeps typing
+    /// echo responsive while roughly halving repaint work versus 60 fps.
+    #[serde(default = "default_render_max_fps")]
+    pub render_max_fps: u32,
 }
 
 fn default_tui_max_fps() -> u32 {
@@ -135,6 +146,9 @@ fn default_tui_max_fps() -> u32 {
 }
 fn default_tui_adaptive_threshold() -> u32 {
     240
+}
+fn default_render_max_fps() -> u32 {
+    30
 }
 fn default_background_render_policy() -> String {
     "none".to_string()
@@ -215,6 +229,8 @@ impl Default for TerminalSettings {
             background_render_policy: default_background_render_policy(),
             background_max_fps: default_background_max_fps(),
             tui_max_fps: default_tui_max_fps(),
+            render_frame_limit_enabled: false,
+            render_max_fps: default_render_max_fps(),
         }
     }
 }

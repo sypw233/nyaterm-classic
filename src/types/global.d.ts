@@ -1488,6 +1488,10 @@ export interface TerminalSettings {
   background_max_fps?: number;
   /** Max fps for full-screen TUI repaints while the cap is enabled. */
   tui_max_fps?: number;
+  /** Cap the repaint rate of all terminal output, not only full-screen programs. */
+  render_frame_limit_enabled?: boolean;
+  /** Frame rate cap applied while `render_frame_limit_enabled` is on. */
+  render_max_fps?: number;
 }
 
 export interface TransferSettings {

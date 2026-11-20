@@ -66,6 +66,12 @@ interface CreateXTerminalOutputControllerParams {
    * background render policy; also used to pause rendering completely.
    */
   backgroundGateRef: MutableRef<FrameRateGate>;
+  /**
+   * Frame gate applied to every repaint regardless of the active buffer, so
+   * ordinary scrolling output is capped too. Disabled (fps 0) when the user
+   * has not opted in.
+   */
+  renderGateRef: MutableRef<FrameRateGate>;
 }
 
 export function createXTerminalOutputController({
@@ -89,6 +95,7 @@ export function createXTerminalOutputController({
   frameBatchedOutputRef,
   tuiMaxFpsRef,
   backgroundGateRef,
+  renderGateRef,
 }: CreateXTerminalOutputControllerParams) {
   const outputAckLease = outputAckCoordinator.acquire(
     sessionId,
@@ -184,7 +191,7 @@ export function createXTerminalOutputController({
   };
 
   const getForegroundDelayMs = () => {
-    // Two independent caps can apply at once; the slower one wins.
+    // Three independent caps can apply at once; the slowest one wins.
     const alternateDelay = outputScheduler.getForegroundDelayMs();
     const backgroundDelay = backgroundGateRef.current.delayMs();
     if (backgroundDelay === null) {
@@ -192,7 +199,13 @@ export function createXTerminalOutputController({
       // existing scheduling path intact without spinning.
       return PAUSED_RETRY_MS;
     }
-    return Math.max(alternateDelay, backgroundDelay);
+    const renderDelay = renderGateRef.current.delayMs();
+    if (renderDelay === null) {
+      // The render gate never pauses, but treat a null defensively so a
+      // misconfigured gate cannot spam the drain.
+      return PAUSED_RETRY_MS;
+    }
+    return Math.max(alternateDelay, backgroundDelay, renderDelay);
   };
 
   const updateOutputDrainMode = () => {
@@ -224,6 +237,7 @@ export function createXTerminalOutputController({
       // Release the next unfocused-window frame only after this write lands, so
       // the cap measures actual rendering cadence rather than scheduling.
       backgroundGateRef.current.noteFrame();
+      renderGateRef.current.noteFrame();
       maybeRecoverPerformanceMode();
       refreshOutputPressureMode();
     },

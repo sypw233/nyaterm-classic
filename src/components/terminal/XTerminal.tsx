@@ -340,6 +340,11 @@ export default function XTerminal({
   const adaptiveFrameLimitRef = useRef<AdaptiveFrameLimit | null>(null);
   // Throttles (or pauses) rendering while the window is unfocused.
   const backgroundGateRef = useRef(new FrameRateGate({ fps: 0 }));
+  // Caps the repaint rate of all terminal output, including plain scrolling
+  // output on the normal screen. On a software-rendered host the per-frame
+  // cost is fixed, so limiting frames is the only lever that reduces CPU for
+  // `cat`/build-log traffic.
+  const renderGateRef = useRef(new FrameRateGate({ fps: 0 }));
   const alternateScreenTrackerRef = useRef(new AlternateScreenStateTracker());
   const handleVisibilityChangeRef = useRef<(() => void) | null>(null);
   const replaceInputCommandRef = useRef<((command: string) => void) | null>(
@@ -781,6 +786,23 @@ export default function XTerminal({
   }, [
     terminalSettings.background_render_policy,
     terminalSettings.background_max_fps,
+  ]);
+
+  // Global repaint cap: applies to every buffer, so plain `cat`/build-log
+  // output is capped too. Only a frame cap reduces CPU in that case, because
+  // the per-frame cost on a software-rendered host does not depend on how many
+  // rows changed.
+  useEffect(() => {
+    const gate = renderGateRef.current;
+    const enabled = terminalSettings.render_frame_limit_enabled ?? false;
+    const fps = terminalSettings.render_max_fps ?? 30;
+    gate.configure(enabled ? Math.max(1, fps) : 0);
+    return () => {
+      gate.configure(0);
+    };
+  }, [
+    terminalSettings.render_frame_limit_enabled,
+    terminalSettings.render_max_fps,
   ]);
 
   useEffect(() => {
@@ -2271,6 +2293,7 @@ export default function XTerminal({
       frameBatchedOutputRef,
       tuiMaxFpsRef,
       backgroundGateRef,
+      renderGateRef,
     });
 
     writeOrderedTerminalStatus = (data: string) => {

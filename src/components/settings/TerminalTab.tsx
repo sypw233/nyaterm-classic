@@ -297,6 +297,38 @@ export function TerminalTab() {
         </SettingRow>
 
         <SettingRow
+          label={t("settings.renderFrameLimit")}
+          desc={t("settings.renderFrameLimitDesc")}
+        >
+          <SettingSwitch
+            checked={appSettings.terminal.render_frame_limit_enabled ?? false}
+            onChange={(v) =>
+              updateAppSettings({
+                terminal: { ...appSettings.terminal, render_frame_limit_enabled: v },
+              })
+            }
+          />
+        </SettingRow>
+
+        {appSettings.terminal.render_frame_limit_enabled && (
+          <SettingSlider
+            label={t("settings.renderMaxFps")}
+            desc={t("settings.renderMaxFpsDesc")}
+            min={1}
+            max={60}
+            step={1}
+            unit="fps"
+            value={appSettings.terminal.render_max_fps ?? 30}
+            controlClassName="max-w-sm"
+            onChange={(v) =>
+              updateAppSettings({
+                terminal: { ...appSettings.terminal, render_max_fps: v },
+              })
+            }
+          />
+        )}
+
+        <SettingRow
           label={t("settings.tuiFrameLimit")}
           desc={t("settings.tuiFrameLimitDesc")}
         >
