@@ -4,6 +4,54 @@ All notable changes to this project will be documented in this file.
 
 This changelog is inferred from release bump commits in git history (for example `chore: bump version to vX.Y.Z`) and grouped by Conventional Commit type.
 
+## [1.3.5] - 2026-11-20
+
+Another terminal-rendering performance pass on the same no-GPU virtual machine.
+Where 1.3.4 made the expensive paths measurable and gave them opt-in caps, this
+release removes work that was being done unconditionally, and extends frame
+capping to the output shapes that were previously unthrottled.
+
+### Added
+
+- **terminal:** Add a **Limit overall repaint rate** setting (off by default,
+  1–60 fps, default 30). Every existing cap applied only while the alternate
+  screen was active, so plain scrolling output (`cat`, `tail -f`, build logs)
+  still repainted once per animation frame. On a host without GPU acceleration
+  each repaint costs the same regardless of how many rows changed, so those
+  frames dominated CPU with nothing limiting them. The cap is consulted
+  alongside the alternate-screen and unfocused-window caps, and the slowest of
+  the three wins.
+
+### Changed
+
+- **monitoring:** Poll remote resource stats every 30 seconds instead of every
+  3 seconds when nothing on screen consumes them. Previously any active SSH
+  session triggered a full shell round trip on a 3-second timer even with the
+  header showing the session name and no monitor panel open. The poll is slowed
+  rather than stopped because the same samples populate the hardware metadata
+  written back to saved connections.
+
+### Performance
+
+- **core:** Skip ANSI stripping for terminal output that contains no escape
+  sequence or carriage return. The recent-output store ran every chunk through
+  a `vte` parser plus an extra allocation under a mutex, for output that the
+  stripper would return unchanged.
+- **terminal:** Cut per-batch regex work in the output hot path.
+  `stripTerminalControlSequences` now returns its input unchanged when there is
+  no ESC/CSI byte; a shared tail check rejects credential-prompt candidates
+  without a trailing colon before running four regexes; and error-keyword
+  scanning uses literal pre-checks and a bounded tail before the regex.
+- **ui:** Stop app-level state changes from re-rendering every terminal. `App`
+  passed its header, activity bar, workspace and empty-workspace props as inline
+  object literals, so those identities changed on every render and defeated
+  `memo(TabWindowsWorkspace)`. The bundles are now memoised, and `XTerminal` /
+  `PaneXTerminal` are memoised as well.
+- **ui:** Stop building debug log payloads when debug logging is off, pause
+  decorative infinite CSS animations while the window is in the background, and
+  cache terminal gutter timestamp formatting within a pass (a single write
+  stamps many rows with the same timestamp).
+
 ## [1.3.4] - 2026-11-19
 
 This release is primarily a terminal-rendering performance pass, driven by
