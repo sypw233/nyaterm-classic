@@ -2185,6 +2185,8 @@
     "addFallbackFont": "Add Fallback",
     "addKey": "Add Key",
     "addNew": "Add New",
+    "aiErrorDetection": "Detect terminal errors",
+    "aiErrorDetectionDesc": "Watch command output for real failures and offer to let the AI explain them. Only lines that look like a failure report match, so paths and words such as `error.rs` or `0 errors` do not trigger it. Full-screen programs (vim, htop, btop) are skipped, and the notice clears when you run the next command.",
     "aliyunDriveClientIdDesc": "OAuth client ID used with AliyunDrive refresh token.",
     "aliyunDriveRefreshTokenDesc": "Long-lived AliyunDrive refresh token used by OpenDAL to refresh access.",
     "aliyunDriveType": "Drive Type",

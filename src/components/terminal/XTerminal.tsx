@@ -46,6 +46,7 @@ import {
   detectCredentialPromptKind,
   mayContainCredentialPrompt,
 } from "@/lib/credentialAutofill";
+import { emitAIErrorDetectionReset } from "@/lib/aiEvents";
 import { getErrorMessage } from "@/lib/errors";
 import { invoke } from "@/lib/invoke";
 import { hexLuminance } from "@/lib/keywordHighlightPresets";
@@ -292,6 +293,11 @@ function XTerminal({
   commandSuggestionWordCompletionRef.current = commandSuggestionWordCompletion;
   const commandSuggestionCaretMidlineRef = useRef(commandSuggestionCaretMidline);
   commandSuggestionCaretMidlineRef.current = commandSuggestionCaretMidline;
+  // Read by the output handler, which must not be rebuilt when settings change.
+  const aiErrorDetectionEnabledRef = useRef(
+    interaction.ai_error_detection_enabled ?? true,
+  );
+  aiErrorDetectionEnabledRef.current = interaction.ai_error_detection_enabled ?? true;
 
   const inputStateRef = useRef(createTerminalInputState());
   const terminalAppSettingsRef = useRef(terminalAppSettings);
@@ -2046,6 +2052,9 @@ function XTerminal({
         inputStateRef.current = createTerminalInputState();
         resetCommandSuggestionSuppression();
         dismissSuggestions();
+        // A notice describes the previous command's output. Starting a new one
+        // makes it stale, so it must not outlive the command that produced it.
+        emitAIErrorDetectionReset();
         return false;
       }
 
@@ -2574,6 +2583,7 @@ function XTerminal({
       visibleRef,
       lastErrorNoticeAtRef,
       aiCapturingRef,
+      aiErrorDetectionEnabledRef,
       onExecutionState: setTerminalExecutionState,
       zmodemActiveRef,
       inputStateRef,

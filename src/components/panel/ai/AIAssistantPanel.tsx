@@ -52,7 +52,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useApp } from "@/context/AppContext";
 import { useTheme } from "@/context/ThemeContext";
 import type { AIErrorDetectedDetail } from "@/lib/aiEvents";
-import { AI_ERROR_DETECTED_EVENT } from "@/lib/aiEvents";
+import { AI_ERROR_DETECTED_EVENT, AI_ERROR_DETECTION_RESET_EVENT } from "@/lib/aiEvents";
 import { buildMentionSessionOptions } from "@/lib/aiSessionMentions";
 import {
   getModelReasoningOptions,
@@ -428,6 +428,15 @@ function AIAssistantPanel({ activePane, activeConnection, intent }: AIAssistantP
     window.addEventListener(AI_ERROR_DETECTED_EVENT, handler);
     return () => window.removeEventListener(AI_ERROR_DETECTED_EVENT, handler);
   }, [activePane?.sessionId, effectivePanes]);
+
+  // A new command makes the previous command's error notice stale. The terminal
+  // starts its next command before this panel is necessarily re-rendered, so the
+  // signal arrives as an event rather than through props.
+  useEffect(() => {
+    const reset = () => setDetectedError(null);
+    window.addEventListener(AI_ERROR_DETECTION_RESET_EVENT, reset);
+    return () => window.removeEventListener(AI_ERROR_DETECTION_RESET_EVENT, reset);
+  }, []);
 
   const handleMessagesScroll = useCallback(() => {
     const el = scrollContainerRef.current;

@@ -17,6 +17,10 @@ pub struct InteractionSettings {
     /// end. Word completion replaces just the token, so the rest of the line is
     /// preserved.
     pub command_suggestion_caret_midline: bool,
+    /// Watch terminal output for command failures and offer to have the AI
+    /// explain them. Detection is text-based, so it can be turned off when it
+    /// proves noisy.
+    pub ai_error_detection_enabled: bool,
     pub duplicate_session_command_delay_ms: u64,
     pub word_separators: String,
     pub alt_as_meta: bool,
@@ -40,6 +44,7 @@ struct InteractionSettingsWire {
     command_suggestion_max_chars: Option<usize>,
     command_suggestion_word_completion: Option<bool>,
     command_suggestion_caret_midline: Option<bool>,
+    ai_error_detection_enabled: Option<bool>,
     duplicate_session_command_delay_ms: Option<u64>,
     word_separators: Option<String>,
     alt_as_meta: Option<bool>,
@@ -121,6 +126,7 @@ impl Default for InteractionSettings {
             command_suggestion_max_chars: default_command_suggestion_max_chars(),
             command_suggestion_word_completion: true,
             command_suggestion_caret_midline: true,
+            ai_error_detection_enabled: true,
             duplicate_session_command_delay_ms: default_duplicate_session_command_delay_ms(),
             word_separators: default_word_separators(),
             alt_as_meta: false,
@@ -167,6 +173,9 @@ impl<'de> Deserialize<'de> for InteractionSettings {
             command_suggestion_caret_midline: wire
                 .command_suggestion_caret_midline
                 .unwrap_or_else(default_true),
+            ai_error_detection_enabled: wire
+                .ai_error_detection_enabled
+                .unwrap_or_else(default_true),
             duplicate_session_command_delay_ms: wire
                 .duplicate_session_command_delay_ms
                 .unwrap_or(defaults.duplicate_session_command_delay_ms),
@@ -212,6 +221,7 @@ mod tests {
         assert!(settings.terminal_zoom_enabled);
         assert!(settings.command_suggestion_word_completion);
         assert!(settings.command_suggestion_caret_midline);
+        assert!(settings.ai_error_detection_enabled);
     }
 
     #[test]
@@ -251,6 +261,7 @@ mod tests {
         // wrote the fields.
         assert!(settings.command_suggestion_word_completion);
         assert!(settings.command_suggestion_caret_midline);
+        assert!(settings.ai_error_detection_enabled);
     }
 
     #[test]

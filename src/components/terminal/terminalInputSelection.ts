@@ -51,35 +51,6 @@ export function readRecentOutput(terminal: Terminal, lineLimit: number) {
   return lines.join("\n").replace(/\s+$/u, "");
 }
 
-/**
- * Scan a bounded tail of freshly received output for obvious failure text.
- *
- * The pattern covers several alternatives, and this runs on every output batch,
- * so a lowercase literal pre-check keeps the common case to a handful of
- * `indexOf` calls instead of a multi-alternative regex.
- */
-export function hasErrorKeyword(output: string) {
-  if (!output) return false;
-  const tail = output.length > 4096 ? output.slice(-4096) : output;
-  const lower = tail.toLowerCase();
-  const mayMatch =
-    lower.includes("error") ||
-    lower.includes("fail") ||
-    lower.includes("permission denied") ||
-    lower.includes("denied") ||
-    lower.includes("refused") ||
-    lower.includes("segmentation") ||
-    lower.includes("out of memory") ||
-    lower.includes("cannot allocate") ||
-    lower.includes("not found") ||
-    lower.includes("already in use") ||
-    lower.includes("no space");
-  if (!mayMatch) return false;
-  return /\b(error|failed|permission denied|no space left on device|connection refused|segmentation fault|out of memory|cannot allocate memory|command not found|module not found|port already in use)\b/i.test(
-    tail,
-  );
-}
-
 export function isMultiLineText(text: string): boolean {
   return /[\r\n]/u.test(text);
 }

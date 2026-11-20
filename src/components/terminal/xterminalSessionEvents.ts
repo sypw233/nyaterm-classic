@@ -11,7 +11,7 @@ import { createTerminalInputState } from "@/lib/terminalInputTracker";
 import type { AiCaptureEvent, TerminalExecutionState } from "@/types/global";
 import type { Dec2026FrameGate } from "./dec2026FrameGate";
 import type { SerialModemEventPayload } from "./serialModemTerminalEvents";
-import { hasErrorKeyword } from "./terminalInputSelection";
+import { hasErrorKeyword } from "@/lib/terminalErrorDetection";
 import type {
   HibernationLogEvent,
   HibernationPhase,
@@ -50,11 +50,14 @@ interface CreateXTerminalSessionEventsParams {
   visibleRef: MutableRef<boolean>;
   lastErrorNoticeAtRef: MutableRef<number>;
   aiCapturingRef: MutableRef<boolean>;
+  /** Whether automatic AI error detection is enabled in settings. */
+  aiErrorDetectionEnabledRef: MutableRef<boolean>;
   onExecutionState?: (state: TerminalExecutionState) => void;
   zmodemActiveRef: MutableRef<boolean>;
   inputStateRef: MutableRef<ReturnType<typeof createTerminalInputState>>;
   alternateScreenTrackerRef: MutableRef<{
     ingest: (data: string) => void;
+    isAlternateScreenActive: () => boolean;
   }>;
   hibernationPhaseRef: MutableRef<HibernationPhase>;
   detachedHibernateEpochRef: MutableRef<number | null>;
@@ -106,6 +109,7 @@ export function createXTerminalSessionEvents({
   visibleRef,
   lastErrorNoticeAtRef,
   aiCapturingRef,
+  aiErrorDetectionEnabledRef,
   onExecutionState,
   zmodemActiveRef,
   inputStateRef,
@@ -177,7 +181,18 @@ export function createXTerminalSessionEvents({
         alternateScreenTrackerRef.current.ingest(payload.data);
         updateCredentialPromptInputMode(recentPayload);
         feedCredentialOutput(recentPayload);
-        if (visibleRef.current && hasErrorKeyword(recentPayload)) {
+        // Full-screen programs redraw the whole viewport many times per second,
+        // so the same text — a path, a window title, a log tail — is scanned
+        // again on every frame. Any "error" anywhere on that screen used to
+        // re-fire the notice continuously. Alternate-screen output is not a
+        // command report, so it is skipped entirely.
+        const inAlternateScreen = alternateScreenTrackerRef.current.isAlternateScreenActive();
+        if (
+          visibleRef.current &&
+          !inAlternateScreen &&
+          aiErrorDetectionEnabledRef.current &&
+          hasErrorKeyword(recentPayload)
+        ) {
           const now = Date.now();
           if (now - lastErrorNoticeAtRef.current > 30_000) {
             lastErrorNoticeAtRef.current = now;

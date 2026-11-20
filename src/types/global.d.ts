@@ -1967,6 +1967,8 @@ export interface InteractionSettings {
   command_suggestion_word_completion: boolean;
   /** Offer suggestions when the caret sits inside the line. */
   command_suggestion_caret_midline: boolean;
+  /** Watch terminal output for failures and offer AI analysis. */
+  ai_error_detection_enabled: boolean;
   duplicate_session_command_delay_ms: number;
   word_separators: string;
   alt_as_meta: boolean;

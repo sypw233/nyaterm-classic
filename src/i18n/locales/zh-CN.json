@@ -2182,6 +2182,8 @@
     "addFallbackFont": "添加备选字体",
     "addKey": "添加密钥",
     "addNew": "新增",
+    "aiErrorDetection": "检测终端错误输出",
+    "aiErrorDetectionDesc": "监视命令输出里的真实失败，并提供让 AI 解释的入口。只有形如失败报告的行才会命中，因此 `error.rs`、`0 errors` 这类路径和计数不会触发。全屏程序（vim、htop、btop）会被跳过，且执行下一条命令时提示会自动清除。",
     "aliyunDriveClientIdDesc": "与 AliyunDrive Refresh Token 搭配使用的 OAuth Client ID。",
     "aliyunDriveRefreshTokenDesc": "OpenDAL 用于刷新访问权限的 AliyunDrive 长期 Refresh Token。",
     "aliyunDriveType": "Drive Type",

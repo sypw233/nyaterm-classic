@@ -232,6 +232,16 @@ export function InteractionTab() {
           </>
         )}
 
+        <SettingRow
+          label={t("settings.aiErrorDetection")}
+          desc={t("settings.aiErrorDetectionDesc")}
+        >
+          <SettingSwitch
+            checked={interaction.ai_error_detection_enabled ?? true}
+            onChange={(v) => updateInteraction({ ai_error_detection_enabled: v })}
+          />
+        </SettingRow>
+
         <SettingInput
           label={t("settings.wordSeparators")}
           desc={t("settings.wordSeparatorsDesc")}
