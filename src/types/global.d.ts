@@ -586,6 +586,11 @@ export interface SavedConnection {
   ssh_algorithms?: SshAlgorithmPreferences;
   /** SSH-only: runtime profile. Network devices skip Linux-only probes and integrations. */
   ssh_profile?: SshProfile;
+  /**
+   * Extra instructions appended to the AI system prompt for this connection.
+   * Separate from `description`, which is a human note shown as data.
+   */
+  ai_system_prompt?: string;
   /** SSH-only: PTY terminal type. Omitted means profile default. */
   terminal_type?: SshTerminalType;
   sftp?: SftpSettings;
@@ -1752,6 +1757,12 @@ export interface AIContext {
   cwd?: string | null;
   os?: string | null;
   arch?: string | null;
+  /** Kernel release from the last asset collection. */
+  kernelVersion?: string | null;
+  /** Hostname from the last asset collection. */
+  hostname?: string | null;
+  /** Per-connection instructions addressed to the AI model. */
+  aiSystemPrompt?: string | null;
   recentOutput: string;
   selectedText: string;
   inputBuffer: string;

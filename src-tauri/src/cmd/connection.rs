@@ -234,6 +234,9 @@ pub fn save_default_session_settings(
     template.name.clear();
     template.group_id = None;
     template.description = None;
+    // The AI prompt is specific to one host ("this box uses BusyBox"), so it
+    // must not become a default for every new connection of the same kind.
+    template.ai_system_prompt = None;
     template.tags.clear();
     template.icon = None;
     template.icon_auto_detect = None;
@@ -629,6 +632,7 @@ e+JpiSq66Z6GIt0801skPh20jxOO3F52SoX1IeO5D5PXfZrfSZlw6S8c7bwyp2FHxDewRx
             terminal_type: None,
             sftp: SftpSettings::default(),
             asset: None,
+            ai_system_prompt: None,
             created_at_ms: None,
             updated_at_ms: None,
             last_used_at_ms: None,
@@ -701,6 +705,7 @@ e+JpiSq66Z6GIt0801skPh20jxOO3F52SoX1IeO5D5PXfZrfSZlw6S8c7bwyp2FHxDewRx
             terminal_type: None,
             sftp: SftpSettings::default(),
             asset: None,
+            ai_system_prompt: None,
             created_at_ms: None,
             updated_at_ms: None,
             last_used_at_ms: None,
@@ -749,6 +754,7 @@ e+JpiSq66Z6GIt0801skPh20jxOO3F52SoX1IeO5D5PXfZrfSZlw6S8c7bwyp2FHxDewRx
             terminal_type: None,
             sftp: SftpSettings::default(),
             asset: None,
+            ai_system_prompt: None,
             created_at_ms: None,
             updated_at_ms: None,
             last_used_at_ms: None,
@@ -794,6 +800,7 @@ e+JpiSq66Z6GIt0801skPh20jxOO3F52SoX1IeO5D5PXfZrfSZlw6S8c7bwyp2FHxDewRx
             terminal_type: None,
             sftp: SftpSettings::default(),
             asset: None,
+            ai_system_prompt: None,
             created_at_ms: None,
             updated_at_ms: None,
             last_used_at_ms: None,
@@ -827,6 +834,7 @@ e+JpiSq66Z6GIt0801skPh20jxOO3F52SoX1IeO5D5PXfZrfSZlw6S8c7bwyp2FHxDewRx
             terminal_type: None,
             sftp: SftpSettings::default(),
             asset: None,
+            ai_system_prompt: None,
             created_at_ms: None,
             updated_at_ms: None,
             last_used_at_ms: None,

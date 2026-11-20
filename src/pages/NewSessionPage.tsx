@@ -235,6 +235,7 @@ export default function NewSessionPage() {
   const [groupId, setGroupId] = useState(initialGroupId);
   const [newGroupNamePending, setNewGroupNamePending] = useState("");
   const [description, setDescription] = useState("");
+  const [aiSystemPrompt, setAiSystemPrompt] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [host, setHost] = useState("");
   const [sshPort, setSshPort] = useState(22);
@@ -394,6 +395,7 @@ export default function NewSessionPage() {
         setName(found.name);
         setGroupId(found.group_id || "");
         setDescription(found.description || "");
+        setAiSystemPrompt(found.ai_system_prompt ?? "");
         setTags(found.tags ?? []);
         setIconKey(found.icon || "");
         setIconAutoDetect(found.icon_auto_detect ?? !found.icon);
@@ -561,6 +563,7 @@ export default function NewSessionPage() {
     setGroupId("");
     setNewGroupNamePending("");
     setDescription("");
+    setAiSystemPrompt("");
     setTags([]);
     setTagDraft("");
     setHost("");
@@ -1055,6 +1058,7 @@ export default function NewSessionPage() {
     try {
       const normalizedName = name.trim();
       const normalizedDescription = description.trim();
+      const normalizedAiSystemPrompt = aiSystemPrompt.trim();
       const normalizedTags = normalizeConnectionTags(tags);
       const normalizedHost = host.trim();
       const normalizedUsername = username.trim();
@@ -1224,6 +1228,7 @@ export default function NewSessionPage() {
         type: typeTag as SavedConnection["type"],
         group_id: finalGroupId || undefined,
         description: normalizedDescription || undefined,
+        ai_system_prompt: normalizedAiSystemPrompt || undefined,
         tags: normalizedTags.length > 0 ? normalizedTags : undefined,
         sort_order: sortOrder,
         icon: iconKey || undefined,
@@ -2068,6 +2073,23 @@ export default function NewSessionPage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
+              </div>
+
+              {/* AI system prompt */}
+              <div>
+                <Label className="text-xs font-medium text-foreground/80">
+                  {t("dialog.aiSystemPrompt")}
+                </Label>
+                <Textarea
+                  rows={3}
+                  placeholder={t("dialog.aiSystemPromptPlaceholder")}
+                  className="mt-1 text-xs resize-none"
+                  value={aiSystemPrompt}
+                  onChange={(e) => setAiSystemPrompt(e.target.value)}
+                />
+                <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
+                  {t("dialog.aiSystemPromptHint")}
+                </p>
               </div>
             </div>
           </ConnectionBasicInformation>

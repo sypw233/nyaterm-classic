@@ -82,6 +82,9 @@ describe("AI terminal context", () => {
         cwd: "/srv/app",
         os: null,
         arch: null,
+        kernelVersion: null,
+        hostname: null,
+        aiSystemPrompt: null,
         recentOutput: "output",
         selectedText: "selected",
         inputBuffer: "input",
@@ -91,6 +94,60 @@ describe("AI terminal context", () => {
     } finally {
       unregister();
     }
+  });
+
+  it("passes the saved asset metadata and the per-connection AI prompt", async () => {
+    const unregister = registerTerminalContextProvider(pane.sessionId, {
+      getRecentOutput: () => "",
+      getSelectedText: () => "",
+      getInputBuffer: () => "",
+      insertCommand: vi.fn(),
+      focus: vi.fn(),
+    });
+    try {
+      const context = await buildAIContext({
+        pane,
+        lineLimit: 50,
+        connection: {
+          id: "conn-1",
+          name: "edge router",
+          type: "ssh",
+          host: "edge.example",
+          username: "admin",
+          ai_system_prompt: "This device runs OpenWrt; use busybox tools.",
+          asset: {
+            os_name: "OpenWrt 23.05",
+            architecture: "mips",
+            kernel_version: "5.15.150",
+            hostname: "edge-01",
+          },
+        },
+      });
+      expect(context).toMatchObject({
+        os: "OpenWrt 23.05",
+        arch: "mips",
+        kernelVersion: "5.15.150",
+        hostname: "edge-01",
+        aiSystemPrompt: "This device runs OpenWrt; use busybox tools.",
+      });
+    } finally {
+      unregister();
+    }
+  });
+
+  it("leaves collected facts and the custom prompt unset when the connection has none", async () => {
+    const context = await buildAIContext({
+      pane,
+      lineLimit: 50,
+      connection: { id: "conn-1", name: "plain", type: "ssh", host: "h" },
+    });
+    expect(context).toMatchObject({
+      os: null,
+      arch: null,
+      kernelVersion: null,
+      hostname: null,
+      aiSystemPrompt: null,
+    });
   });
 
   it("keeps unavailable runtime data unknown and ignores obsolete saved execution profiles", async () => {
@@ -112,6 +169,7 @@ describe("AI terminal context", () => {
       cwd: null,
       os: null,
       arch: null,
+      aiSystemPrompt: null,
     });
   });
 

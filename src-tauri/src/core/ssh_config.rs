@@ -642,6 +642,7 @@ fn entry_to_saved_connection(
         terminal_type: None,
         sftp: Default::default(),
         asset: None,
+        ai_system_prompt: None,
         created_at_ms: None,
         updated_at_ms: None,
         last_used_at_ms: None,

@@ -1249,6 +1249,14 @@ pub struct SavedConnection {
     pub sftp: SftpSettings,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub asset: Option<AssetMetadata>,
+    /// Extra instructions appended to the AI system prompt for this connection.
+    ///
+    /// Kept separate from `description`, which is a human note shown in the UI
+    /// and treated as prompt data. This field is addressed to the model itself,
+    /// for environment facts the user knows but NyaTerm cannot detect (for
+    /// example "this host runs Alpine with BusyBox, not GNU coreutils").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai_system_prompt: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created_at_ms: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
