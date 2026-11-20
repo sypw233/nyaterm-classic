@@ -2801,6 +2801,8 @@ function App() {
     liveSessionIds,
     liveSessionsById,
     uiConfig,
+    hasOpenTabs: tabs.length > 0,
+    multiPanelOpen,
     handleAssetMonitoringPatch,
   });
 

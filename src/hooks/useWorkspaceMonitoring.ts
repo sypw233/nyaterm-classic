@@ -7,6 +7,10 @@ import {
 } from "@/lib/assetMonitoring";
 import { normalizeHeaderStatusMode } from "@/lib/headerStatus";
 import { getGpuMonitor } from "@/lib/plugins";
+import {
+  IDLE_REMOTE_STATS_INTERVAL_SECONDS,
+  isRemoteStatsDisplayed,
+} from "@/lib/remoteStatsVisibility";
 import type {
   AssetMetadata,
   SavedConnection,
@@ -26,6 +30,10 @@ interface WorkspaceMonitoringOptions {
   liveSessionIds: Set<string> | null;
   liveSessionsById: Map<string, SessionInfo> | null;
   uiConfig: UiConfig;
+  /** Whether the workspace currently has any open tabs. */
+  hasOpenTabs: boolean;
+  /** Whether side panels can be stacked (appearance setting). */
+  multiPanelOpen: boolean;
   handleAssetMonitoringPatch: (
     sourceSessionId: string,
     targetSessionId: string,
@@ -39,6 +47,8 @@ export function useWorkspaceMonitoring({
   liveSessionIds,
   liveSessionsById,
   uiConfig,
+  hasOpenTabs,
+  multiPanelOpen,
   handleAssetMonitoringPatch,
 }: WorkspaceMonitoringOptions) {
   const { plugins, generation, locked } = usePlugins();
@@ -66,10 +76,20 @@ export function useWorkspaceMonitoring({
       ? activeLiveSshSessionId
       : null;
   const activeRemoteStatsEnabled = remoteStatsEnabled && Boolean(activeStatsSessionId);
+  // Polling remote stats runs a shell script over SSH on a timer, so slow it
+  // down when nothing on screen consumes the result. It is not disabled because
+  // the same samples populate hardware metadata on saved connections.
+  const remoteStatsDisplayed = isRemoteStatsDisplayed(uiConfig, {
+    multiPanelOpen,
+    hasOpenTabs,
+  });
+  const remoteStatsInterval = remoteStatsDisplayed
+    ? (uiConfig.remote_stats_interval ?? 3)
+    : IDLE_REMOTE_STATS_INTERVAL_SECONDS;
   const remoteStats = useRemoteStats(
     activeStatsSessionId,
     activeRemoteStatsEnabled,
-    uiConfig.remote_stats_interval ?? 3,
+    remoteStatsInterval,
     liveSessionIds,
   );
   const networkHistoryStore = useNetworkHistory(

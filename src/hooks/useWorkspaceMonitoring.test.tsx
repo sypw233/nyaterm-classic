@@ -33,6 +33,8 @@ function monitoringOptions(): Parameters<typeof useWorkspaceMonitoring>[0] {
       header_status_visible: true,
       header_status_mode: "gpu",
     } as UiConfig,
+    hasOpenTabs: true,
+    multiPanelOpen: false,
     handleAssetMonitoringPatch: vi.fn(),
   };
 }
