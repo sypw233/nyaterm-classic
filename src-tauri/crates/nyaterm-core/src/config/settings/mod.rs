@@ -4,6 +4,7 @@ mod appearance;
 mod diagnostics;
 mod general;
 mod interaction;
+mod overrides;
 mod proxy;
 mod recording;
 mod search;
@@ -31,6 +32,7 @@ pub use appearance::{AppearanceSettings, TerminalColorsConfig, ThemeColorsConfig
 pub use diagnostics::{DiagnosticsLogLevel, DiagnosticsSettings};
 pub use general::GeneralSettings;
 pub use interaction::InteractionSettings;
+pub use overrides::ConnectionOverrides;
 pub use proxy::ProxySettings;
 pub use recording::RecordingSettings;
 pub use search::{SearchEngine, SearchSettings};

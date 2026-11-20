@@ -544,6 +544,7 @@ fn resolve_saved_ssh_config(
                 ..
             }
         ),
+        overrides: conn.overrides.clone(),
     })
 }
 

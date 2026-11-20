@@ -237,6 +237,9 @@ pub fn save_default_session_settings(
     // The AI prompt is specific to one host ("this box uses BusyBox"), so it
     // must not become a default for every new connection of the same kind.
     template.ai_system_prompt = None;
+    // Same for per-connection setting overrides: a template describes a kind of
+    // session, not the one host whose font or frame cap was tuned.
+    template.overrides = None;
     template.tags.clear();
     template.icon = None;
     template.icon_auto_detect = None;
@@ -633,6 +636,7 @@ e+JpiSq66Z6GIt0801skPh20jxOO3F52SoX1IeO5D5PXfZrfSZlw6S8c7bwyp2FHxDewRx
             sftp: SftpSettings::default(),
             asset: None,
             ai_system_prompt: None,
+            overrides: None,
             created_at_ms: None,
             updated_at_ms: None,
             last_used_at_ms: None,
@@ -706,6 +710,7 @@ e+JpiSq66Z6GIt0801skPh20jxOO3F52SoX1IeO5D5PXfZrfSZlw6S8c7bwyp2FHxDewRx
             sftp: SftpSettings::default(),
             asset: None,
             ai_system_prompt: None,
+            overrides: None,
             created_at_ms: None,
             updated_at_ms: None,
             last_used_at_ms: None,
@@ -755,6 +760,7 @@ e+JpiSq66Z6GIt0801skPh20jxOO3F52SoX1IeO5D5PXfZrfSZlw6S8c7bwyp2FHxDewRx
             sftp: SftpSettings::default(),
             asset: None,
             ai_system_prompt: None,
+            overrides: None,
             created_at_ms: None,
             updated_at_ms: None,
             last_used_at_ms: None,
@@ -801,6 +807,7 @@ e+JpiSq66Z6GIt0801skPh20jxOO3F52SoX1IeO5D5PXfZrfSZlw6S8c7bwyp2FHxDewRx
             sftp: SftpSettings::default(),
             asset: None,
             ai_system_prompt: None,
+            overrides: None,
             created_at_ms: None,
             updated_at_ms: None,
             last_used_at_ms: None,
@@ -835,6 +842,7 @@ e+JpiSq66Z6GIt0801skPh20jxOO3F52SoX1IeO5D5PXfZrfSZlw6S8c7bwyp2FHxDewRx
             sftp: SftpSettings::default(),
             asset: None,
             ai_system_prompt: None,
+            overrides: None,
             created_at_ms: None,
             updated_at_ms: None,
             last_used_at_ms: None,

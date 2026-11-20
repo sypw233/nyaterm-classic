@@ -60,6 +60,10 @@ pub struct SshConfig {
     /// Allow sanitized remote OSC 0/2 titles to decorate this saved SSH tab.
     #[serde(default)]
     pub dynamic_tab_title: bool,
+    /// Settings this connection overrides. Read at connect time so a per-host
+    /// keep-alive survives the jump through a proxy or another shell.
+    #[serde(default)]
+    pub overrides: Option<nyaterm_core::config::ConnectionOverrides>,
 }
 
 fn default_encoding() -> String {
@@ -812,7 +816,12 @@ pub(super) fn build_client_config(
         client_cfg.gex = gex;
     }
 
-    if let Ok(app_settings) = crate::config::load_app_settings(app) {
+    if let Ok(mut app_settings) = crate::config::load_app_settings(app) {
+        // Apply the connection's own keep-alive first, if it has one. Jump hosts
+        // resolve their own `SshConfig`, so each hop follows its own setting.
+        if let Some(overrides) = config.overrides.as_ref() {
+            app_settings = overrides.apply(&app_settings);
+        }
         let interval = app_settings.terminal.keep_alive_interval;
         let mode = app_settings.terminal.keep_alive_mode.as_str();
         apply_keepalive_settings(&mut client_cfg, mode, interval);

@@ -9,7 +9,7 @@ pub const DEFAULT_SCROLLBACK_LINES: u32 = 10_000;
 pub const MAX_SCROLLBACK_LINES: u32 = 100_000;
 const MAX_TIMESTAMP_FORMAT_LEN: usize = 64;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct KeywordHighlightRule {
     #[serde(default)]
     pub id: String,
@@ -32,7 +32,7 @@ fn default_highlight_color_light() -> String {
     "#0969da".to_string()
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ActionLinksMatcherSettings {
     #[serde(default = "default_true")]
     pub ipv4: bool,

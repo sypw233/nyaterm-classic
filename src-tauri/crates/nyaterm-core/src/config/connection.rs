@@ -2,6 +2,7 @@ use super::{
     ProxyConfig, ProxySettings, load_app_settings, load_proxies, save_app_settings, save_proxies,
     uuid_v4,
 };
+use super::settings::ConnectionOverrides;
 use crate::core::{RecordingMode, RotationPolicy};
 use crate::error::{AppError, AppResult};
 use crate::storage;
@@ -1257,6 +1258,12 @@ pub struct SavedConnection {
     /// example "this host runs Alpine with BusyBox, not GNU coreutils").
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ai_system_prompt: Option<String>,
+    /// Settings this connection overrides instead of inheriting from
+    /// `AppSettings`. Absent means "follow the global settings", which is why
+    /// the whole struct is skipped when empty: connections that never opted out
+    /// keep their previous on-disk shape.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub overrides: Option<ConnectionOverrides>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created_at_ms: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
