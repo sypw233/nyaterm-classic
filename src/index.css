@@ -422,6 +422,16 @@ body[data-window-transparency="true"] #root {
   animation: blink 1s step-end infinite;
 }
 
+/* Pause decorative infinite animations while the window is in the background.
+   They repaint the compositor continuously and a software-rendered host pays
+   full price for each frame, even though nobody is looking. */
+html[data-window-focused="false"] .animate-breathing,
+html[data-window-focused="false"] .animate-pulse,
+html[data-window-focused="false"] .animate-spin,
+html[data-window-focused="false"] .df-thinking-text {
+  animation-play-state: paused;
+}
+
 @keyframes slide-in-right {
   from {
     opacity: 0;

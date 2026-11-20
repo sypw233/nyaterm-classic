@@ -296,6 +296,25 @@ export default function AppLayout({
     };
   }, [windowTransparencyEnabled]);
 
+  // Infinite CSS animations (the unread dot's breathing pulse, spinner
+  // rotations) keep the compositor repainting even while the window is in the
+  // background. On a software-rendered host every one of those frames costs the
+  // same as a real update, so mark the document state and let CSS pause them.
+  useEffect(() => {
+    const root = document.documentElement;
+    const sync = () => {
+      root.dataset.windowFocused = document.hasFocus() ? "true" : "false";
+    };
+    sync();
+    window.addEventListener("focus", sync);
+    window.addEventListener("blur", sync);
+    return () => {
+      window.removeEventListener("focus", sync);
+      window.removeEventListener("blur", sync);
+      delete root.dataset.windowFocused;
+    };
+  }, []);
+
   useEffect(() => {
     if (!hasLeftActivityItems && mobile.leftOpen) {
       mobile.setLeftOpen(false);

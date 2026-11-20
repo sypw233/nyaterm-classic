@@ -72,6 +72,17 @@ export function setLoggerLevel(level: DiagnosticsLogLevel): void {
   minLevel = level;
 }
 
+/**
+ * Whether debug records are currently collected.
+ *
+ * The logger already discards them before formatting, but the payload object is
+ * built at the call site, so hot paths that assemble diagnostic snapshots should
+ * check this first instead of paying for objects that will be thrown away.
+ */
+export function isDebugLoggingEnabled(): boolean {
+  return LOG_LEVELS.debug >= LOG_LEVELS[minLevel];
+}
+
 function shouldLog(level: LogLevel): boolean {
   return LOG_LEVELS[level] >= LOG_LEVELS[minLevel];
 }

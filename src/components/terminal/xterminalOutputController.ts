@@ -1,5 +1,5 @@
 import type { Terminal } from "@xterm/xterm";
-import { logger } from "@/lib/logger";
+import { isDebugLoggingEnabled, logger } from "@/lib/logger";
 import { XTERM_PERFORMANCE_CONFIG } from "@/lib/xtermPerformance";
 import {
   Dec2026FrameGate,
@@ -257,6 +257,7 @@ export function createXTerminalOutputController({
       refreshOutputPressureMode();
     },
     onModeChange: (mode) => {
+      if (!isDebugLoggingEnabled()) return;
       logger.debug({
         domain: "terminal.input",
         event: "terminal.output.mode_changed",
@@ -273,6 +274,7 @@ export function createXTerminalOutputController({
       });
     },
     onBackgroundDrain: (stats) => {
+      if (!isDebugLoggingEnabled()) return;
       logger.debug({
         domain: "terminal.input",
         event: "terminal.output.background_drain",
@@ -292,6 +294,7 @@ export function createXTerminalOutputController({
       });
     },
     onForegroundFrameFallback: (stats) => {
+      if (!isDebugLoggingEnabled()) return;
       logger.debug({
         domain: "terminal.input",
         event: "terminal.output.foreground_frame_fallback",
@@ -329,6 +332,7 @@ export function createXTerminalOutputController({
       refreshOutputPressureMode();
     },
     logDebug: (event, message, data) => {
+      if (!isDebugLoggingEnabled()) return;
       logger.debug({
         domain: "terminal.input",
         event,

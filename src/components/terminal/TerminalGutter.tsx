@@ -210,6 +210,19 @@ export default function TerminalGutter({
     };
 
     const nextLines: GutterLine[] = [];
+    // Many rows share one timestamp: a single write stamps every line it
+    // touched with the same value, so formatting per row repeatedly runs the
+    // token regex for identical input. Formatting is pure, so cache per
+    // (timestamp, format) pair for the lifetime of this pass.
+    const formattedTimestamps = new Map<number, string>();
+    const formatCached = (ms: number) => {
+      let formatted = formattedTimestamps.get(ms);
+      if (formatted === undefined) {
+        formatted = formatTimestamp(ms, timestampFormat);
+        formattedTimestamps.set(ms, formatted);
+      }
+      return formatted;
+    };
 
     for (let i = 0; i < rows; i += 1) {
       const bufferLine = viewportY + i;
@@ -223,7 +236,7 @@ export default function TerminalGutter({
         key: logicalLine,
         timestamp:
           showTimestamps && hasRenderedRow && !isWrapped && ts
-            ? formatTimestamp(ts, timestampFormat)
+            ? formatCached(ts)
             : "",
         lineNumber: showLineNumbers && hasRenderedRow && !isWrapped ? String(logicalLine + 1) : "",
       });
