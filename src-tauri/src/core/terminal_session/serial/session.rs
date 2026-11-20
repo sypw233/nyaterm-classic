@@ -94,6 +94,10 @@ fn serial_session_thread(
 
     let capture_processor = Arc::new(Mutex::new(OutputCaptureProcessor::new()));
     let capture_for_reader = capture_processor.clone();
+    let raw_capture = Arc::new(Mutex::new(
+        crate::core::capture::raw::RawCaptureRuntime::default(),
+    ));
+    let raw_capture_for_reader = raw_capture.clone();
     let output_pause = Arc::new((Mutex::new(false), std::sync::Condvar::new()));
     let output_pause_reader = output_pause.clone();
 
@@ -206,7 +210,8 @@ fn serial_session_thread(
                                 if let Some(ref recorder) = recording_mgr_reader {
                                     recorder.write_raw_output(&sid_reader, &passthrough);
                                 }
-                                let pre = output_decoder_reader.lock().unwrap().decode(&passthrough);
+                                let pre =
+                                    output_decoder_reader.lock().unwrap().decode(&passthrough);
                                 if !pre.is_empty() {
                                     if let Some(ref recorder) = recording_mgr_reader {
                                         recorder.write_output(&sid_reader, &pre);
@@ -265,6 +270,13 @@ fn serial_session_thread(
                         if proc.has_active() {
                             text = proc.process(&text);
                         }
+                    }
+                    // Maintain a rolling output tail so a new raw capture can
+                    // learn the current device prompt, and feed the active
+                    // capture if any. Never suppress or rewrite user-visible
+                    // output.
+                    if let Ok(mut raw) = raw_capture_for_reader.lock() {
+                        raw.observe_output(&text);
                     }
                     if !text.is_empty() {
                         if let Some(ref recorder) = recording_mgr_reader {
@@ -325,8 +337,13 @@ fn serial_session_thread(
             SessionCommand::GetEncoding { reply } => {
                 let _ = reply.send(encoding.clone());
             }
-            SessionCommand::SetEncoding { encoding: requested, reply } => {
-                let result = if let Some(next) = nyaterm_core::terminal_encoding::supported_session_encoding(&requested) {
+            SessionCommand::SetEncoding {
+                encoding: requested,
+                reply,
+            } => {
+                let result = if let Some(next) =
+                    nyaterm_core::terminal_encoding::supported_session_encoding(&requested)
+                {
                     output_decoder.lock().unwrap().reset(next);
                     encoding = next.to_string();
                     Ok(encoding.clone())
@@ -353,17 +370,68 @@ fn serial_session_thread(
                 execution,
             } => {
                 if let Ok(mut proc) = capture_processor.lock() {
-                    if !proc.register_execution(marker_id.clone(), result_tx, Some(execution)) { continue; }
+                    if !proc.register_execution(marker_id.clone(), result_tx, Some(execution)) {
+                        continue;
+                    }
                 }
                 let send_command = encode_terminal_input(&wrapped_command, &encoding);
                 let mut p = port_writer.lock().unwrap();
                 if p.write_all(&send_command).and_then(|_| p.flush()).is_err() {
-                    if let Ok(mut proc) = capture_processor.lock() { proc.abort(&marker_id); }
+                    if let Ok(mut proc) = capture_processor.lock() {
+                        proc.abort(&marker_id);
+                    }
                 }
             }
             SessionCommand::CancelCapture { marker_id } => {
                 if let Ok(mut proc) = capture_processor.lock() {
                     proc.cancel(&marker_id);
+                }
+            }
+            SessionCommand::RawCaptureExec {
+                result_tx,
+                execution,
+                command,
+            } => {
+                if raw_capture.lock().map(|r| r.has_active()).unwrap_or(true) {
+                    continue;
+                }
+                if let Ok(mut raw) = raw_capture.lock() {
+                    raw.begin(result_tx, execution);
+                }
+                let mut p = port_writer.lock().unwrap();
+                if p.write_all(&command).and_then(|_| p.flush()).is_err() {
+                    if let Ok(mut raw) = raw_capture.lock() {
+                        raw.cancel();
+                    }
+                }
+                // Poll for prompt completion on the async runtime.
+                let poll_rt = rt_handle.clone();
+                let poll_state = raw_capture.clone();
+                let _ = poll_rt.spawn(async move {
+                    let deadline = std::time::Instant::now() + Duration::from_secs(120);
+                    loop {
+                        tokio::time::sleep(
+                            crate::core::capture::raw::RawCaptureRuntime::poll_interval(),
+                        )
+                        .await;
+                        let idle = {
+                            let Ok(mut state) = poll_state.lock() else {
+                                break;
+                            };
+                            if !state.has_active() {
+                                break;
+                            }
+                            state.poll_once(deadline)
+                        };
+                        if idle {
+                            break;
+                        }
+                    }
+                });
+            }
+            SessionCommand::CancelRawCapture => {
+                if let Ok(mut raw) = raw_capture.lock() {
+                    raw.cancel();
                 }
             }
             SessionCommand::Resize { .. } => {}
@@ -543,6 +611,9 @@ fn serial_session_thread(
             }
             SessionCommand::TmuxCommand { .. } | SessionCommand::TmuxDetach => {}
             SessionCommand::Close => {
+                if let Ok(mut raw) = raw_capture.lock() {
+                    raw.cancel();
+                }
                 break;
             }
         }

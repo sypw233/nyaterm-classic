@@ -43,8 +43,8 @@ pub use connection::{
     effective_cwd_follow_mode_for_runtime, is_connection_custom_icon_data_url, load_config,
     load_connection_by_id, load_sessions, migrate_legacy_asset_tags,
     migrate_legacy_ssh_agent_settings, normalize_connection_tags, resolve_connection_encoding,
-    resolve_ssh_terminal_type, save_config, save_sessions, ssh_agent_endpoint_key,
-    validate_ssh_agent_endpoint, validate_ssh_agent_endpoint_shape,
+    resolve_serial_execution_profile, resolve_ssh_terminal_type, save_config, save_sessions,
+    ssh_agent_endpoint_key, validate_ssh_agent_endpoint, validate_ssh_agent_endpoint_shape,
     validate_ssh_agent_forwarding_config, validate_ssh_agent_forwarding_shape,
     validate_ssh_agent_settings,
 };

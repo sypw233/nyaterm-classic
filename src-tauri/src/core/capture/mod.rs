@@ -34,6 +34,8 @@ use tokio::sync::oneshot;
 
 use crate::config::AiExecutionProfile;
 
+pub mod raw;
+
 include!("types.rs");
 include!("command.rs");
 include!("powershell.rs");

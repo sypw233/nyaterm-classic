@@ -508,6 +508,9 @@ async fn telnet_session_task(
                     Some(SessionCommand::CancelCapture { marker_id }) => {
                         capture_processor.lock().await.cancel(&marker_id);
                     }
+                    // Raw echo capture is supported only on serial sessions.
+                    Some(SessionCommand::RawCaptureExec { .. })
+                    | Some(SessionCommand::CancelRawCapture) => {}
                     Some(SessionCommand::Resize { cols, rows }) => {
                         if let Some(naws) = maybe_build_naws(cols as u16, rows as u16, &config) {
                             let _ = writer.write_all(&naws).await;

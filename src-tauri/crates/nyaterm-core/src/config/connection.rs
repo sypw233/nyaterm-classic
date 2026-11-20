@@ -22,6 +22,9 @@ pub enum AiExecutionProfile {
     Powershell,
     Cmd,
     SendOnly,
+    /// Automatic echo capture for serial/network-device CLIs. The command is
+    /// sent verbatim and completion is detected by the return of the prompt.
+    RawCli,
     Disabled,
 }
 
@@ -712,6 +715,10 @@ pub enum ConnectionType {
         flow_control: SerialFlowControl,
         #[serde(default, skip_serializing_if = "is_ai_execution_profile_auto")]
         ai_execution_profile: AiExecutionProfile,
+        /// Let the AI Agent capture command echo from this serial connection
+        /// by detecting the device prompt, instead of only sending commands.
+        #[serde(default = "default_true", skip_serializing_if = "is_true")]
+        ai_capture_echo: bool,
         #[serde(default = "default_backspace_mode_serial")]
         backspace_mode: String,
         #[serde(
@@ -808,6 +815,24 @@ fn default_telnet_enter_mode() -> String {
 }
 fn is_ai_execution_profile_auto(value: &AiExecutionProfile) -> bool {
     *value == AiExecutionProfile::Auto
+}
+
+/// Resolve the effective AI execution profile for a serial session.
+///
+/// A saved explicit profile always wins. When the saved value is `Auto`, the
+/// `ai_capture_echo` connection flag decides between raw echo capture and the
+/// legacy send-only behaviour.
+pub fn resolve_serial_execution_profile(
+    configured: AiExecutionProfile,
+    capture_echo: bool,
+) -> AiExecutionProfile {
+    if configured != AiExecutionProfile::Auto {
+        configured
+    } else if capture_echo {
+        AiExecutionProfile::RawCli
+    } else {
+        AiExecutionProfile::SendOnly
+    }
 }
 fn default_true() -> bool {
     true
@@ -1394,13 +1419,12 @@ pub fn save_sessions(app: &impl Sized, config: &SessionsConfig) -> AppResult<()>
             | ConnectionType::Telnet {
                 ai_execution_profile,
                 ..
-            }
-            | ConnectionType::Serial {
-                ai_execution_profile,
-                ..
             } => {
                 *ai_execution_profile = AiExecutionProfile::Auto;
             }
+            // Serial connections expose an explicit AI execution profile in
+            // their editor; keep the user's choice across saves.
+            ConnectionType::Serial { .. } => {}
             ConnectionType::Ssh { .. } => {
                 migrate_legacy_ssh_agent_settings(conn);
             }

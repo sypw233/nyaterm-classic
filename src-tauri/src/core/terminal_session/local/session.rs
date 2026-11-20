@@ -1430,6 +1430,8 @@ fn pty_session_thread(
                     proc.cancel(&marker_id);
                 }
             }
+            // Raw echo capture is supported only on serial sessions.
+            SessionCommand::RawCaptureExec { .. } | SessionCommand::CancelRawCapture => {}
             SessionCommand::Resize { cols, rows } => {
                 let _ = master.resize(PtySize {
                     rows: rows as u16,

@@ -61,6 +61,7 @@ export type AIExecutionProfile =
   | "powershell"
   | "cmd"
   | "send_only"
+  | "raw_cli"
   | "disabled";
 export type SshProfile = "standard" | "network_device";
 export type SshRuntimeMode = "standard" | "terminal" | "sftp";
@@ -617,6 +618,8 @@ export interface SavedConnection {
   stop_bits?: string;
   flow_control?: SerialFlowControl;
   modem_upload_protocol?: "xmodem" | "ymodem" | "zmodem";
+  /** Serial-only: let AI Agent capture command echo via prompt detection (default true). */
+  ai_capture_echo?: boolean;
   /** Backspace key mode for SSH/Telnet/Serial connections ("ctrl_h" or "del"). */
   backspace_mode?: string;
   /** Telnet-only: bypass Telnet option negotiation for embedded/raw TCP CLIs. */

@@ -333,6 +333,7 @@ export default function NewSessionPage() {
   const [serialModemUploadProtocol, setSerialModemUploadProtocol] = useState<
     "xmodem" | "ymodem" | "zmodem"
   >("zmodem");
+  const [serialAiCaptureEcho, setSerialAiCaptureEcho] = useState(true);
 
   // Local Terminal States
   const [defaultLocalShell, setDefaultLocalShell] = useState(FALLBACK_LOCAL_SHELL);
@@ -487,6 +488,7 @@ export default function NewSessionPage() {
           setSerialBackspaceMode(found.backspace_mode || "ctrl_h");
           setSerialModemUploadProtocol(found.modem_upload_protocol || "zmodem");
           setSerialFlowControl(found.flow_control ?? "none");
+          setSerialAiCaptureEcho(found.ai_capture_echo ?? true);
         } else if (found.type === "rdp") {
           // Preserve the effective client for connections saved before per-session selection.
           setRdpClientMode(found.rdp_client_mode ?? appSettings.general.rdp_client_mode ?? "builtin");
@@ -616,6 +618,7 @@ export default function NewSessionPage() {
     setStopBits("1");
     setSerialModemUploadProtocol("zmodem");
     setSerialFlowControl("none");
+    setSerialAiCaptureEcho(true);
     setShellPath(defaultLocalShell);
     setShellArgs("");
     setWorkingDir("");
@@ -723,6 +726,7 @@ export default function NewSessionPage() {
         setSerialBackspaceMode(template.backspace_mode || "ctrl_h");
         setSerialModemUploadProtocol(template.modem_upload_protocol || "zmodem");
         setSerialFlowControl(template.flow_control ?? "none");
+        setSerialAiCaptureEcho(template.ai_capture_echo ?? true);
       } else if (protocol === "rdp") {
         setRdpPort(template.port || 3389);
         setUsername(template.username || DEFAULT_RDP_USERNAME);
@@ -1301,6 +1305,7 @@ export default function NewSessionPage() {
               backspace_mode: serialBackspaceMode,
               modem_upload_protocol: serialModemUploadProtocol,
               flow_control: serialFlowControl,
+              ai_capture_echo: serialAiCaptureEcho,
             }
           : {}),
         ...(currentTab === "rdp"
@@ -1967,6 +1972,8 @@ export default function NewSessionPage() {
               setBackspaceMode={setSerialBackspaceMode}
               modemUploadProtocol={serialModemUploadProtocol}
               setModemUploadProtocol={setSerialModemUploadProtocol}
+              aiCaptureEcho={serialAiCaptureEcho}
+              setAiCaptureEcho={setSerialAiCaptureEcho}
               flowControl={serialFlowControl}
               setFlowControl={setSerialFlowControl}
               recordingUseGlobal={recordingUseGlobal}

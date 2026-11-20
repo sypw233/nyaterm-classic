@@ -48,6 +48,10 @@ pub async fn create_serial_session(
     let reader_shutdown_tx = cmd_tx.clone();
     let output_control_tx = cmd_tx.clone();
 
+    let ai_execution_profile = crate::config::resolve_serial_execution_profile(
+        config.ai_execution_profile,
+        config.ai_capture_echo,
+    );
     let session_info = SessionInfo {
         id: session_id.clone(),
         name: config.name.clone(),
@@ -56,7 +60,7 @@ pub async fn create_serial_session(
         connection_id: connection_id.clone(),
         connected: true,
         owner_window_label,
-        ai_execution_profile: AiExecutionProfile::SendOnly,
+        ai_execution_profile,
         injection_active: false,
         cwd_tracking_active: false,
         dynamic_title_capabilities: DynamicTitleCapabilities::default(),

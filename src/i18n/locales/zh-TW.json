@@ -838,6 +838,8 @@
     "serialFlowControlNone": "無",
     "serialFlowControlSoftware": "軟體 (XON/XOFF)",
     "serialModemUploadProtocol": "Modem 上傳協定",
+    "serialAiCaptureEcho": "AI 擷取命令回顯",
+    "serialAiCaptureEchoHint": "讓 AI 透過辨識設備提示符來讀取命令輸出。關閉後僅傳送命令、不讀取結果。",
     "serialPort": "序列埠名",
     "serialPortPlaceholder": "例如 COM1 或 /dev/ttyS0",
     "serialPortRequired": "序列埠名不能為空",

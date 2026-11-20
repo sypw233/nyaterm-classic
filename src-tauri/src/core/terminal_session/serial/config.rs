@@ -9,6 +9,10 @@ pub struct SerialConfig {
     pub backspace_mode: String,
     pub modem_upload_protocol: crate::config::SerialModemUploadProtocol,
     pub encoding: String,
+    /// Whether AI Agent should capture command echo via prompt detection.
+    pub ai_capture_echo: bool,
+    /// Saved explicit AI execution profile (Auto lets capture_echo decide).
+    pub ai_execution_profile: crate::config::AiExecutionProfile,
 }
 
 fn validate_serial_modem_flow_control(

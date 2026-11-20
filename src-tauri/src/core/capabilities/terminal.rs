@@ -111,6 +111,10 @@ pub async fn execute_terminal_command(
                 }),
         ));
     }
+    if info.ai_execution_profile == AiExecutionProfile::RawCli {
+        return execute_raw_cli_command(manager, request, presentation, cancellation).await;
+    }
+
     if matches!(
         info.ai_execution_profile,
         AiExecutionProfile::Auto | AiExecutionProfile::SendOnly
@@ -280,6 +284,126 @@ pub async fn execute_terminal_command(
         }
     }
     result
+}
+
+/// Execute a command on a raw CLI (serial/network device) session.
+///
+/// The command is sent verbatim; completion is detected when the device prompt
+/// returns. Success means "prompt returned", not a known exit status, mirroring
+/// the 2.x RawCliCapture behaviour.
+async fn execute_raw_cli_command(
+    manager: Arc<SessionManager>,
+    request: TerminalExecuteRequest,
+    presentation: Option<TerminalExecutionPresentation>,
+    cancellation: CancellationToken,
+) -> AppResult<TerminalExecuteResult> {
+    if !matches!(
+        manager.terminal_execution_state(&request.session_id),
+        crate::core::session::TerminalExecutionState::Idle
+    ) {
+        return Err(AppError::SessionBusy(
+            "This session is executing an automated command.".into(),
+        ));
+    }
+
+    let marker_id = uuid::Uuid::new_v4().to_string();
+    let execution = manager
+        .begin_terminal_execution(&request.session_id, &marker_id)
+        .await?;
+
+    let started = Instant::now();
+    let timeout = Duration::from_millis(request.timeout_ms);
+    let (tx, rx) = oneshot::channel();
+
+    let mut data = request.command.as_bytes().to_vec();
+    data.push(b'\r');
+    let send_result = tokio::select! {
+        _ = cancellation.cancelled() => {
+            let _ = manager.send_command(&request.session_id, SessionCommand::CancelRawCapture).await;
+            let error = AppError::Cancelled("Terminal command was cancelled.".to_string());
+            emit_error(presentation.as_ref(), &request.session_id, &error, started.elapsed());
+            return Err(error);
+        }
+        result = manager.send_command(
+            &request.session_id,
+            SessionCommand::RawCaptureExec {
+                result_tx: tx,
+                execution,
+                command: data,
+            },
+        ) => result,
+    };
+    if let Err(error) = send_result {
+        emit_error(
+            presentation.as_ref(),
+            &request.session_id,
+            &error,
+            started.elapsed(),
+        );
+        return Err(error);
+    }
+
+    emit_start(presentation.as_ref(), &request.session_id, &request.command);
+    let raw = tokio::select! {
+        _ = cancellation.cancelled() => {
+            let _ = manager.send_command(&request.session_id, SessionCommand::CancelRawCapture).await;
+            let error = AppError::Cancelled("Terminal command was cancelled.".to_string());
+            emit_error(presentation.as_ref(), &request.session_id, &error, started.elapsed());
+            return Err(error);
+        }
+        _ = tokio::time::sleep(timeout) => {
+            let _ = manager.send_command(&request.session_id, SessionCommand::CancelRawCapture).await;
+            let result = TerminalExecuteResult {
+                output: "(command timed out — the shell may still be running; wait or press Ctrl+C)".to_string(),
+                exit_code: None,
+                duration_ms: request.timeout_ms,
+                timed_out: true,
+                source_truncated: false,
+            };
+            emit_end(presentation.as_ref(), &request.session_id, &result);
+            return Ok(result);
+        }
+        captured = rx => match captured {
+            Ok(value) => value,
+            Err(_) => {
+                let error = AppError::Channel("Raw capture channel closed — session may have disconnected".to_string());
+                emit_error(presentation.as_ref(), &request.session_id, &error, started.elapsed());
+                return Err(error);
+            }
+        }
+    };
+
+    let output = strip_ansi_escapes::strip_str(&raw.output);
+    let mut text = if raw.end.description().is_empty() {
+        output
+    } else {
+        let note = raw.end.description();
+        if output.trim().is_empty() {
+            note.to_string()
+        } else {
+            format!("{output}\n{note}")
+        }
+    };
+    if raw.source_truncated {
+        text.push_str("\n(captured output was truncated)");
+    }
+    let successful = raw.end == nyaterm_core::core::raw_cli_capture::RawCliEnd::Prompt;
+    let result = TerminalExecuteResult {
+        output: text,
+        exit_code: None,
+        duration_ms: raw.duration_ms,
+        timed_out: false,
+        source_truncated: raw.source_truncated,
+    };
+    manager.append_recent_output(&request.session_id, &result.output);
+    if successful {
+        emit_end(presentation.as_ref(), &request.session_id, &result);
+        Ok(result)
+    } else {
+        let error = AppError::Config(result.output.clone());
+        emit_end(presentation.as_ref(), &request.session_id, &result);
+        Err(error)
+    }
 }
 
 fn emit_error(

@@ -1649,6 +1649,8 @@ impl<'a> ControlSession<'a> {
                     pane.capture.cancel(&marker_id);
                 }
             }
+            // Raw echo capture is supported only on serial sessions.
+            SessionCommand::RawCaptureExec { .. } | SessionCommand::CancelRawCapture => {}
             SessionCommand::GetEncoding { reply } => {
                 let _ = reply.send(self.encoding.clone());
             }
@@ -1904,7 +1906,9 @@ pub(crate) async fn run_control_session(
                     Some(
                         command @ (SessionCommand::Write { .. }
                         | SessionCommand::CaptureExec { .. }
-                        | SessionCommand::CancelCapture { .. }),
+                        | SessionCommand::CancelCapture { .. }
+                        | SessionCommand::RawCaptureExec { .. }
+                        | SessionCommand::CancelRawCapture),
                     ) => {
                         // The control channel itself has no pty — input or a
                         // capture aimed at the bare session id means the pane

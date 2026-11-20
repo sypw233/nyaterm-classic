@@ -661,6 +661,7 @@ mod tests {
                         stop_bits: "1".to_string(),
                         flow_control: config::SerialFlowControl::None,
                         ai_execution_profile: config::AiExecutionProfile::Auto,
+                        ai_capture_echo: true,
                         backspace_mode: "del".to_string(),
                         modem_upload_protocol: config::SerialModemUploadProtocol::Zmodem,
                         encoding: String::new(),

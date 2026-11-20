@@ -1430,6 +1430,9 @@ pub(super) async fn ssh_io_loop(
                     Some(SessionCommand::CancelCapture { marker_id }) => {
                         capture_processor.cancel(&marker_id);
                     }
+                    // Raw echo capture is supported only on serial sessions.
+                    Some(SessionCommand::RawCaptureExec { .. })
+                    | Some(SessionCommand::CancelRawCapture) => {}
                     Some(SessionCommand::TmuxCommand { .. })
                     | Some(SessionCommand::TmuxDetach) => {
                         // Only meaningful while the tmux control session owns
@@ -1969,6 +1972,8 @@ async fn run_sftp_only_session_commands(
                     | SessionCommand::AckOutput { .. }
                     | SessionCommand::Resize { .. }
                     | SessionCommand::CancelCapture { .. }
+                    | SessionCommand::RawCaptureExec { .. }
+                    | SessionCommand::CancelRawCapture
                     | SessionCommand::ZmodemAcceptDownload { .. }
                     | SessionCommand::ZmodemAcceptUpload { .. }
                     | SessionCommand::ZmodemCancel

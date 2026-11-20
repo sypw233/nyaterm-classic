@@ -839,6 +839,8 @@
     "serialFlowControlNone": "None",
     "serialFlowControlSoftware": "Software (XON/XOFF)",
     "serialModemUploadProtocol": "Modem upload protocol",
+    "serialAiCaptureEcho": "AI capture command echo",
+    "serialAiCaptureEchoHint": "Let the AI read command output by detecting the device prompt. Turn off to only send commands without reading results.",
     "serialPort": "Serial",
     "serialPortPlaceholder": "COM1 or /dev/ttyS0",
     "serialPortRequired": "Serial port required",

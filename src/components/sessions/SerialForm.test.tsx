@@ -29,6 +29,8 @@ function props(flowControl: SerialFlowControl) {
     setBackspaceMode: vi.fn(),
     modemUploadProtocol: "zmodem" as const,
     setModemUploadProtocol: vi.fn(),
+    aiCaptureEcho: true,
+    setAiCaptureEcho: vi.fn(),
     recordingUseGlobal: true,
     setRecordingUseGlobal: vi.fn(),
     recordingAutoStart: false,

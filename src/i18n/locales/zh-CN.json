@@ -838,6 +838,8 @@
     "serialFlowControlNone": "无",
     "serialFlowControlSoftware": "软件 (XON/XOFF)",
     "serialModemUploadProtocol": "Modem 上传协议",
+    "serialAiCaptureEcho": "AI 捕获命令回显",
+    "serialAiCaptureEchoHint": "让 AI 通过识别设备提示符来读取命令输出。关闭后仅发送命令、不读取结果。",
     "serialPort": "串口名",
     "serialPortPlaceholder": "例如 COM1 或 /dev/ttyS0",
     "serialPortRequired": "串口名不能为空",

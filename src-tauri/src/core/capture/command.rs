@@ -9,9 +9,10 @@ pub fn build_capture_command(
             Some(build_powershell_capture_command(marker_id, command))
         }
         AiExecutionProfile::Cmd => Some(build_cmd_capture_command(marker_id, command)),
-        AiExecutionProfile::Auto | AiExecutionProfile::SendOnly | AiExecutionProfile::Disabled => {
-            None
-        }
+        AiExecutionProfile::Auto
+        | AiExecutionProfile::SendOnly
+        | AiExecutionProfile::RawCli
+        | AiExecutionProfile::Disabled => None,
     }
 }
 

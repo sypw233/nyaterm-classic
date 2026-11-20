@@ -839,6 +839,8 @@
     "serialFlowControlNone": "Нет",
     "serialFlowControlSoftware": "(XON/XOFF)",
     "serialModemUploadProtocol": "Протокол загрузки модема",
+    "serialAiCaptureEcho": "AI захват вывода команд",
+    "serialAiCaptureEchoHint": "Позволить AI читать вывод команд, определяя приглашение устройства. Отключите, чтобы только отправлять команды без чтения результата.",
     "serialPort": "Серийный",
     "serialPortPlaceholder": "COM1 или /dev/ttyS0",
     "serialPortRequired": "Требуется последовательный порт",

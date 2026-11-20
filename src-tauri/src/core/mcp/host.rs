@@ -1977,6 +1977,7 @@ fn execution_profile_name(value: AiExecutionProfile) -> &'static str {
     match value {
         AiExecutionProfile::Disabled => "disabled",
         AiExecutionProfile::Auto | AiExecutionProfile::SendOnly => "send_only",
+        AiExecutionProfile::RawCli => "capture",
         _ => "capture",
     }
 }

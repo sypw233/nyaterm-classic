@@ -6,13 +6,15 @@ This changelog is inferred from release bump commits in git history (for example
 
 ## [Unreleased]
 
+### Added
+
+- **serial / AI:** Add a per-connection **AI capture command echo** option for serial connections (on by default). When enabled, the AI Agent sends commands verbatim to the device and reads the resulting output by detecting the device prompt, instead of reporting that output cannot be captured. The capture logic is adapted from the 2.x `RawCliCapture`: it learns the current prompt before each command, completes when the same device prompt returns, and handles pagers/confirmations, timeouts, and truncated output. Turn the option off to keep the previous send-only behaviour.
+
 ### Fixed
 
 - **command history:** Ignore bare device-style CLI prompts such as `console:/ #` when recording history. Interactive serial and network-device sessions previously learned the idle prompt as a command each time Enter was pressed on an empty line; the prompt is now stripped in both the frontend tracker and the backend store, while a real command typed after the prompt is still recorded.
 
-### Added
-
-- **command history:** Right-click an entry in the History panel to copy the full command text (including commands truncated in the list), jump the terminal scrollback to where that command was executed, or send it again. Jumping reuses the terminal's command-location markers and briefly highlights the target line.
+- **command history (UI):** Right-click an entry in the History panel to copy the full command text (including commands truncated in the list), jump the terminal scrollback to where that command was executed, or send it again. Jumping reuses the terminal's command-location markers and briefly highlights the target line.
 
 ## [1.3.5] - 2026-11-20
 

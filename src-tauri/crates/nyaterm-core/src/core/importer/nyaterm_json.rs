@@ -248,6 +248,7 @@ fn prepare_nyaterm_json_session(
                     stop_bits,
                     flow_control,
                     ai_execution_profile: AiExecutionProfile::Auto,
+                    ai_capture_echo: true,
                     backspace_mode,
                     modem_upload_protocol: crate::config::SerialModemUploadProtocol::Zmodem,
                     encoding: String::new(),

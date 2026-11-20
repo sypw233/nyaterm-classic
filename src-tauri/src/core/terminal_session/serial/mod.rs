@@ -1,6 +1,5 @@
 //! Serial port session: opens a serial device and bridges I/O to the session manager.
 
-use crate::config::AiExecutionProfile;
 use crate::core::capture::OutputCaptureProcessor;
 use crate::core::session::{
     DynamicTitleCapabilities, SessionCommand, SessionCommandReceiver, SessionCommandSender,

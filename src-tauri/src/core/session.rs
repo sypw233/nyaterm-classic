@@ -283,6 +283,15 @@ pub enum SessionCommand {
     },
     /// AI capture: cancel a marker-wrapped command capture that no longer has a caller.
     CancelCapture { marker_id: String },
+    /// AI raw echo capture: register a capture and send a verbatim command to a
+    /// serial/network CLI, detecting completion by the return of the prompt.
+    RawCaptureExec {
+        result_tx: oneshot::Sender<super::capture::raw::RawCaptureResult>,
+        execution: TerminalExecutionGuard,
+        command: Vec<u8>,
+    },
+    /// AI raw echo capture: abandon any active raw capture without a result.
+    CancelRawCapture,
     /// ZMODEM: user accepted a download — save to this directory.
     ZmodemAcceptDownload { save_dir: std::path::PathBuf },
     /// ZMODEM: user accepted an upload — send these files.

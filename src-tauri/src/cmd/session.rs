@@ -426,6 +426,7 @@ pub async fn create_serial_session(
     name: Option<String>,
     create_request_id: Option<String>,
     recording_scope_id: Option<String>,
+    ai_capture_echo: Option<bool>,
 ) -> AppResult<String> {
     let pending_creation = state.begin_session_creation(create_request_id).await;
     let (guard, _cancel_rx) = match pending_creation {
@@ -445,6 +446,8 @@ pub async fn create_serial_session(
                 backspace_mode,
                 modem_upload_protocol,
                 flow_control,
+                ai_capture_echo,
+                ai_execution_profile,
                 ..
             } => core::SerialConfig {
                 port_name,
@@ -457,6 +460,8 @@ pub async fn create_serial_session(
                 modem_upload_protocol,
                 flow_control,
                 encoding,
+                ai_capture_echo,
+                ai_execution_profile,
             },
             _ => {
                 return Err(AppError::Config(
@@ -480,6 +485,8 @@ pub async fn create_serial_session(
             backspace_mode: "ctrl_h".to_string(),
             modem_upload_protocol: config::SerialModemUploadProtocol::Zmodem,
             encoding,
+            ai_capture_echo: ai_capture_echo.unwrap_or(true),
+            ai_execution_profile: config::AiExecutionProfile::Auto,
         }
     };
     let marked_connection_id = connection_id.clone();
