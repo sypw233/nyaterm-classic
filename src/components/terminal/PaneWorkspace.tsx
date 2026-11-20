@@ -622,7 +622,7 @@ function PaneNodeView({
   );
 }
 
-function PaneXTerminal({
+const PaneXTerminal = memo(function PaneXTerminal({
   sessionId,
   sessionName,
   active,
@@ -762,7 +762,7 @@ function PaneXTerminal({
       onSaveTranscript={onSaveTranscript}
     />
   );
-}
+});
 
 /** The persistent host tree always renders; tmux overlays belong to individual leaves. */
 function PaneWorkspace(props: PaneWorkspaceProps) {

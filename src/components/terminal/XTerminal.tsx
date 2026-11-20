@@ -4,7 +4,7 @@ import { SearchAddon } from "@xterm/addon-search";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { UnicodeGraphemesAddon } from "@xterm/addon-unicode-graphemes";
 import { Terminal } from "@xterm/xterm";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import MultiLinePasteDialog from "@/components/dialog/terminal/MultiLinePasteDialog";
@@ -193,7 +193,7 @@ type SearchAddonWithLifecycle = SearchAddon & {
  */
 const MAX_WRAPPED_LINE_LOOKBACK_ROWS = 512;
 
-export default function XTerminal({
+function XTerminal({
   sessionId,
   sessionName,
   active,
@@ -3437,3 +3437,11 @@ export default function XTerminal({
     </div>
   );
 }
+
+/**
+ * The workspace re-renders whenever any app-level state changes, including the
+ * periodic remote-stats poll. A terminal repaints far more often than that and
+ * owns a large hook tree, so memoise it; the props are referentially stable
+ * (callbacks come from `useCallback` in the parent, sync data from `useMemo`).
+ */
+export default memo(XTerminal);
