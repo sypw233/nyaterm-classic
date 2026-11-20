@@ -54,6 +54,7 @@ import { useTheme } from "@/context/ThemeContext";
 import type { AIErrorDetectedDetail } from "@/lib/aiEvents";
 import { AI_ERROR_DETECTED_EVENT, AI_ERROR_DETECTION_RESET_EVENT } from "@/lib/aiEvents";
 import { buildMentionSessionOptions } from "@/lib/aiSessionMentions";
+import { useDynamicTitles } from "@/lib/dynamicTabTitles";
 import {
   getModelReasoningOptions,
   resolveAILanguage,
@@ -285,14 +286,17 @@ function AIAssistantPanel({ activePane, activeConnection, intent }: AIAssistantP
     return panes;
   }, [tabs]);
 
+  const dynamicTitles = useDynamicTitles();
+
   const mentionOptions = useMemo(
     () =>
       buildMentionSessionOptions({
         panes: allSessionPanes,
         tabs,
         savedConnections,
+        dynamicTitles,
       }),
-    [allSessionPanes, tabs, savedConnections],
+    [allSessionPanes, tabs, savedConnections, dynamicTitles],
   );
 
   const filteredMentionPanes = useMemo(() => {
@@ -310,13 +314,15 @@ function AIAssistantPanel({ activePane, activeConnection, intent }: AIAssistantP
     [mentionOptions],
   );
 
-  const targetPanes = useMemo(
-    () =>
-      currentDraft.targetPaneIds
-        .map((sessionId) => allSessionPanes.find((pane) => pane.sessionId === sessionId))
-        .filter((pane): pane is SessionPane => !!pane),
-    [allSessionPanes, currentDraft.targetPaneIds],
-  );
+  const targetPanes = useMemo(() => {
+    const paneById = new Map(allSessionPanes.map((pane) => [pane.sessionId, pane]));
+    // Show targets in tab-strip order rather than the order they were picked,
+    // so the chips read the same way as the tabs they point at.
+    return mentionOptions
+      .filter((option) => currentDraft.targetPaneIds.includes(option.sessionId))
+      .map((option) => paneById.get(option.sessionId))
+      .filter((pane): pane is SessionPane => !!pane);
+  }, [allSessionPanes, currentDraft.targetPaneIds, mentionOptions]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset selection whenever the filtered mention list changes.
   useEffect(() => {
@@ -1885,12 +1891,17 @@ function AIAssistantPanel({ activePane, activeConnection, intent }: AIAssistantP
                 <span
                   key={p.sessionId}
                   className="inline-flex max-w-full items-center gap-0.5 rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[0.625rem] font-medium text-primary"
-                  title={option ? [p.name, option.detail, option.tabLabel].filter(Boolean).join(" · ") : p.name}
+                  title={option ? [option.orderLabel, p.name, option.tabLabel, option.detail].filter(Boolean).join(" · ") : p.name}
                 >
+                  {option ? (
+                    <span className="shrink-0 tabular-nums text-primary/70">
+                      {option.orderLabel}
+                    </span>
+                  ) : null}
                   <span className="min-w-0 truncate">{p.name}</span>
-                  {option?.detail || option?.tabLabel ? (
+                  {option?.tabLabel ? (
                     <span className="min-w-0 truncate text-primary/70">
-                      {[option.detail, option.tabLabel].filter(Boolean).join(" · ")}
+                      {option.tabLabel}
                     </span>
                   ) : null}
                   <button
@@ -1937,19 +1948,22 @@ function AIAssistantPanel({ activePane, activeConnection, intent }: AIAssistantP
                           <span
                             className={`size-2 shrink-0 rounded-full ${isSelected ? "bg-primary" : "bg-muted-foreground/40"}`}
                           />
-                          <span className="min-w-0 truncate font-medium">{pane.name}</span>
+                          {option ? (
+                            <span className="shrink-0 tabular-nums text-[0.625rem] text-muted-foreground">
+                              {option.orderLabel}
+                            </span>
+                          ) : null}
+                          <span className="min-w-0 truncate font-medium">{option?.tabLabel || pane.name}</span>
                           <span className="ml-auto shrink-0 text-[0.625rem] text-muted-foreground">
                             {pane.type}
                           </span>
                         </span>
                         {option ? (
                           <span className="flex min-w-0 items-center gap-1.5 pl-4 text-[0.625rem] text-muted-foreground">
-                            <span className="min-w-0 truncate font-mono">{option.detail}</span>
-                            {option.tabLabel ? (
-                              <span className="min-w-0 truncate text-foreground/70">
-                                {option.tabLabel}
-                              </span>
+                            {option.name && option.name !== option.tabLabel ? (
+                              <span className="min-w-0 truncate font-mono">{option.name}</span>
                             ) : null}
+                            <span className="min-w-0 truncate">{option.detail}</span>
                           </span>
                         ) : null}
                       </button>
