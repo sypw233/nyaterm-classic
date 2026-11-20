@@ -21,6 +21,7 @@ function ui(overrides: Partial<UiConfig> = {}): UiConfig {
       right_top: ["savedConnections"],
       right_bottom: [],
       hidden_items: [],
+      show_labels: false,
     },
     ...overrides,
   } as UiConfig;
@@ -70,6 +71,7 @@ describe("isRemoteStatsDisplayed", () => {
             right_top: ["savedConnections", "resourceMonitor"],
             right_bottom: [],
             hidden_items: [],
+            show_labels: false,
           },
         }),
         { multiPanelOpen: true, hasOpenTabs: true },

@@ -42,7 +42,10 @@ import {
   isPagerSearchOrCommandInput,
   isPagerSingleKeyInput,
 } from "@/lib/commandSuggestionSuppression";
-import { detectCredentialPromptKind } from "@/lib/credentialAutofill";
+import {
+  detectCredentialPromptKind,
+  mayContainCredentialPrompt,
+} from "@/lib/credentialAutofill";
 import { getErrorMessage } from "@/lib/errors";
 import { invoke } from "@/lib/invoke";
 import { hexLuminance } from "@/lib/keywordHighlightPresets";
@@ -2103,6 +2106,15 @@ export default function XTerminal({
     const updateCredentialPromptInputMode = (payload: string) => {
       credentialPromptBufferRef.current =
         `${credentialPromptBufferRef.current}${payload}`.slice(-4096);
+
+      // Same cheap tail check the detector uses: without a trailing colon there
+      // is nothing to match, and this runs on every output batch.
+      if (!mayContainCredentialPrompt(credentialPromptBufferRef.current)) {
+        if (/[\r\n]/u.test(payload)) {
+          credentialPromptInputUntilRef.current = 0;
+        }
+        return;
+      }
 
       if (detectCredentialPromptKind(credentialPromptBufferRef.current)) {
         credentialPromptInputUntilRef.current = Date.now() + 120_000;

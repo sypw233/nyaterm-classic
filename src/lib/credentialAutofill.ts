@@ -12,7 +12,26 @@ const PASSWORD_PROMPT_PATTERN =
 const PROMPT_TERMINATOR_PATTERN = /[:\uff1a]\s*$/u;
 
 export function stripTerminalControlSequences(text: string): string {
+  // Most terminal output carries no control sequences at all, and the two
+  // replaces below allocate a new string every time. Output is fed through here
+  // on every batch, so skip the work when there is provably nothing to strip.
+  const hasEscape =
+    text.indexOf("\u001b") !== -1 || text.indexOf("\u009b") !== -1;
+  if (!hasEscape) return text;
   return text.replace(OSC_PATTERN, "").replace(ANSI_PATTERN, "");
+}
+
+/**
+ * Cheap pre-check for `detectCredentialPromptKind`.
+ *
+ * A credential prompt always ends with a colon (ASCII or full-width), so a
+ * buffer whose tail has neither cannot match. Checking for the character first
+ * avoids running four regexes and two string copies per output batch, which is
+ * the common case for any command that prints a lot.
+ */
+export function mayContainCredentialPrompt(output: string): boolean {
+  const tail = output.slice(-512);
+  return tail.includes(":") || tail.includes("\uff1a");
 }
 
 export function extractCredentialPromptText(output: string): string {
@@ -27,6 +46,7 @@ export function extractCredentialPromptText(output: string): string {
 }
 
 export function detectCredentialPromptKind(output: string): CredentialPromptKind | null {
+  if (!mayContainCredentialPrompt(output)) return null;
   const prompt = extractCredentialPromptText(output);
   if (!prompt || !PROMPT_TERMINATOR_PATTERN.test(prompt)) return null;
   if (PASSWORD_PROMPT_PATTERN.test(prompt)) return "password";
@@ -35,6 +55,7 @@ export function detectCredentialPromptKind(output: string): CredentialPromptKind
 }
 
 export function isDefaultPasswordPrompt(output: string): boolean {
+  if (!mayContainCredentialPrompt(output)) return false;
   const prompt = extractCredentialPromptText(output);
   return Boolean(
     prompt && PROMPT_TERMINATOR_PATTERN.test(prompt) && PASSWORD_PROMPT_PATTERN.test(prompt),

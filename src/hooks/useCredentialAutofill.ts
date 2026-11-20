@@ -410,6 +410,10 @@ export function useCredentialAutofill(
         return;
       }
 
+      // Strip control sequences before appending so the buffer holds only text
+      // a prompt could plausibly be matched against. `stripTerminalControlSequences`
+      // returns its input unchanged when there is nothing to strip, so this is
+      // cheap for plain output.
       const visible = stripTerminalControlSequences(payload);
       if (!visible) return;
       outputBufferRef.current = `${outputBufferRef.current}${visible}`.slice(-4096);
