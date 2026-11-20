@@ -4,17 +4,100 @@ All notable changes to this project will be documented in this file.
 
 This changelog is inferred from release bump commits in git history (for example `chore: bump version to vX.Y.Z`) and grouped by Conventional Commit type.
 
-## [Unreleased]
+## [1.3.6] - 2026-11-20
+
+A feature release that brings per-connection configuration to the 1.x line and
+teaches the AI Agent to read output from serial/device CLI sessions. Most of
+these capabilities were first developed on the 2.x line and were reimplemented
+here on the Tauri/React stack.
 
 ### Added
 
-- **serial / AI:** Add a per-connection **AI capture command echo** option for serial connections (on by default). When enabled, the AI Agent sends commands verbatim to the device and reads the resulting output by detecting the device prompt, instead of reporting that output cannot be captured. The capture logic is adapted from the 2.x `RawCliCapture`: it learns the current prompt before each command, completes when the same device prompt returns, and handles pagers/confirmations, timeouts, and truncated output. Turn the option off to keep the previous send-only behaviour.
+- **connections:** Per-connection terminal overrides. A connection can now own
+  individual appearance/behaviour/rendering settings instead of inheriting the
+  global ones; fields left unset keep tracking future global changes. The
+  connection editor gains a "terminal appearance" category with
+  use-global/customize pairs for each field, a customized count in the header
+  and save footer, and an editable snapshot of keyword highlight rules. Global
+  terminal pages show which connections override a field. RDP/VNC are excluded
+  because they are not terminals, and keep-alive is SSH-only. The merge is
+  applied in both the frontend and the Rust backend so what a session reads
+  matches what the editor shows.
+
+- **connections:** A per-connection AI system prompt, stored separately from
+  the human-facing description, so environment facts ("Alpine with BusyBox",
+  "no sudo for the deploy user") reach the model as instructions. Connection
+  facts (session type, host, port, user, OS, architecture, kernel, hostname,
+  shell, serial port/baud rate, cwd) are now composed into the system prompt,
+  not just the first user turn. Multi-target requests print each target's own
+  instructions beside its snapshot. Unknown values are omitted rather than
+  printed as a placeholder, and all injected values are JSON-escaped.
+
+- **ai:** @-mentioned sessions in the picker and the AI panel are now
+  disambiguated by tab position (`#N`, or `#N.M` for split panes) ordered like
+  the tab strip, falling back to a short session id only when names still
+  collide. The @ picker also uses username@host and tags in its labels.
+
+- **ai / serial:** A per-connection **AI capture command echo** option for
+  serial connections (on by default). When enabled, the AI Agent sends commands
+  verbatim and reads the result by detecting the device prompt, instead of
+  reporting that output cannot be captured. Prompt detection recognizes common
+  device prompts (Huawei/H3C, Cisco, embedded `console:/` style) while rejecting
+  shell prompts; completion handles pagers/confirmations, idle waits, timeouts
+  and a capture cap. Turning the option off keeps the previous send-only
+  behaviour.
+
+- **terminal:** Word-level completions from command history: the token under
+  the caret is completed from words used in previous commands, ranked above
+  whole-line suggestions, with quoted spans kept intact and shell operators
+  treated as token boundaries. Suggestions now also work with the caret inside
+  the line; whole-line providers are only queried at end of line so a history
+  row cannot discard the rest of the command. Both behaviours are on by
+  default and independently switchable (`command_suggestion_word_completion`,
+  `command_suggestion_caret_midline`).
+
+- **shortcuts:** Bindings can be unbound (Clear button, or Delete/Backspace while
+  recording) and display an "Unbound" placeholder. A `special.freezeDemo`
+  shortcut (unbound by default) blocks the UI thread for a configurable
+  duration, guarded by the easter-egg master switch. Easter-egg assets load
+  from a GitHub raw URL instead of being bundled into the app binary.
+
+### Changed
+
+- **command history:** Right-click an entry in the History panel to copy the
+  full command text (including text truncated in the list), jump the terminal
+  scrollback to where that command was executed, or send it again. Jumping
+  reuses the terminal's command-location markers and briefly highlights the
+  target line.
 
 ### Fixed
 
-- **command history:** Ignore bare device-style CLI prompts such as `console:/ #` when recording history. Interactive serial and network-device sessions previously learned the idle prompt as a command each time Enter was pressed on an empty line; the prompt is now stripped in both the frontend tracker and the backend store, while a real command typed after the prompt is still recorded.
+- **command history:** Ignore bare device-style CLI prompts such as `console:/ #`
+  when recording history. Pressing Enter on an idle prompt no longer learns the
+  prompt as a command; a real command typed after it is still recorded.
 
-- **command history (UI):** Right-click an entry in the History panel to copy the full command text (including commands truncated in the list), jump the terminal scrollback to where that command was executed, or send it again. Jumping reuses the terminal's command-location markers and briefly highlights the target line.
+- **command history:** UI-sent commands (history panel, quick commands) are now
+  recorded in completion history immediately instead of waiting for a shell
+  echo that may never match exactly.
+
+- **ai:** Terminal error detection no longer fires on bare words inside file
+  names, paths, counts or full-screen redraws. Unambiguous phrases match
+  anywhere; weak words only count at a line start or after a tool delimiter.
+  Alternate-screen output is skipped, notices expire on the next command, and
+  detection can be disabled with `interaction.ai_error_detection_enabled`.
+
+- **ai:** Word completion no longer inserts a space after only one of two
+  equally good matches when that would change the command (`git ch --all`), and
+  the caret lands right after the inserted word.
+
+- **update:** `latest.json` now records download URLs built from the release tag
+  and asset name, instead of `browser_download_url`. Draft releases report
+  temporary `untagged-*` asset URLs that 404 after publishing; this had affected
+  v1.3.3–v1.3.5.
+
+- **connections:** Override switches now name the real action ("Customize")
+  and show their current state; switching back to global deletes the key rather
+  than freezing the current global value.
 
 ## [1.3.5] - 2026-11-20
 
@@ -130,34 +213,34 @@ the implementation differs while the behaviour matches.
 
 ### Added
 
-- **import:** *(from 2.0.6)* Import WindTerm local shells and one-key accounts alongside SSH sessions. `Shell` sessions become Local Terminal connections (shell path, arguments and working directory, with `$(HomeDir)` expanded), and `onekeys.config` entries become saved accounts that sessions referencing `session.oneKey` share instead of embedding duplicate passwords.
-- **file-explorer:** *(from 2.0.6)* Bind `F3` to upload into the current directory and `F4` to download the current selection, reusing the same handlers as the context-menu actions. Both bindings are contextual and configurable from the shortcut settings.
-- **transfer:** *(from 2.0.6)* Reveal a completed download in the OS file manager from the transfer row's context menu. The action goes through the existing opener wrapper, so the Web build never touches native APIs.
-- **terminal:** *(from 2.x)* Complete file-system paths in the command-suggestion popup. The token under the cursor is parsed into a directory and a partial name, the directory is listed over SFTP for SSH sessions or from the local file system for Local sessions, and each row inserts the whole replacement line with shell metacharacters escaped. Escaped separators keep their byte ranges, only the current token may use `~`, quoted tokens and expansions are skipped, and names containing control or invisible/reordering Unicode characters are hidden. Bare names starting with `~`, `=` or `-` are anchored to `./`. Listings are cached for two seconds per session, published progressively so history and quick commands appear first, and skipped on Windows consoles and Telnet/Serial sessions.
-- **terminal:** *(from 2.x)* Skip command and path suggestions inside a nested remote shell. `ssh`, `docker exec -it`, `kubectl exec -it`, `lxc exec`, `nsenter`, `chroot`, `wsl` and `adb shell` open a shell whose file system is not this session's, so the popup offered the outer host's paths. A per-session depth unwinds on `exit`/`logout`/Ctrl+D, resets on reconnect, and also releases when the outermost prompt reappears (a failed `ssh` announces nothing). Same-host switches such as `su` and `sudo -i` are unaffected.
-- **ai:** *(from 2.0.0)* Per-credential custom HTTP request headers (name/value, up to 32 per provider). Values are encrypted at rest, masked in the settings API, and applied to chat, agent, and model-discovery requests; managed transport headers such as `Host` and `Content-Length` are rejected.
-- **themes:** *(from 2.x preview.7)* Import Windows Terminal color schemes, including JSONC files with comments and trailing commas. Every scheme in the file becomes a custom NyaTerm theme.
-- **files:** *(from 2.x preview.5)* Add a read-only, virtualized HEX viewer for binary files, reachable from the preview's "View as HEX" action; it supports offset jump and warns when the file is truncated.
-- **themes:** *(from 2.0.2)* Add the missing Dracula Light, WindTerm Dark, and WindTerm Light built-in themes.
-- **monitoring:** *(from 2.0.2)* Show logged-in users (account plus session count) on the remote resource panel. The `who` probe is time-bounded, runs on its own 30-second cadence, and reports "unavailable"/"failed" instead of silently showing an empty list.
-- **connections:** *(from 2.x)* Save default session settings per connection kind. New connections of a kind start from the saved template (proxy, terminal behavior, SSH algorithms, SFTP, post-login, recording); name, group, description, tags and icon stay per-connection. Templates live in a new additive `settings/doc/default-session` document, and unknown kinds are preserved for forward compatibility.
-- **search:** *(from 2.0.5)* Rank saved-connection results by text relevance (exact > prefix > substring, name/host > type > description > id, with tag and group hits promoted) while searching the start page; the chosen sort order still applies when no query is active.
+- **import:** _(from 2.0.6)_ Import WindTerm local shells and one-key accounts alongside SSH sessions. `Shell` sessions become Local Terminal connections (shell path, arguments and working directory, with `$(HomeDir)` expanded), and `onekeys.config` entries become saved accounts that sessions referencing `session.oneKey` share instead of embedding duplicate passwords.
+- **file-explorer:** _(from 2.0.6)_ Bind `F3` to upload into the current directory and `F4` to download the current selection, reusing the same handlers as the context-menu actions. Both bindings are contextual and configurable from the shortcut settings.
+- **transfer:** _(from 2.0.6)_ Reveal a completed download in the OS file manager from the transfer row's context menu. The action goes through the existing opener wrapper, so the Web build never touches native APIs.
+- **terminal:** _(from 2.x)_ Complete file-system paths in the command-suggestion popup. The token under the cursor is parsed into a directory and a partial name, the directory is listed over SFTP for SSH sessions or from the local file system for Local sessions, and each row inserts the whole replacement line with shell metacharacters escaped. Escaped separators keep their byte ranges, only the current token may use `~`, quoted tokens and expansions are skipped, and names containing control or invisible/reordering Unicode characters are hidden. Bare names starting with `~`, `=` or `-` are anchored to `./`. Listings are cached for two seconds per session, published progressively so history and quick commands appear first, and skipped on Windows consoles and Telnet/Serial sessions.
+- **terminal:** _(from 2.x)_ Skip command and path suggestions inside a nested remote shell. `ssh`, `docker exec -it`, `kubectl exec -it`, `lxc exec`, `nsenter`, `chroot`, `wsl` and `adb shell` open a shell whose file system is not this session's, so the popup offered the outer host's paths. A per-session depth unwinds on `exit`/`logout`/Ctrl+D, resets on reconnect, and also releases when the outermost prompt reappears (a failed `ssh` announces nothing). Same-host switches such as `su` and `sudo -i` are unaffected.
+- **ai:** _(from 2.0.0)_ Per-credential custom HTTP request headers (name/value, up to 32 per provider). Values are encrypted at rest, masked in the settings API, and applied to chat, agent, and model-discovery requests; managed transport headers such as `Host` and `Content-Length` are rejected.
+- **themes:** _(from 2.x preview.7)_ Import Windows Terminal color schemes, including JSONC files with comments and trailing commas. Every scheme in the file becomes a custom NyaTerm theme.
+- **files:** _(from 2.x preview.5)_ Add a read-only, virtualized HEX viewer for binary files, reachable from the preview's "View as HEX" action; it supports offset jump and warns when the file is truncated.
+- **themes:** _(from 2.0.2)_ Add the missing Dracula Light, WindTerm Dark, and WindTerm Light built-in themes.
+- **monitoring:** _(from 2.0.2)_ Show logged-in users (account plus session count) on the remote resource panel. The `who` probe is time-bounded, runs on its own 30-second cadence, and reports "unavailable"/"failed" instead of silently showing an empty list.
+- **connections:** _(from 2.x)_ Save default session settings per connection kind. New connections of a kind start from the saved template (proxy, terminal behavior, SSH algorithms, SFTP, post-login, recording); name, group, description, tags and icon stay per-connection. Templates live in a new additive `settings/doc/default-session` document, and unknown kinds are preserved for forward compatibility.
+- **search:** _(from 2.0.5)_ Rank saved-connection results by text relevance (exact > prefix > substring, name/host > type > description > id, with tag and group hits promoted) while searching the start page; the chosen sort order still applies when no query is active.
 
 ### Changed
 
-- **terminal:** *(from 2.0.4)* Stop using `/dev/null` as the zsh injection history file. Zsh creates a lock beside the history file, so an unprivileged user with `HISTSIZE`/`SAVEHIST` set got `locking failed` and the injection leaked into saved history. Push an anonymous in-memory list instead and pop it only when the push succeeded.
-- **ui:** *(from 2.0.5)* Label 1024-based byte sizes with IEC units (`KiB`, `MiB`, `GiB`, …) instead of the decimal `KB`/`MB`/`GB` names across the resource monitor, header status, transfer panel, process manager, recording panel, update dialog, and asset list. Every one of them paired decimal labels with a 1024 divisor. The remaining copies were closed out too: `lib/utils.ts::formatSize` (used by five file-explorer surfaces), the `PropertiesDialog` helper, the AI max-file-size label, and the SFTP buffer-size label and description in every locale.
+- **terminal:** _(from 2.0.4)_ Stop using `/dev/null` as the zsh injection history file. Zsh creates a lock beside the history file, so an unprivileged user with `HISTSIZE`/`SAVEHIST` set got `locking failed` and the injection leaked into saved history. Push an anonymous in-memory list instead and pop it only when the push succeeded.
+- **ui:** _(from 2.0.5)_ Label 1024-based byte sizes with IEC units (`KiB`, `MiB`, `GiB`, …) instead of the decimal `KB`/`MB`/`GB` names across the resource monitor, header status, transfer panel, process manager, recording panel, update dialog, and asset list. Every one of them paired decimal labels with a 1024 divisor. The remaining copies were closed out too: `lib/utils.ts::formatSize` (used by five file-explorer surfaces), the `PropertiesDialog` helper, the AI max-file-size label, and the SFTP buffer-size label and description in every locale.
 - **branding:** Rename the application to `nyaterm-classic` (display name "NyaTerm Classic", Tauri identifier `com.kang.nyaterm.classic`) so the 1.x line can coexist with the 2.x GPUI build.
 - **storage:** Move the Desktop data directory to `~/.nyaterm-classic` (previously `~/.nyaterm`) so classic does not contend for the same `nyaterm.redb` file lock as other NyaTerm builds. Existing `~/.nyaterm` data is left untouched; migrate it manually if needed. Internal crate names, MCP sidecar name, and `nyaterm://` deep-link scheme are unchanged.
 - **build:** Add the `custom-protocol` Cargo feature (standard Tauri template entry) so release builds embed the frontend assets instead of falling back to the `localhost:1420` dev URL. Required when building with plain `cargo build` rather than `tauri build`.
 
 ### Fixed
 
-- **storage:** *(from 2.0.6)* Classify database failures and offer a confirmed rebuild. A missing or corrupt `nyaterm.redb` used to abort startup with a generic error. Detection now separates missing, corrupt, newer-schema, in-use, undecodable and unavailable states; only missing/corrupt is rebuildable. A rebuild is confirmed against the exact file digest, stages and validates the replacement first, archives the damaged file as `nyaterm.redb.corrupt-*`, and restores the original if publishing fails. Credentials, known hosts and other files in the data directory are never touched.
+- **storage:** _(from 2.0.6)_ Classify database failures and offer a confirmed rebuild. A missing or corrupt `nyaterm.redb` used to abort startup with a generic error. Detection now separates missing, corrupt, newer-schema, in-use, undecodable and unavailable states; only missing/corrupt is rebuildable. A rebuild is confirmed against the exact file digest, stages and validates the replacement first, archives the damaged file as `nyaterm.redb.corrupt-*`, and restores the original if publishing fails. Credentials, known hosts and other files in the data directory are never touched.
 - **backup:** Import configuration backups written by the 2.x line. The 2.x writer switched to an `NYASNAP` v2 envelope keyed by Argon2id with the header as AES-GCM associated data; this branch only read the legacy `nonce || ciphertext` SHA-256 form, so every 2.x export failed with `aead::Error`. Read both envelopes, keep writing the current one, and accept the 2.x default `"default"` activity-bar layout string when restoring settings.
 - **backup:** Restore imports of original 1.x backups when the master password contains surrounding whitespace or is a single space. The Argon2id envelope reader trimmed the password before deriving its key; legacy backups derive from the raw password bytes, so a whitespace-only password was rejected with "master password must not be empty" before decryption. Legacy envelopes now use the unmodified password bytes, matching the original writer.
-- **monitoring:** *(from 2.x)* Report network rate sample validity instead of a silently clamped zero. A reset counter, a reboot, or a sysinfo read returning zero used to produce `0 B/s`; a long sampling gap produced a spike. Rates now carry `available` / `counter_reset` / `interrupted` / `unavailable` / `warming_up`.
-- **mcp:** *(from 2.x)* Re-read the discovery document on every reconnect. A restarted NyaTerm republishes it with a new port and token, and the forwarder used to keep retrying the dead endpoint, leaving every external MCP client offline until it was restarted too.
+- **monitoring:** _(from 2.x)_ Report network rate sample validity instead of a silently clamped zero. A reset counter, a reboot, or a sysinfo read returning zero used to produce `0 B/s`; a long sampling gap produced a spike. Rates now carry `available` / `counter_reset` / `interrupted` / `unavailable` / `warming_up`.
+- **mcp:** _(from 2.x)_ Re-read the discovery document on every reconnect. A restarted NyaTerm republishes it with a new port and token, and the forwarder used to keep retrying the dead endpoint, leaving every external MCP client offline until it was restarted too.
 - **connections:** Delete a multi-connection selection in one rewrite. It previously called the single-delete command per connection, rewriting the whole sessions table each time.
 - **history:** Bound the persisted command-history table. `append_command_history` never removed rows, so the redb table grew without limit for a long-lived install even though the in-memory list was trimmed. It now keeps the 5000 most recently used rows and copies the whole database to a verified `nyaterm-history-backup-*.redb` first; a backup that cannot be read back keeps the rows.
 - **terminal:** Do not learn a Tab echo line that is not a completion. The post-Tab resync accepted any candidate derived from the echo line, so a redrawn prompt or unrelated output could be recorded as a command the user ran. A recovered command now has to extend the text typed before Tab.
