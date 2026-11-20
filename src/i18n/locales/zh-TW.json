@@ -582,7 +582,6 @@
     "keywordRulesDesc": "自訂後，該連線會保留一份獨立的醒目提示規則副本。",
     "keywordRulesSnapshotWarning": "該規則集是獨立副本，之後對全域規則的修改不會同步到該連線。",
     "ruleCount": "{{count}} 條規則",
-    "ruleSetEditHint": "如需使用新版本，請先在「設定 → 終端」中編輯規則，然後重新複製到此處。",
     "performanceSection": "轉譯與效能",
     "performanceSectionDesc": "當某台機器較慢或沒有可用顯示卡時，按主機單獨設定很有用。",
     "hardwareAccelerationDesc": "關閉可降低無可用顯示卡主機的 CPU 使用率，代價是捲動流暢度下降。",
@@ -590,7 +589,6 @@
     "connectionSectionDesc": "在建立 SSH 工作階段時生效。",
     "keepAliveNote": "全域保活設定為 {{summary}}。",
     "notOverridableNote": "互動設定（快速鍵、右鍵行為、補全）與 AI 設定刻意保持全域：前者是肌肉記憶，後者是服務商設定，都不屬於單台主機的事實。",
-    "useGlobal": "跟隨全域",
     "customized": "已自訂",
     "toggleField": "自訂 {{field}}",
     "followingGlobal": "跟隨全域設定",
@@ -602,7 +600,10 @@
     "stateOn": "已啟用",
     "stateOff": "已停用",
     "fontSummary": "{{family}} {{size}} px",
-    "globalImpact": "有 {{count}} 個連線對該項使用自訂值，不會跟隨本次修改：{{connections}}"
+    "globalImpact": "有 {{count}} 個連線對該項使用自訂值，不會跟隨本次修改：{{connections}}",
+    "usingGlobal": "跟隨全域",
+    "customize": "自訂",
+    "builtinRuleCount": "已啟用 {{count}} 條"
   },
   "credentialAutofill": {
     "dismiss": "關閉",

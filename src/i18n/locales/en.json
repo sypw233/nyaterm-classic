@@ -583,7 +583,6 @@
     "keywordRulesDesc": "When customized, this connection keeps its own copy of the highlight rules.",
     "keywordRulesSnapshotWarning": "This rule set is an independent copy. Later changes to the global rules will not reach this connection.",
     "ruleCount": "{{count}} rules",
-    "ruleSetEditHint": "Edit the rule contents under Settings → Terminal, then copy them here again if you want the new version.",
     "performanceSection": "Rendering and performance",
     "performanceSectionDesc": "Per-host overrides are useful when one machine is slow or has no GPU.",
     "hardwareAccelerationDesc": "Turning this off reduces CPU load on hosts without a working GPU, at the cost of smoother scrolling.",
@@ -591,7 +590,6 @@
     "connectionSectionDesc": "Applied when the SSH session is established.",
     "keepAliveNote": "Global keep-alive is {{summary}}.",
     "notOverridableNote": "Interaction settings (shortcuts, right-click behaviour, completion) and AI settings stay global on purpose: they are muscle memory and provider configuration, not per-host facts.",
-    "useGlobal": "Use global",
     "customized": "Customized",
     "toggleField": "Customize {{field}}",
     "followingGlobal": "Following the global setting",
@@ -603,7 +601,10 @@
     "stateOn": "Enabled",
     "stateOff": "Disabled",
     "fontSummary": "{{family}} {{size}} px",
-    "globalImpact": "{{count}} connection(s) use their own value for this setting and will not follow this change: {{connections}}"
+    "globalImpact": "{{count}} connection(s) use their own value for this setting and will not follow this change: {{connections}}",
+    "usingGlobal": "Using global",
+    "customize": "Customize",
+    "builtinRuleCount": "{{count}} enabled"
   },
   "credentialAutofill": {
     "dismiss": "Dismiss",

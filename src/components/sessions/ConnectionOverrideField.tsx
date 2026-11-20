@@ -52,11 +52,17 @@ export function OverrideField({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-xs font-medium">{label}</span>
-            {overridden ? (
-              <span className="rounded-full bg-primary/15 px-1.5 py-px text-[0.625rem] font-medium text-primary">
-                {t("connectionOverrides.customized")}
-              </span>
-            ) : null}
+            <span
+              className={`rounded-full px-1.5 py-px text-[0.625rem] font-medium ${
+                overridden
+                  ? "bg-primary/15 text-primary"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {overridden
+                ? t("connectionOverrides.customized")
+                : t("connectionOverrides.usingGlobal")}
+            </span>
           </div>
           {desc ? (
             <p className="mt-0.5 text-[0.6875rem] leading-relaxed text-muted-foreground">
@@ -65,8 +71,11 @@ export function OverrideField({
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {/* The switch means "customize this field". Its label therefore has to
+              describe the action, not the current state; the state is already
+              carried by the badge and by whether the control is shown. */}
           <span className="text-[0.6875rem] text-muted-foreground">
-            {t("connectionOverrides.useGlobal")}
+            {t("connectionOverrides.customize")}
           </span>
           <Switch
             size="sm"

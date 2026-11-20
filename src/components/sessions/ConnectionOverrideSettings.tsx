@@ -4,12 +4,16 @@ import { Input } from "@/components/ui/input";
 import { SelectItem } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { OverrideField, OverrideGroupHeader } from "./ConnectionOverrideField";
+import { applyOverrideFieldToggle } from "./connectionOverrideToggle";
+import { KeywordHighlightRuleEditor } from "@/components/settings/KeywordHighlightRuleEditor";
 import {
   SettingNumberInput,
   SettingSection,
   SettingSelect,
 } from "@/components/settings/SettingFormItems";
 import { useApp } from "@/context/AppContext";
+import { useTheme } from "@/context/ThemeContext";
+import { getBuiltinRules, hexLuminance } from "@/lib/keywordHighlightPresets";
 import type { ConnectionOverrides, SshKeepAliveMode } from "@/types/global";
 
 const KEEP_ALIVE_MODES: SshKeepAliveMode[] = ["compatible", "strict", "disabled"];
@@ -56,17 +60,30 @@ export function ConnectionOverrideSettings({
 }: ConnectionOverrideSettingsProps) {
   const { t } = useTranslation();
   const { appSettings } = useApp();
+  const { terminalTheme } = useTheme();
 
   const appearance = appSettings.appearance;
   const terminal = appSettings.terminal;
 
+  // Keyword rule swatches show the colour that will actually be used, so they
+  // need the same light/dark decision the highlighter makes.
+  const isDark = useMemo(
+    () => hexLuminance(terminalTheme.colors.terminal.background) < 0.5,
+    [terminalTheme.colors.terminal.background],
+  );
+  const ringClass = isDark ? "ring-white/20" : "ring-black/20";
+  const builtinRules = useMemo(() => getBuiltinRules(isDark), [isDark]);
+
   const setField = <K extends keyof Overrides>(field: K, next: Overrides[K]) => {
     onChange({ ...value, [field]: next });
   };
+  // Both directions go through the helper so the "delete, never freeze" rule
+  // lives in one place instead of being restated at every field.
+  const enableField = <K extends keyof Overrides>(field: K, globalValue: Overrides[K]) => {
+    onChange(applyOverrideFieldToggle(value, field, true, globalValue));
+  };
   const clearField = (field: keyof Overrides) => {
-    const next = { ...value };
-    delete next[field];
-    onChange(next);
+    onChange(applyOverrideFieldToggle(value, field, false, undefined));
   };
   const clearAll = () => onChange({});
 
@@ -104,7 +121,7 @@ export function ConnectionOverrideSettings({
           label={t("settings.fontFamily")}
           overridden={value.font_family !== undefined}
           globalSummary={appearance.font_family}
-          onEnable={() => setField("font_family", appearance.font_family)}
+          onEnable={() => enableField("font_family", appearance.font_family)}
           onDisable={() => clearField("font_family")}
         >
           <Input
@@ -119,7 +136,7 @@ export function ConnectionOverrideSettings({
           label={t("settings.fontSize")}
           overridden={value.font_size !== undefined}
           globalSummary={`${appearance.font_size} px`}
-          onEnable={() => setField("font_size", appearance.font_size)}
+          onEnable={() => enableField("font_size", appearance.font_size)}
           onDisable={() => clearField("font_size")}
         >
           <SettingNumberInput
@@ -138,7 +155,7 @@ export function ConnectionOverrideSettings({
           label={t("settings.cursorStyle")}
           overridden={value.cursor_style !== undefined}
           globalSummary={appearance.cursor_style}
-          onEnable={() => setField("cursor_style", appearance.cursor_style)}
+          onEnable={() => enableField("cursor_style", appearance.cursor_style)}
           onDisable={() => clearField("cursor_style")}
         >
           <SettingSelect
@@ -159,7 +176,7 @@ export function ConnectionOverrideSettings({
           globalSummary={
             appearance.cursor_blink ? t("connectionOverrides.stateOn") : t("connectionOverrides.stateOff")
           }
-          onEnable={() => setField("cursor_blink", appearance.cursor_blink)}
+          onEnable={() => enableField("cursor_blink", appearance.cursor_blink)}
           onDisable={() => clearField("cursor_blink")}
         >
           <Switch
@@ -204,7 +221,7 @@ export function ConnectionOverrideSettings({
           label={t("settings.scrollbackLines")}
           overridden={value.scrollback_lines !== undefined}
           globalSummary={String(terminal.scrollback_lines)}
-          onEnable={() => setField("scrollback_lines", terminal.scrollback_lines)}
+          onEnable={() => enableField("scrollback_lines", terminal.scrollback_lines)}
           onDisable={() => clearField("scrollback_lines")}
         >
           <SettingNumberInput
@@ -237,6 +254,59 @@ export function ConnectionOverrideSettings({
         </OverrideField>
 
         <OverrideField
+          field="keyword_highlight_builtin_rules"
+          label={t("settings.keywordHighlightBuiltinRules")}
+          desc={t("settings.keywordHighlightBuiltinNote")}
+          overridden={value.keyword_highlight_builtin_rules !== undefined}
+          globalSummary={t("connectionOverrides.builtinRuleCount", {
+            count: Object.values(terminal.keyword_highlight_builtin_rules ?? {}).filter(
+              (enabled) => enabled,
+            ).length,
+          })}
+          onEnable={() =>
+            setField(
+              "keyword_highlight_builtin_rules",
+              terminal.keyword_highlight_builtin_rules ?? {},
+            )
+          }
+          onDisable={() => clearField("keyword_highlight_builtin_rules")}
+        >
+          <div className="grid gap-2 sm:grid-cols-2">
+            {builtinRules.map((rule) => {
+              const settings =
+                value.keyword_highlight_builtin_rules ??
+                terminal.keyword_highlight_builtin_rules ??
+                {};
+              return (
+                <div
+                  key={rule.id}
+                  className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/70 px-3 py-2"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      className={`h-3 w-3 shrink-0 rounded-full ring-1 ring-inset ${ringClass}`}
+                      style={{ backgroundColor: rule.color }}
+                    />
+                    <span className="min-w-0 truncate text-xs text-muted-foreground">
+                      {rule.name}
+                    </span>
+                  </div>
+                  <Switch
+                    checked={settings[rule.id] ?? true}
+                    onCheckedChange={(enabled) =>
+                      setField("keyword_highlight_builtin_rules", {
+                        ...settings,
+                        [rule.id]: enabled,
+                      })
+                    }
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </OverrideField>
+
+        <OverrideField
           field="keyword_highlights"
           label={t("settings.keywordHighlightRules")}
           desc={t("connectionOverrides.keywordRulesDesc")}
@@ -244,31 +314,19 @@ export function ConnectionOverrideSettings({
           globalSummary={t("connectionOverrides.ruleCount", {
             count: terminal.keyword_highlights.length,
           })}
-          onEnable={() => setField("keyword_highlights", terminal.keyword_highlights)}
+          onEnable={() => enableField("keyword_highlights", terminal.keyword_highlights)}
           onDisable={() => clearField("keyword_highlights")}
         >
-          <div className="space-y-2">
+          <div className="space-y-3">
             <p className="text-[0.6875rem] leading-relaxed text-amber-600 dark:text-amber-500">
               {t("connectionOverrides.keywordRulesSnapshotWarning")}
             </p>
-            <ul className="space-y-1">
-              {(value.keyword_highlights ?? terminal.keyword_highlights).map((rule) => (
-                <li
-                  key={rule.id}
-                  className="flex items-center justify-between gap-2 rounded border border-border/50 px-2 py-1 text-[0.6875rem]"
-                >
-                  <span className="min-w-0 truncate">{rule.name}</span>
-                  <span className="shrink-0 text-muted-foreground">
-                    {t("settings.keywordHighlightPatternCount", {
-                      count: rule.patterns.length,
-                    })}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <p className="text-[0.6875rem] text-muted-foreground">
-              {t("connectionOverrides.ruleSetEditHint")}
-            </p>
+            <KeywordHighlightRuleEditor
+              rules={value.keyword_highlights ?? terminal.keyword_highlights}
+              onChange={(rules) => setField("keyword_highlights", rules)}
+              isDark={isDark}
+              ringClass={ringClass}
+            />
           </div>
         </OverrideField>
 
@@ -279,7 +337,7 @@ export function ConnectionOverrideSettings({
           globalSummary={
             terminal.action_links_enabled ? t("connectionOverrides.stateOn") : t("connectionOverrides.stateOff")
           }
-          onEnable={() => setField("action_links_enabled", terminal.action_links_enabled)}
+          onEnable={() => enableField("action_links_enabled", terminal.action_links_enabled)}
           onDisable={() => clearField("action_links_enabled")}
         >
           <Switch
@@ -293,7 +351,7 @@ export function ConnectionOverrideSettings({
           label={t("settings.showLineNumbers")}
           overridden={value.show_line_numbers !== undefined}
           globalSummary={terminal.show_line_numbers ? t("connectionOverrides.stateOn") : t("connectionOverrides.stateOff")}
-          onEnable={() => setField("show_line_numbers", terminal.show_line_numbers)}
+          onEnable={() => enableField("show_line_numbers", terminal.show_line_numbers)}
           onDisable={() => clearField("show_line_numbers")}
         >
           <Switch
@@ -307,7 +365,7 @@ export function ConnectionOverrideSettings({
           label={t("settings.showTimestamps")}
           overridden={value.show_timestamps !== undefined}
           globalSummary={terminal.show_timestamps ? t("connectionOverrides.stateOn") : t("connectionOverrides.stateOff")}
-          onEnable={() => setField("show_timestamps", terminal.show_timestamps)}
+          onEnable={() => enableField("show_timestamps", terminal.show_timestamps)}
           onDisable={() => clearField("show_timestamps")}
         >
           <Switch
@@ -330,7 +388,7 @@ export function ConnectionOverrideSettings({
           globalSummary={
             terminal.hardware_acceleration ? t("connectionOverrides.stateOn") : t("connectionOverrides.stateOff")
           }
-          onEnable={() => setField("hardware_acceleration", terminal.hardware_acceleration)}
+          onEnable={() => enableField("hardware_acceleration", terminal.hardware_acceleration)}
           onDisable={() => clearField("hardware_acceleration")}
         >
           <Switch
@@ -346,7 +404,7 @@ export function ConnectionOverrideSettings({
           globalSummary={
             terminal.frame_batched_output ? t("connectionOverrides.stateOn") : t("connectionOverrides.stateOff")
           }
-          onEnable={() => setField("frame_batched_output", terminal.frame_batched_output)}
+          onEnable={() => enableField("frame_batched_output", terminal.frame_batched_output)}
           onDisable={() => clearField("frame_batched_output")}
         >
           <Switch
@@ -445,7 +503,7 @@ export function ConnectionOverrideSettings({
           desc={t("connectionOverrides.keepAliveNote", { summary: keepAliveSummary })}
           overridden={value.keep_alive_mode !== undefined}
           globalSummary={terminal.keep_alive_mode}
-          onEnable={() => setField("keep_alive_mode", terminal.keep_alive_mode)}
+          onEnable={() => enableField("keep_alive_mode", terminal.keep_alive_mode)}
           onDisable={() => clearField("keep_alive_mode")}
         >
           <SettingSelect
@@ -466,7 +524,7 @@ export function ConnectionOverrideSettings({
           label={t("settings.keepAliveInterval")}
           overridden={value.keep_alive_interval !== undefined}
           globalSummary={`${terminal.keep_alive_interval}s`}
-          onEnable={() => setField("keep_alive_interval", terminal.keep_alive_interval)}
+          onEnable={() => enableField("keep_alive_interval", terminal.keep_alive_interval)}
           onDisable={() => clearField("keep_alive_interval")}
         >
           <SettingNumberInput

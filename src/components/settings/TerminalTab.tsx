@@ -1,19 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  MdAdd,
-  MdDelete,
-  MdExpandLess,
-  MdExpandMore,
-  MdFileUpload,
-  MdFolderOpen,
-} from "react-icons/md";
+import { MdFolderOpen } from "react-icons/md";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SelectItem } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import { useApp } from "@/context/AppContext";
 import { GlobalSettingOverrideNotice } from "./GlobalSettingOverrideNotice";
 import { useTheme } from "@/context/ThemeContext";
@@ -22,7 +14,7 @@ import { downloadDir } from "@/lib/backend/platform/path";
 import { supports } from "@/lib/backend/runtime";
 import { getBuiltinRules, hexLuminance } from "@/lib/keywordHighlightPresets";
 import type { KeywordHighlightRule, SshKeepAliveMode } from "@/types/global";
-import { KeywordHighlightImportDialog } from "../dialog/terminal/KeywordHighlightImportDialog";
+import { KeywordHighlightRuleEditor } from "./KeywordHighlightRuleEditor";
 import {
   SettingInput,
   SettingNumberInput,
@@ -110,8 +102,6 @@ export function TerminalTab() {
   const { t } = useTranslation();
   const { appSettings, updateAppSettings, updateUi } = useApp();
   const { terminalTheme } = useTheme();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [showImportDialog, setShowImportDialog] = useState(false);
   const [defaultDownloadDir, setDefaultDownloadDir] = useState("");
 
   const isDark = useMemo(
@@ -151,29 +141,6 @@ export function TerminalTab() {
 
   function updateRules(next: KeywordHighlightRule[]) {
     updateAppSettings({ terminal: { ...appSettings.terminal, keyword_highlights: next } });
-  }
-
-  function addRule() {
-    const id = `kh-${Date.now()}`;
-    const next: KeywordHighlightRule = {
-      id,
-      name: t("settings.keywordHighlightNewRule"),
-      patterns: [],
-      color_dark: "#79c0ff",
-      color_light: "#0969da",
-      enabled: true,
-    };
-    updateRules([...userRules, next]);
-    setExpandedId(id);
-  }
-
-  function deleteRule(id: string) {
-    updateRules(userRules.filter((r) => r.id !== id));
-    if (expandedId === id) setExpandedId(null);
-  }
-
-  function patchRule(id: string, patch: Partial<KeywordHighlightRule>) {
-    updateRules(userRules.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   }
 
   function patchBuiltinRule(id: string, enabled: boolean) {
@@ -938,198 +905,14 @@ export function TerminalTab() {
           </div>
         </div>
 
-        <div
-          className={`space-y-3 transition-opacity ${
-            keywordHighlightingEnabled ? "" : "pointer-events-none opacity-50"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">{t("settings.keywordHighlightRules")}</Label>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="xs"
-                className="text-primary"
-                onClick={() => setShowImportDialog(true)}
-              >
-                <MdFileUpload className="text-[0.875rem]" />
-                {t("settings.keywordHighlightImport")}
-              </Button>
-              <Button variant="ghost" size="xs" className="text-primary" onClick={addRule}>
-                <MdAdd className="text-[0.875rem]" />
-                {t("common.add")}
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            {userRules.length === 0 && (
-              <div className="rounded-xl border border-dashed border-border/70 bg-background/40 px-4 py-8 text-center text-sm text-muted-foreground">
-                {t("settings.keywordHighlightNoRules")}
-              </div>
-            )}
-
-            {userRules.map((rule) => {
-              const isOpen = expandedId === rule.id;
-              const patternCount = rule.patterns.filter((p) => p.trim()).length;
-
-              return (
-                <div
-                  key={rule.id}
-                  className="overflow-hidden rounded-xl border border-border/70 bg-background/75"
-                >
-                  <div
-                    className="cursor-pointer select-none px-4 py-3 transition-colors hover:bg-accent/40"
-                    onClick={() => setExpandedId(isOpen ? null : rule.id)}
-                  >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                      <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <span
-                          className={`h-3 w-3 shrink-0 rounded-full ring-1 ring-inset ${ringClass}`}
-                          style={{ backgroundColor: isDark ? rule.color_dark : rule.color_light }}
-                        />
-                        <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                          {rule.name}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                        <span className="shrink-0 text-xs text-muted-foreground">
-                          {t("settings.keywordHighlightPatternCount", { count: patternCount })}
-                        </span>
-
-                        <Switch
-                          checked={rule.enabled}
-                          onCheckedChange={(v) => patchRule(rule.id, { enabled: v })}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="shrink-0 text-destructive hover:bg-destructive/10"
-                          title={t("common.delete")}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteRule(rule.id);
-                          }}
-                        >
-                          <MdDelete className="text-[1rem]" />
-                        </Button>
-
-                        {isOpen ? (
-                          <MdExpandLess className="shrink-0 text-base text-muted-foreground" />
-                        ) : (
-                          <MdExpandMore className="shrink-0 text-base text-muted-foreground" />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {isOpen && (
-                    <div
-                      className="space-y-4 border-t border-border/70 bg-accent/15 px-4 pb-4 pt-3"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
-                        <div className="min-w-0 flex-1 space-y-2 xl:max-w-[16rem]">
-                          <Label className="text-xs text-muted-foreground">
-                            {t("settings.keywordHighlightRuleName")}
-                          </Label>
-                          <Input
-                            className="h-8 text-sm"
-                            value={rule.name}
-                            placeholder={t("settings.keywordHighlightRuleNamePlaceholder")}
-                            onChange={(e) => patchRule(rule.id, { name: e.target.value })}
-                          />
-                        </div>
-
-                        <div className="grid gap-3 sm:grid-cols-2 xl:flex">
-                          {[
-                            {
-                              field: "color_dark" as const,
-                              labelKey: "keywordHighlightDarkPalette",
-                              swatchRing: "ring-white/20",
-                            },
-                            {
-                              field: "color_light" as const,
-                              labelKey: "keywordHighlightLightPalette",
-                              swatchRing: "ring-black/20",
-                            },
-                          ].map(({ field, labelKey, swatchRing }) => (
-                            <div key={field} className="min-w-0 space-y-2">
-                              <Label className="block text-xs text-muted-foreground">
-                                {t(`settings.${labelKey}`)}
-                              </Label>
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className={`relative h-8 w-8 shrink-0 overflow-hidden rounded-md border ring-1 ring-inset ${swatchRing}`}
-                                  style={{ backgroundColor: rule[field] }}
-                                >
-                                  <input
-                                    type="color"
-                                    className="absolute inset-[-10px] h-[200%] w-[200%] cursor-pointer opacity-0"
-                                    value={
-                                      rule[field] && rule[field].length === 7
-                                        ? rule[field]
-                                        : "#000000"
-                                    }
-                                    onChange={(e) =>
-                                      patchRule(rule.id, { [field]: e.target.value })
-                                    }
-                                  />
-                                </div>
-                                <Input
-                                  className="h-8 w-full font-mono text-xs sm:w-[7.5rem]"
-                                  value={rule[field]}
-                                  maxLength={7}
-                                  placeholder="#rrggbb"
-                                  onChange={(e) => {
-                                    const v = e.target.value;
-                                    if (/^#[0-9a-fA-F]{0,6}$/.test(v)) {
-                                      patchRule(rule.id, { [field]: v });
-                                    }
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground">
-                          {t("settings.keywordHighlightRulePatterns")}
-                        </Label>
-                        <Textarea
-                          className="min-h-[80px] max-h-[160px] resize-y overflow-y-auto font-mono text-sm"
-                          value={rule.patterns.join("\n")}
-                          placeholder={t("settings.keywordHighlightRulePatternsPlaceholder")}
-                          onChange={(e) =>
-                            patchRule(rule.id, { patterns: e.target.value.split("\n") })
-                          }
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <KeywordHighlightRuleEditor
+          rules={userRules}
+          onChange={updateRules}
+          disabled={!keywordHighlightingEnabled}
+          isDark={isDark}
+          ringClass={ringClass}
+        />
       </SettingSection>
-      <KeywordHighlightImportDialog
-        open={showImportDialog}
-        onClose={() => setShowImportDialog(false)}
-        onImportedRules={(rules) =>
-          updateAppSettings((prev) => ({
-            terminal: {
-              ...prev.terminal,
-              keyword_highlights: rules,
-            },
-          }))
-        }
-      />
     </div>
   );
 }

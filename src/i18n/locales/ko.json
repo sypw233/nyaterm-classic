@@ -582,7 +582,6 @@
     "keywordRulesDesc": "사용자 지정하면 이 연결은 강조 규칙의 독립적인 사본을 유지합니다.",
     "keywordRulesSnapshotWarning": "이 규칙 집합은 독립 사본이므로 이후 전역 규칙 변경이 이 연결에 적용되지 않습니다.",
     "ruleCount": "규칙 {{count}}개",
-    "ruleSetEditHint": "새 버전을 사용하려면 설정 → 터미널에서 규칙을 편집한 뒤 여기로 다시 복사하세요.",
     "performanceSection": "렌더링 및 성능",
     "performanceSectionDesc": "한 머신이 느리거나 GPU가 없을 때 호스트별 설정이 유용합니다.",
     "hardwareAccelerationDesc": "끄면 사용 가능한 GPU가 없는 호스트의 CPU 부하가 줄어들지만 스크롤이 덜 부드러워집니다.",
@@ -590,7 +589,6 @@
     "connectionSectionDesc": "SSH 세션을 설정할 때 적용됩니다.",
     "keepAliveNote": "전역 연결 유지 설정은 {{summary}}입니다.",
     "notOverridableNote": "상호작용 설정(단축키, 오른쪽 클릭 동작, 완성)과 AI 설정은 의도적으로 전역으로 유지됩니다. 전자는 몸에 익은 동작이고 후자는 공급자 구성이기 때문입니다.",
-    "useGlobal": "전역 사용",
     "customized": "사용자 지정됨",
     "toggleField": "{{field}} 사용자 지정",
     "followingGlobal": "전역 설정을 따르는 중",
@@ -602,7 +600,10 @@
     "stateOn": "사용",
     "stateOff": "사용 안 함",
     "fontSummary": "{{family}} {{size}} px",
-    "globalImpact": "{{count}}개 연결이 이 설정에 자체 값을 사용하므로 이번 변경을 따르지 않습니다: {{connections}}"
+    "globalImpact": "{{count}}개 연결이 이 설정에 자체 값을 사용하므로 이번 변경을 따르지 않습니다: {{connections}}",
+    "usingGlobal": "전역 사용 중",
+    "customize": "사용자 지정",
+    "builtinRuleCount": "{{count}}개 사용 중"
   },
   "credentialAutofill": {
     "dismiss": "닫기",
