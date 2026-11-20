@@ -244,6 +244,18 @@ pub struct AiContext {
     pub os: Option<String>,
     #[serde(default)]
     pub arch: Option<String>,
+    /// Kernel release reported by the last asset collection, when known.
+    #[serde(default)]
+    pub kernel_version: Option<String>,
+    /// Hostname reported by the last asset collection, when known.
+    #[serde(default)]
+    pub hostname: Option<String>,
+    /// Per-connection instructions the user wrote for the model itself.
+    ///
+    /// Unlike `description` (a human note also shown as data), this text is
+    /// addressed to the assistant and is appended to the system prompt.
+    #[serde(default)]
+    pub ai_system_prompt: Option<String>,
     #[serde(default)]
     pub recent_output: String,
     #[serde(default)]

@@ -40,6 +40,9 @@ pub fn redact_context(context: &mut AiContext) {
         &mut context.cwd,
         &mut context.os,
         &mut context.arch,
+        &mut context.kernel_version,
+        &mut context.hostname,
+        &mut context.ai_system_prompt,
         &mut context.session_type,
     ]
     .into_iter()

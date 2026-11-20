@@ -19,7 +19,7 @@ use crate::error::{AppError, AppResult};
 use crate::utils::process::hide_window;
 
 use super::super::history::{append_message, save_user_message, set_session_external_session_id};
-use super::super::prompt::build_prompt;
+use super::super::prompt::{build_prompt, connection_instructions_block, connection_system_context};
 use super::super::redaction::{redact_marker_values, redact_request, redact_sensitive_text};
 use super::super::stream::{active_streams, emit_stream_event};
 use super::super::types::{AiChatRequest, AiMessage, AiMessageRole, AiStreamEventPayload};
@@ -481,9 +481,20 @@ fn claude_system_context(request: &AiChatRequest) -> String {
         .as_deref()
         .or(request.terminal_session_id.as_deref())
         .unwrap_or("none");
-    format!(
+    let base = format!(
         "You are running inside NyaTerm. Use NyaTerm MCP tools for terminal sessions when available. Any terminal command executed through NyaTerm MCP must be non-interactive and must not wait for user input, confirmation, or pager navigation. For tools that may start a pager, use tool-specific non-interactive or no-pager options such as git --no-pager ... or journalctl --no-pager. If a command requires an interactive UI, confirmation prompt, or input and has no non-interactive alternative, do not run it automatically; choose a non-interactive alternative or explain the limitation to the user. Do not read SSH passwords, private keys, OAuth tokens, or internal app credentials. Do not create separate SSH connections to bypass NyaTerm SessionManager. Default terminal session: {default_target}."
-    )
+    );
+
+    // Claude Code receives its system prompt through --append-system-prompt, so
+    // the target host facts and the connection's own instructions go here too.
+    let profile = connection_system_context(&request.context, &request.options.language);
+    let instructions = connection_instructions_block(&request.context, &request.options.language);
+    match (profile.is_empty(), instructions.is_empty()) {
+        (true, true) => base,
+        (false, true) => format!("{base}\n\n{profile}"),
+        (true, false) => format!("{base}\n\n{instructions}"),
+        (false, false) => format!("{base}\n\n{profile}\n\n{instructions}"),
+    }
 }
 
 fn request_terminal_scope(request: &AiChatRequest) -> (Vec<String>, Option<String>) {

@@ -36,6 +36,7 @@ use super::prompt::{
     agent_execution_disabled_message, agent_max_steps_message, agent_send_only_observation,
     agent_system_prompt, build_agent_failed_message, build_agent_prompt,
     build_agent_rejected_message, build_agent_unknown_action_message, build_observation_message,
+    with_connection_context,
 };
 use super::redaction::{redact_request, redact_sensitive_text};
 use super::stream::{active_streams, emit_stream_event, is_cancelled};
@@ -50,10 +51,18 @@ fn build_initial_agent_conversation(
     settings: &AiSettings,
     prior_messages: &[AiMessage],
 ) -> Vec<ChatMessage> {
-    let mut conversation = vec![ChatMessage::system(agent_system_prompt(
+    // The connection profile and the per-connection instructions belong in the
+    // system message: the agent decides what to run before it reads the task,
+    // so environment facts must already be visible at that point.
+    let system = with_connection_context(
+        agent_system_prompt(
+            &request.options.language,
+            &settings.agent_custom_instructions,
+        ),
+        &request.context,
         &request.options.language,
-        &settings.agent_custom_instructions,
-    ))];
+    );
+    let mut conversation = vec![ChatMessage::system(system)];
 
     if let Some(session_id) = request.session_id.as_deref() {
         let history_messages: Vec<_> = prior_messages

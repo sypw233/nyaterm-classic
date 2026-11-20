@@ -2,7 +2,7 @@ use super::{
     history::load_history,
     model::{build_chat_options, build_client, resolve_request_model},
     parser::{extract_text_from_assistant, trim_string_to_option},
-    prompt::{build_prompt, system_prompt},
+    prompt::{build_prompt, system_prompt_for_request},
     types::{AiChatRequest, AiMessage, AiMessageRole, AiStreamEventPayload},
 };
 use crate::config::AiSettings;
@@ -48,8 +48,9 @@ pub async fn run_model_stream(
     let resolved_model = resolve_request_model(settings, request)?;
     let prompt = build_prompt(request, settings);
 
-    let mut messages = vec![ChatMessage::system(system_prompt(
+    let mut messages = vec![ChatMessage::system(system_prompt_for_request(
         &request.options.language,
+        &request.context,
     ))];
 
     if let Some(session_id) = &request.session_id {

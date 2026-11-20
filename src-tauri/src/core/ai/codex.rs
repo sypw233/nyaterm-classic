@@ -27,7 +27,7 @@ use super::history::{
     append_ai_audit, append_message, get_session_backend_metadata, save_user_message,
     set_session_backend_metadata, set_session_external_session_id,
 };
-use super::prompt::build_agent_prompt;
+use super::prompt::{build_agent_prompt, connection_instructions_block, connection_system_context};
 use super::redaction::{redact_marker_values, redact_request, redact_sensitive_text};
 use super::stream::{active_streams, emit_stream_event};
 use super::types::{
@@ -1737,8 +1737,19 @@ fn codex_developer_instructions() -> &'static str {
 }
 
 fn build_codex_agent_prompt(request: &AiChatRequest, settings: &AiSettings) -> String {
+    // Codex owns its own system prompt, so the connection profile and the
+    // per-connection instructions are prepended here instead: they have to be
+    // read before the task, not after it.
+    let profile = connection_system_context(&request.context, &request.options.language);
+    let instructions = connection_instructions_block(&request.context, &request.options.language);
+    let connection_block = match (profile.is_empty(), instructions.is_empty()) {
+        (true, true) => String::new(),
+        (false, true) => format!("{profile}\n\n"),
+        (true, false) => format!("{instructions}\n\n"),
+        (false, false) => format!("{profile}\n\n{instructions}\n\n"),
+    };
     format!(
-        "{}\n\nCodex Agent protocol:\n- Use the nyaterm_terminal namespace for all NyaTerm terminal actions.\n- If you need to inspect or change the terminal, call nyaterm_terminal.execute_command with targetTerminalSessionId and command.\n- If the target is unclear, call nyaterm_terminal.get_context first.\n- Do not return command cards, protocol JSON, or {{\"commands\":[...]}} in assistant text.\n- When finished, reply with a normal user-facing final answer.",
+        "{connection_block}{}\n\nCodex Agent protocol:\n- Use the nyaterm_terminal namespace for all NyaTerm terminal actions.\n- If you need to inspect or change the terminal, call nyaterm_terminal.execute_command with targetTerminalSessionId and command.\n- If the target is unclear, call nyaterm_terminal.get_context first.\n- Do not return command cards, protocol JSON, or {{\"commands\":[...]}} in assistant text.\n- When finished, reply with a normal user-facing final answer.",
         build_agent_prompt(request, settings)
     )
 }
