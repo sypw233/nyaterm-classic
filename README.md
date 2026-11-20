@@ -9,13 +9,17 @@
 </p>
 
 <p align="center">
-  <strong>The maintained Tauri 1.x line of NyaTerm — a remote terminal workspace built with Tauri, React, and Rust.</strong><br/>
+  <strong>NyaTerm Classic — a remote terminal workspace built with Tauri, React, and Rust, and the maintained Tauri 1.x line of NyaTerm.</strong><br/>
   <a href="https://github.com/sypw233/nyaterm-classic"><strong>nyaterm-classic</strong></a> ·
   <a href="./docs-site/docs/"><strong>Documentation</strong></a>
 </p>
 
 <p align="center">
   SSH, local shells, Telnet, Serial, RDP, VNC, SFTP, tunnels, OTP, AI assistance, and encrypted sync in one desktop client.
+</p>
+
+<p align="center">
+  NyaTerm Classic is an independent fork of the original <a href="https://github.com/nyakang/nyaterm">NyaTerm project</a>. It is maintained by the community, not by the original author, and continues the maintenance and development of the Tauri/WebView 1.x line.
 </p>
 
 <p align="center">
@@ -339,7 +343,9 @@ pnpm tauri dev
 
 <a name="credits"></a>
 # Credits
+
 Thanks to the following projects and libraries that make NyaTerm possible:
+- [NyaTerm](https://github.com/nyakang/nyaterm) - The original project from which NyaTerm Classic is forked, and the source of the 2.x GPUI line
 - [WindTerm](https://github.com/kingToolbox/WindTerm) - Inspired the design and features of NyaTerm
 - [tabby](https://github.com/Eugeny/tabby) - An excellent cross-platform terminal that provided many design inspirations
 - [xterm.js](https://xtermjs.org/) - A powerful frontend terminal emulator that provides rich terminal functionality and extensibility

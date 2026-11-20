@@ -9,13 +9,17 @@
 </p>
 
 <p align="center">
-  <strong>NyaTerm 持续维护的 Tauri 1.x 产品线 —— 基于 Tauri、React 与 Rust 构建的远程终端工作区。</strong><br/>
+  <strong>NyaTerm Classic —— 基于 Tauri、React 与 Rust 构建的远程终端工作区，是 NyaTerm 持续维护的 Tauri 1.x 产品线。</strong><br/>
   <a href="https://github.com/sypw233/nyaterm-classic"><strong>nyaterm-classic</strong></a> ·
   <a href="./docs-site/docs/"><strong>在线文档</strong></a>
 </p>
 
 <p align="center">
   在一个桌面客户端中处理 SSH、本地 Shell、Telnet、串口、RDP、VNC、SFTP、隧道、OTP、AI 辅助与加密同步。
+</p>
+
+<p align="center">
+  NyaTerm Classic 派生自原始项目 <a href="https://github.com/nyakang/nyaterm">NyaTerm</a>，由社区独立维护，并非原始作者维护。它在其 Tauri/WebView 1.x 代码基础上持续维护与开发。
 </p>
 
 <p align="center">
@@ -347,6 +351,7 @@ pnpm tauri dev
 <a name="鸣谢"></a>
 # 鸣谢
 感谢以下项目和库使 NyaTerm 成为可能：
+- [NyaTerm](https://github.com/nyakang/nyaterm) - 原始项目，NyaTerm Classic 派生自它，同时它也是 2.x GPUI 产品线的来源
 - [WindTerm](https://github.com/kingToolbox/WindTerm) - 启发了 NyaTerm 的设计和功能
 - [tabby](https://github.com/Eugeny/tabby) - 一个优秀的跨平台终端，提供了很多设计灵感
 - [xterm.js](https://xtermjs.org/) - 强大的前端终端模拟器，提供了丰富的终端功能和扩展性
