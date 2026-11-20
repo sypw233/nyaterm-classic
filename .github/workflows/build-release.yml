@@ -769,9 +769,16 @@ jobs:
               }
 
               for (const key of keys) {
+                // Build the download URL from the release tag rather than
+                // reusing `browser_download_url`. While a release is still a
+                // draft whose tag does not exist yet, GitHub reports asset URLs
+                // under a temporary `untagged-*` slug; once the release is
+                // published the assets move to `/download/<tag>/` and every
+                // recorded URL 404s. The tag-based URL is stable in both states
+                // because the release is published under `tag_name`.
                 platforms[key] = {
                   signature,
-                  url: binaryAsset.browser_download_url,
+                  url: `https://github.com/${owner}/${repo}/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(binaryAsset.name)}`,
                 };
               }
             }
@@ -961,7 +968,14 @@ jobs:
               const url = new URL(item.url);
               const name = decodeURIComponent(url.pathname.split('/').pop());
               const asset = byName.get(name);
-              if (!asset?.size || name.endsWith('.sig') || url.href !== new URL(asset.browser_download_url).href) {
+              // latest.json records tag-based download URLs so they stay valid
+              // across the draft-to-published transition, when GitHub moves
+              // assets from an `untagged-*` slug to `/download/<tag>/`. Verify
+              // the asset exists by name and that the URL points at this
+              // release's tag, rather than comparing against
+              // `browser_download_url`, which carries the transient slug.
+              const expectedPath = `/${owner}/${repo}/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(name)}`;
+              if (!asset?.size || name.endsWith('.sig') || url.pathname !== expectedPath) {
                 throw new Error(`Updater target ${platform} does not reference a real release installer: ${item.url}`);
               }
               return name;
