@@ -8,6 +8,7 @@ import AppLayout from "./components/app/AppLayout";
 import AppPanelContent from "./components/app/AppPanelContent";
 import ActivityBarResetDialog from "./components/dialog/app/ActivityBarResetDialog";
 import AppOverlayDialogs from "./components/dialog/app/AppOverlayDialogs";
+import { FridayEasterEggDialog } from "./components/dialog/app/FridayEasterEggDialog";
 import StorageRecoveryDialog from "./components/dialog/app/StorageRecoveryDialog";
 import { McpApprovalHost } from "./components/dialog/app/McpApprovalHost";
 import type { VncServerKeyVerifyRequest } from "./components/dialog/connections/VncServerKeyVerifyDialog";
@@ -89,6 +90,10 @@ import { collectFileDocumentPaneIds, removePaneFromTabs } from "./lib/appWorkspa
 import { updateConnectionAutoIconAfterSessionStart } from "./lib/connectionAutoIcon";
 import { getDynamicTitle, startDynamicTitles, useDynamicTitles } from "./lib/dynamicTabTitles";
 import { getErrorMessage, shouldPromptConnectionEditOnFailure } from "./lib/errors";
+import {
+  consumeFridayEgg,
+  msUntilNextFridayNoon,
+} from "./lib/fridayEasterEgg";
 import {
   type ExternalConnectionResolution,
   findExternalConnectionMatches,
@@ -265,6 +270,7 @@ function App() {
   const [nativeFullscreen, setNativeFullscreen] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+  const [showFridayEasterEgg, setShowFridayEasterEgg] = useState(false);
   const [showSyncGroupDialog, setShowSyncGroupDialog] = useState(false);
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   const [showActivityBarResetConfirm, setShowActivityBarResetConfirm] = useState(false);
@@ -349,6 +355,26 @@ function App() {
     }, 3000);
     return () => clearTimeout(timer);
   }, [portable, runtimeInfo.packageManager, runtimeInfoLoaded]);
+
+  // Friday-night easter egg: show once per Friday, on startup (if it is already
+  // Friday night) or exactly when the clock reaches a Friday noon while the
+  // app stays open. consumeFridayEgg() also records the marker so the greeting
+  // never repeats on the same date.
+  useEffect(() => {
+    if (!settingsLoaded || isLocked) return;
+    const enabled = appSettings.general.easter_eggs_enabled !== false;
+
+    if (consumeFridayEgg(new Date(), enabled)) {
+      setShowFridayEasterEgg(true);
+      return;
+    }
+
+    const delay = msUntilNextFridayNoon(new Date());
+    const timer = setTimeout(() => {
+      if (consumeFridayEgg(new Date(), enabled)) setShowFridayEasterEgg(true);
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [settingsLoaded, isLocked, appSettings.general.easter_eggs_enabled]);
 
   const {
     terminalWindows,
@@ -3091,6 +3117,7 @@ function App() {
       if (
         showAbout ||
         showUpdateDialog ||
+        showFridayEasterEgg ||
         showSyncGroupDialog ||
         showQuitConfirm ||
         showActivityBarResetConfirm ||
@@ -3144,6 +3171,7 @@ function App() {
     vncServerKeyRequests.length,
     showAbout,
     showActivityBarResetConfirm,
+    showFridayEasterEgg,
     showQuitConfirm,
     showSessionQuickSwitcher,
     showSyncGroupDialog,
@@ -3714,6 +3742,7 @@ function App() {
           handleResetActivityBarLayout();
         }}
       />
+      <FridayEasterEggDialog open={showFridayEasterEgg} onOpenChange={setShowFridayEasterEgg} />
     </TransferProvider>
   );
 }

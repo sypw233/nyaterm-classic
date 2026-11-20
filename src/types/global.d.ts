@@ -1271,6 +1271,8 @@ export interface GeneralSettings {
   confirm_on_close: boolean;
   /** Legacy fallback for saved connections without an explicit client preference. */
   rdp_client_mode: RdpClientMode;
+  /** Master switch for easter eggs. When false, no easter egg is shown. */
+  easter_eggs_enabled: boolean;
 }
 
 export type BackgroundImageFit = "cover" | "contain" | "stretch" | "tile";

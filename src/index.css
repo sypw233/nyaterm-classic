@@ -497,6 +497,100 @@ html[data-window-focused="false"] .df-thinking-text {
   animation: thinking-sheen 2.5s ease-in-out infinite;
 }
 
+/* ── Friday-night easter egg ─────────────────────────────────────────────── */
+.df-friday-title {
+  font-size: clamp(1.75rem, 6vw, 3.5rem);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  background: linear-gradient(
+    90deg,
+    #ff2e88,
+    #ffd200,
+    #00e5ff,
+    #7c4dff,
+    #ff2e88
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 10px rgb(255 46 136 / 55%));
+  animation: friday-hue 3s linear infinite, friday-blink 1.4s steps(2, end) infinite;
+}
+
+.df-friday-line {
+  font-weight: 800;
+  font-size: clamp(0.95rem, 2.6vw, 1.3rem);
+  line-height: 1.5;
+  color: #fff;
+  text-shadow: 0 0 6px rgb(0 229 255 / 80%), 0 0 18px rgb(124 77 255 / 60%);
+  animation: friday-glow 1.8s ease-in-out infinite alternate;
+}
+
+.df-friday-confetti {
+  position: absolute;
+  top: -12%;
+  width: 9px;
+  height: 16px;
+  border-radius: 2px;
+  opacity: 0.9;
+  pointer-events: none;
+  animation: friday-fall var(--fall-duration, 3s) linear var(--fall-delay, 0s) infinite;
+}
+
+@keyframes friday-hue {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 300% 50%;
+  }
+}
+
+@keyframes friday-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.65;
+  }
+}
+
+@keyframes friday-glow {
+  from {
+    text-shadow: 0 0 6px rgb(0 229 255 / 80%), 0 0 18px rgb(124 77 255 / 60%);
+    transform: scale(1);
+  }
+  to {
+    text-shadow: 0 0 12px rgb(255 210 0 / 95%), 0 0 28px rgb(255 46 136 / 80%);
+    transform: scale(1.03);
+  }
+}
+
+@keyframes friday-fall {
+  0% {
+    transform: translateY(-20px) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(420px) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* Pause the decorative infinite effects when the window is unfocused. */
+html[data-window-focused="false"] .df-friday-title,
+html[data-window-focused="false"] .df-friday-line,
+html[data-window-focused="false"] .df-friday-confetti {
+  animation-play-state: paused;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

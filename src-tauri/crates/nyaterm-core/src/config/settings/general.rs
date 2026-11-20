@@ -19,6 +19,8 @@ pub struct GeneralSettings {
     pub confirm_on_close: bool,
     #[serde(default = "default_rdp_client_mode")]
     pub rdp_client_mode: String,
+    #[serde(default = "default_true")]
+    pub easter_eggs_enabled: bool,
 }
 
 impl Default for GeneralSettings {
@@ -30,6 +32,7 @@ impl Default for GeneralSettings {
             boss_key: None,
             confirm_on_close: true,
             rdp_client_mode: default_rdp_client_mode(),
+            easter_eggs_enabled: true,
         }
     }
 }
@@ -50,5 +53,6 @@ mod tests {
         .expect("general settings");
 
         assert_eq!(settings.rdp_client_mode, "builtin");
+        assert!(settings.easter_eggs_enabled);
     }
 }

@@ -23,6 +23,7 @@ function renderLayout(tabs: Tab[], savedLayout: RestorableTerminalWindowNode | n
       boss_key: null,
       confirm_on_close: true,
       rdp_client_mode: "builtin",
+      easter_eggs_enabled: true,
     },
     savedLayout,
   };

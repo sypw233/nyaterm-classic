@@ -2308,6 +2308,8 @@
     "duplicateStrategy": "同名文件处理策略",
     "duplicateStrategyDesc": "当目标位置已存在同名文件时的处理方式。",
     "durationLabel": "耗时",
+    "easterEggsEnabled": "开启彩蛋",
+    "easterEggsEnabledDesc": "允许显示趣味彩蛋，例如 Friday Night! 问候。关闭后所有彩蛋都不再显示。",
     "editorType": "编辑器类型",
     "editorTypeDesc": "选择从文件浏览器打开远程文件的方式。",
     "editorTypeExternal": "外部编辑器",

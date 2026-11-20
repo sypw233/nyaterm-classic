@@ -96,6 +96,7 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
     boss_key: null,
     confirm_on_close: true,
     rdp_client_mode: "builtin",
+    easter_eggs_enabled: true,
   },
   appearance: {
     theme: "github-dark",

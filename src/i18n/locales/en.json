@@ -2311,6 +2311,8 @@
     "duplicateStrategy": "Duplicate File Strategy",
     "duplicateStrategyDesc": "What to do when the target file already exists.",
     "durationLabel": "Duration",
+    "easterEggsEnabled": "Enable easter eggs",
+    "easterEggsEnabledDesc": "Allow fun surprises, such as the Friday Night! greeting. Turn off to hide all easter eggs.",
     "editorType": "Editor Type",
     "editorTypeDesc": "Choose how remote files open from the file explorer.",
     "editorTypeExternal": "External Editor",

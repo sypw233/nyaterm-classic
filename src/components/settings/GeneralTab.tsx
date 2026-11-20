@@ -115,6 +115,18 @@ export function GeneralTab() {
             }
           />
         </SettingRow>
+
+        <SettingRow
+          label={t("settings.easterEggsEnabled")}
+          desc={t("settings.easterEggsEnabledDesc")}
+        >
+          <SettingSwitch
+            checked={appSettings.general.easter_eggs_enabled !== false}
+            onChange={(v) =>
+              updateAppSettings({ general: { ...appSettings.general, easter_eggs_enabled: v } })
+            }
+          />
+        </SettingRow>
       </SettingSection>
 
       <SettingSection
