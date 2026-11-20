@@ -1,8 +1,10 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useMemo } from "react";
+import { resolveTerminalSettings } from "@/lib/connectionOverrides";
 import type { TmuxSessionState } from "@/lib/tmux/types";
 import type {
   AppRuntimeInfo,
   AppSettings,
+  ConnectionOverrides,
   FileDocumentBackend,
   FileDocumentSnapshot,
   Group,
@@ -134,6 +136,15 @@ export type TerminalAppSettings = Pick<
 
 export const AppContext = createContext<AppContextType | null>(null);
 export const TerminalAppSettingsContext = createContext<TerminalAppSettings | null>(null);
+/**
+ * Per-connection setting overrides, keyed by connection id.
+ *
+ * Kept separate from `AppContext.savedConnections` so a terminal only re-renders
+ * when an override changes, not when a connection's name, tags or asset data do.
+ */
+export const ConnectionOverridesContext = createContext<
+  ReadonlyMap<string, ConnectionOverrides>
+>(new Map());
 
 export function useApp() {
   const context = useContext(AppContext);
@@ -147,4 +158,28 @@ export function useTerminalAppSettings(): TerminalAppSettings {
     throw new Error("useTerminalAppSettings must be used within AppProvider");
   }
   return context;
+}
+
+/**
+ * Effective terminal settings for one connection.
+ *
+ * Falls back to the global settings for anything the connection does not
+ * override, and to the global settings entirely when there is no connection
+ * (an unsaved or temporary session).
+ *
+ * The result is memoized on `[global, overrides]`. That matters: the terminal
+ * compares `appearance` by reference to decide when to re-fit and rebuild
+ * renderers, so returning a fresh object every render would cause that work on
+ * every keystroke.
+ */
+export function useResolvedTerminalSettings(
+  connectionId: string | undefined,
+): TerminalAppSettings {
+  const global = useTerminalAppSettings();
+  const overridesByConnection = useContext(ConnectionOverridesContext);
+
+  return useMemo(() => {
+    if (!connectionId) return global;
+    return resolveTerminalSettings(global, overridesByConnection.get(connectionId));
+  }, [global, overridesByConnection, connectionId]);
 }

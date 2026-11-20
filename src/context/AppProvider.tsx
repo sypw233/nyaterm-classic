@@ -79,6 +79,7 @@ import { DEFAULT_TERMINAL_FONT_SIZE } from "../lib/terminalFontSize";
 import { getOwnerMainWindowLabel, isPrimaryMainWindow } from "../lib/windowManager";
 import {
   AppContext,
+  ConnectionOverridesContext,
   type PaneConnectingUpdates,
   type PendingTabCreation,
   TerminalAppSettingsContext,
@@ -1524,6 +1525,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ],
   );
 
+  // Only the override payloads, keyed by connection. Deriving this separately
+  // keeps terminal re-renders independent of name/tag/asset edits.
+  const connectionOverridesValue = useMemo(() => {
+    const map = new Map<string, NonNullable<SavedConnection["overrides"]>>();
+    for (const connection of savedConnections) {
+      if (connection.overrides) map.set(connection.id, connection.overrides);
+    }
+    return map;
+  }, [savedConnections]);
+
   const terminalAppSettingsValue = useMemo(
     () => ({
       appearance: appSettings.appearance,
@@ -1550,7 +1561,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <AppContext.Provider value={contextValue}>
       <TerminalAppSettingsContext.Provider value={terminalAppSettingsValue}>
-        {lockStateLoaded && settingsLoaded ? children : null}
+        <ConnectionOverridesContext.Provider value={connectionOverridesValue}>
+          {lockStateLoaded && settingsLoaded ? children : null}
+        </ConnectionOverridesContext.Provider>
       </TerminalAppSettingsContext.Provider>
     </AppContext.Provider>
   );

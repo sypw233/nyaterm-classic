@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import MultiLinePasteDialog from "@/components/dialog/terminal/MultiLinePasteDialog";
 import ExternalFileDropOverlay from "@/components/ExternalFileDropOverlay";
-import { useTerminalAppSettings } from "@/context/AppContext";
+import { useResolvedTerminalSettings } from "@/context/AppContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useTransfer } from "@/context/TransferContext";
 import { useActionLinks } from "@/hooks/useActionLinks";
@@ -253,7 +253,9 @@ function XTerminal({
     completeExternalTransfer,
     failExternalTransfer,
   } = useTransfer();
-  const terminalAppSettings = useTerminalAppSettings();
+  // Resolve this connection's overrides over the global settings. Memoized, so
+  // a session that overrides nothing keeps the exact global object identity.
+  const terminalAppSettings = useResolvedTerminalSettings(connectionId);
   const {
     appearance,
     interaction,

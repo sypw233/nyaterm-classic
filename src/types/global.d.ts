@@ -591,6 +591,8 @@ export interface SavedConnection {
    * Separate from `description`, which is a human note shown as data.
    */
   ai_system_prompt?: string;
+  /** Settings this connection overrides; absent fields follow the global value. */
+  overrides?: ConnectionOverrides;
   /** SSH-only: PTY terminal type. Omitted means profile default. */
   terminal_type?: SshTerminalType;
   sftp?: SftpSettings;
@@ -2011,6 +2013,54 @@ export interface AppSettings {
   cloud_sync: CloudSyncSettings;
   ui: UiConfig;
   keybindings: Record<string, string>;
+}
+
+/**
+ * Settings one connection may override instead of inheriting from
+ * `AppSettings`.
+ *
+ * Every field is optional and `undefined` means "follow the global setting".
+ * Omitting a field is what keeps a connection tracking future global changes,
+ * so the UI must delete the key rather than write the current global value when
+ * the user switches back to "use global".
+ */
+export interface ConnectionOverrides {
+  // Appearance
+  font_family?: string;
+  font_size?: number;
+  font_weight?: number;
+  font_weight_bold?: number;
+  cursor_style?: string;
+  cursor_blink?: boolean;
+  minimum_contrast_ratio?: number;
+
+  // Terminal behaviour
+  scrollback_lines?: number;
+  keyword_highlights_enabled?: boolean;
+  keyword_highlights_across_wrapped_lines?: boolean;
+  keyword_highlight_builtin_rules?: Record<string, boolean>;
+  /** Replaces the global rule set wholesale when present. */
+  keyword_highlights?: KeywordHighlightRule[];
+  action_links_enabled?: boolean;
+  action_links_matchers?: ActionLinksMatcherSettings;
+  show_line_numbers?: boolean;
+  show_timestamps?: boolean;
+  timestamp_format?: string;
+  show_workspace_padding?: boolean;
+
+  // Rendering / performance
+  hardware_acceleration?: boolean;
+  frame_batched_output?: boolean;
+  tui_frame_limit_enabled?: boolean;
+  tui_max_fps?: number;
+  background_render_policy?: "none" | "cap" | "pause";
+  background_max_fps?: number;
+  render_frame_limit_enabled?: boolean;
+  render_max_fps?: number;
+
+  // Connection parameters
+  keep_alive_mode?: SshKeepAliveMode;
+  keep_alive_interval?: number;
 }
 
 export interface FileEntry {
