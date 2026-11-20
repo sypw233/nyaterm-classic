@@ -66,6 +66,14 @@ export function FridayEasterEggDialog({ open, onOpenChange }: FridayEasterEggDia
           ))}
         </div>
 
+        <div className="relative z-10 flex justify-center">
+          <img
+            src="https://raw.githubusercontent.com/sypw233/nyaterm-classic/main/docs/images/friday-night.gif"
+            alt="Friday Night"
+            className="max-h-56 w-auto max-w-full rounded-lg border-2 border-fuchsia-400/50 shadow-[0_0_24px_rgba(255,46,136,0.45)]"
+          />
+        </div>
+
         <DialogFooter className="relative z-10 justify-center">
           <Button onClick={() => onOpenChange(false)}>OK</Button>
         </DialogFooter>
