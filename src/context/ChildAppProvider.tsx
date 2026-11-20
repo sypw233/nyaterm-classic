@@ -134,6 +134,8 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
     command_suggestions_enabled: true,
     command_suggestion_min_chars: DEFAULT_COMMAND_SUGGESTION_MIN_CHARS,
     command_suggestion_max_chars: DEFAULT_COMMAND_SUGGESTION_MAX_CHARS,
+    command_suggestion_word_completion: true,
+    command_suggestion_caret_midline: true,
     duplicate_session_command_delay_ms: 1000,
     word_separators: " ()[]{}\"':=,;|&<>",
     alt_as_meta: false,

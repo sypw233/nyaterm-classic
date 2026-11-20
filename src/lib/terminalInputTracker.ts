@@ -490,11 +490,17 @@ export function resyncFromTerminalLine(
   };
 }
 
+/**
+ * Whether the caret position allows suggestions to be offered.
+ *
+ * Both the caret-in-the-middle and caret-at-end cases are supported, because
+ * word completion replaces only the token under the caret. Whole-line
+ * suggestions, however, rewrite the entire line, so the caller must send them
+ * through the caret-aware rewriting path rather than assuming the caret sits at
+ * the end. See `applySuggestion` in `XTerminal`.
+ */
 export function canSuggestFromTracker(state: TerminalInputState): boolean {
   return (
-    !state.desynced &&
-    !state.multiline &&
-    state.cursor === state.value.length &&
-    getTrackedCommand(state).length > 0
+    !state.desynced && !state.multiline && getTrackedCommand(state).length > 0
   );
 }

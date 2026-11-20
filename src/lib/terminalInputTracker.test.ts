@@ -145,9 +145,12 @@ describe("terminal command tracker recovery", () => {
     expect(getTrackedSubmissionCommand(replaced)).toBe("echo $DISPLAY");
   });
 
-  it("does not change selection suggestions while the cursor is before the end", () => {
+  it("offers suggestions when the cursor is before the end of the line", () => {
+    // Word completion replaces only the token under the caret, so a mid-line
+    // caret is usable. Whole-line rows are rewritten through the caret-aware
+    // path instead of assuming the caret sits at the end.
     const moved = applyTerminalInputData(typeInput("echo $DISPLAY"), "\x1b[D");
     expect(moved.cursor).toBe(moved.value.length - 1);
-    expect(canSuggestFromTracker(moved)).toBe(false);
+    expect(canSuggestFromTracker(moved)).toBe(true);
   });
 });

@@ -1254,6 +1254,13 @@ export interface FuzzyResult {
   source: string;
   /** Text shown in the suggestion panel (may differ from command). */
   display: string;
+  /**
+   * For word completions: the span of the input line to replace.
+   *
+   * Whole-line providers leave this unset and replace the entire line. Word
+   * rows set it so selecting one edits just the token under the caret.
+   */
+  wordRange?: { start: number; end: number };
 }
 
 export interface GeneralSettings {
@@ -1956,6 +1963,10 @@ export interface InteractionSettings {
   command_suggestions_enabled: boolean;
   command_suggestion_min_chars: number;
   command_suggestion_max_chars: number;
+  /** Complete the word under the caret, not only whole stored commands. */
+  command_suggestion_word_completion: boolean;
+  /** Offer suggestions when the caret sits inside the line. */
+  command_suggestion_caret_midline: boolean;
   duplicate_session_command_delay_ms: number;
   word_separators: string;
   alt_as_meta: boolean;

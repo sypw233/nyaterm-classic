@@ -5,6 +5,7 @@ import {
   MdFlashOn,
   MdHistory,
   MdInsertDriveFile,
+  MdShortText,
   MdTipsAndUpdates,
 } from "react-icons/md";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ interface CommandSuggestionsProps {
   visible: boolean;
   selectedIndex: number;
   cursorPosition: SuggestionCursorPosition;
-  onSelect: (command: string) => void;
+  onSelect: (result: FuzzyResult) => void;
   onDismiss: () => void;
   onDeleteHistory?: (command: string) => void;
 }
@@ -31,6 +32,7 @@ const SOURCE_ICON: Record<string, React.ElementType> = {
   history: MdHistory,
   quickCommand: MdFlashOn,
   path: MdInsertDriveFile,
+  word: MdShortText,
 };
 
 /** Render a single suggestion with matched characters highlighted. */
@@ -197,7 +199,7 @@ function CommandSuggestions({
                   : undefined,
               borderLeftColor: index === selectedIndex ? "var(--df-primary)" : "transparent",
             }}
-            onClick={() => onSelect(result.command)}
+            onClick={() => onSelect(result)}
           >
             <Icon
               className="text-[0.75rem] shrink-0"

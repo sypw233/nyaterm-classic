@@ -199,6 +199,34 @@ export function InteractionTab() {
                     })
                   }
                 />
+
+                <SettingRow
+                  label={t("settings.commandSuggestionsWordCompletion")}
+                  desc={t("settings.commandSuggestionsWordCompletionDesc")}
+                >
+                  <SettingSwitch
+                    checked={interaction.command_suggestion_word_completion ?? true}
+                    onChange={(v) =>
+                      updateInteraction({
+                        command_suggestion_word_completion: v,
+                      })
+                    }
+                  />
+                </SettingRow>
+
+                <SettingRow
+                  label={t("settings.commandSuggestionsCaretMidline")}
+                  desc={t("settings.commandSuggestionsCaretMidlineDesc")}
+                >
+                  <SettingSwitch
+                    checked={interaction.command_suggestion_caret_midline ?? true}
+                    onChange={(v) =>
+                      updateInteraction({
+                        command_suggestion_caret_midline: v,
+                      })
+                    }
+                  />
+                </SettingRow>
               </>
             )}
           </>

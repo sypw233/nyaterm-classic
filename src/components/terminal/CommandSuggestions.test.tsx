@@ -108,8 +108,14 @@ describe("CommandSuggestions whitespace rendering", () => {
     expect(text.textContent).toBe("Restart  service");
     expect(text.classList.contains("whitespace-pre")).toBe(true);
     fireEvent.click(text.closest(".cursor-pointer") as HTMLElement);
+    // The row's full result travels back so word completions can carry the
+    // token span they replace; the display text is kept separate from the
+    // command that gets inserted.
     expect(onSelect).toHaveBeenCalledExactlyOnceWith(
-      "sudo  systemctl restart service",
+      expect.objectContaining({
+        command: "sudo  systemctl restart service",
+        display: "Restart  service",
+      }),
     );
   });
 

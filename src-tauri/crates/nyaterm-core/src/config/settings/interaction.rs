@@ -9,6 +9,14 @@ pub struct InteractionSettings {
     pub command_suggestions_enabled: bool,
     pub command_suggestion_min_chars: usize,
     pub command_suggestion_max_chars: usize,
+    /// Offer completions for the individual word under the caret, not only
+    /// whole previously used command lines. Lets `conda deactivate` supply
+    /// `conda` and `deactivate` separately.
+    pub command_suggestion_word_completion: bool,
+    /// Offer suggestions while the caret is inside the line, not only at the
+    /// end. Word completion replaces just the token, so the rest of the line is
+    /// preserved.
+    pub command_suggestion_caret_midline: bool,
     pub duplicate_session_command_delay_ms: u64,
     pub word_separators: String,
     pub alt_as_meta: bool,
@@ -30,6 +38,8 @@ struct InteractionSettingsWire {
     command_suggestions_enabled: Option<bool>,
     command_suggestion_min_chars: Option<usize>,
     command_suggestion_max_chars: Option<usize>,
+    command_suggestion_word_completion: Option<bool>,
+    command_suggestion_caret_midline: Option<bool>,
     duplicate_session_command_delay_ms: Option<u64>,
     word_separators: Option<String>,
     alt_as_meta: Option<bool>,
@@ -109,6 +119,8 @@ impl Default for InteractionSettings {
             command_suggestions_enabled: true,
             command_suggestion_min_chars: default_command_suggestion_min_chars(),
             command_suggestion_max_chars: default_command_suggestion_max_chars(),
+            command_suggestion_word_completion: true,
+            command_suggestion_caret_midline: true,
             duplicate_session_command_delay_ms: default_duplicate_session_command_delay_ms(),
             word_separators: default_word_separators(),
             alt_as_meta: false,
@@ -149,6 +161,12 @@ impl<'de> Deserialize<'de> for InteractionSettings {
             command_suggestion_max_chars: wire
                 .command_suggestion_max_chars
                 .unwrap_or(defaults.command_suggestion_max_chars),
+            command_suggestion_word_completion: wire
+                .command_suggestion_word_completion
+                .unwrap_or_else(default_true),
+            command_suggestion_caret_midline: wire
+                .command_suggestion_caret_midline
+                .unwrap_or_else(default_true),
             duplicate_session_command_delay_ms: wire
                 .duplicate_session_command_delay_ms
                 .unwrap_or(defaults.duplicate_session_command_delay_ms),
@@ -192,6 +210,8 @@ mod tests {
         assert!(!settings.mouse_events_require_alt);
         assert!(!settings.ime_compatibility);
         assert!(settings.terminal_zoom_enabled);
+        assert!(settings.command_suggestion_word_completion);
+        assert!(settings.command_suggestion_caret_midline);
     }
 
     #[test]
@@ -227,6 +247,10 @@ mod tests {
         assert!(settings.terminal_zoom_enabled);
         assert!(settings.command_suggestions_enabled);
         assert!(!settings.ime_compatibility);
+        // Both new suggestion behaviours are on for existing users who never
+        // wrote the fields.
+        assert!(settings.command_suggestion_word_completion);
+        assert!(settings.command_suggestion_caret_midline);
     }
 
     #[test]

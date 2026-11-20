@@ -63,6 +63,7 @@ import {
   sendSessionInput,
   sendSessionInputWithSync,
 } from "@/lib/sessionInput";
+import { buildWordCompletionKeystrokes } from "@/lib/wordCompletion";
 import { registerTerminalContextProvider } from "@/lib/terminalContext";
 import { isBareShellPrompt, stripTerminalCommandPrompt } from "@/lib/terminalCommand";
 import { resolveTerminalFontSize } from "@/lib/terminalFontSize";
@@ -279,6 +280,18 @@ function XTerminal({
   const commandSuggestionsEnabled = interaction.command_suggestions_enabled;
   const commandSuggestionMinChars = interaction.command_suggestion_min_chars;
   const commandSuggestionMaxChars = interaction.command_suggestion_max_chars;
+  // Two independent opt-outs for the behaviours added on top of whole-line
+  // completion. Both default to on; the settings UI exposes them individually
+  // so a user can keep line completion while turning off mid-line or word mode.
+  const commandSuggestionWordCompletion =
+    interaction.command_suggestion_word_completion ?? true;
+  const commandSuggestionCaretMidline =
+    interaction.command_suggestion_caret_midline ?? true;
+  // Read from event handlers that must not be re-created when settings change.
+  const commandSuggestionWordCompletionRef = useRef(commandSuggestionWordCompletion);
+  commandSuggestionWordCompletionRef.current = commandSuggestionWordCompletion;
+  const commandSuggestionCaretMidlineRef = useRef(commandSuggestionCaretMidline);
+  commandSuggestionCaretMidlineRef.current = commandSuggestionCaretMidline;
 
   const inputStateRef = useRef(createTerminalInputState());
   const terminalAppSettingsRef = useRef(terminalAppSettings);
@@ -889,11 +902,17 @@ function XTerminal({
       }
 
       if (options?.allowEmpty) {
-        return (
-          !inputState.desynced &&
-          !inputState.multiline &&
-          inputState.cursor === inputState.value.length
-        );
+        // The manual popup lists recent history rather than completing a word,
+        // so the caret position does not matter; selecting a row goes through
+        // the caret-aware rewrite in `applySuggestion`.
+        return !inputState.desynced && !inputState.multiline;
+      }
+
+      // Mid-line suggestions are opt-out: they are only safe because word
+      // completion replaces a single token, so a user who prefers the older
+      // end-of-line-only behaviour can disable them.
+      if (!commandSuggestionCaretMidlineRef.current) {
+        return canSuggestFromTracker(inputState) && inputState.cursor === inputState.value.length;
       }
 
       return canSuggestFromTracker(inputState);
@@ -901,14 +920,38 @@ function XTerminal({
     [shellIntegrationRef],
   );
 
+  /**
+   * Write a suggestion back to the terminal.
+   *
+   * Whole-line suggestions replace everything the tracker has seen. Word
+   * completions only replace the token under the caret, so the surrounding
+   * command is preserved: completing `ac` in `conda ac` must not erase `conda`.
+   */
   const applySuggestion = useCallback(
-    (command: string, execute: boolean) => {
+    (command: string, execute: boolean, wordEdit?: { start: number; end: number }) => {
       if (appLockedRef.current) return;
       const trackedState = inputStateRef.current;
       const replaceCurrentLine = trackedState.lineRewriteRequired;
-      const input = replaceCurrentLine
-        ? `\u0005\u0015${command}`
-        : `${"\x7f".repeat(trackedState.value.length)}${command}`;
+      let input: string;
+      if (wordEdit) {
+        // Only the token under the caret is replaced, so the rest of the line
+        // survives.
+        input = buildWordCompletionKeystrokes(
+          trackedState.value,
+          { text: "", start: wordEdit.start, end: wordEdit.end },
+          command,
+        );
+      } else if (replaceCurrentLine) {
+        input = `\u0005\u0015${command}`;
+      } else if (trackedState.cursor === trackedState.value.length) {
+        // Caret at the end: backspace the tracked input and type the command.
+        input = `${"\x7f".repeat(trackedState.value.length)}${command}`;
+      } else {
+        // Caret in the middle. Backspacing would leave the tail behind, so
+        // rewrite the line the same way word completion does: clear it, type
+        // the replacement, then put the caret back at the end.
+        input = `\u0005\u0015${command}`;
+      }
       const data = buildTerminalCommandInput(input, execute);
       const options: SendSessionInputOptions = {
         preview: execute
@@ -953,6 +996,7 @@ function XTerminal({
     commandSuggestionMinChars,
     commandSuggestionMaxChars,
     sessionId,
+    commandSuggestionWordCompletion,
   );
 
   const canDetectCredentialPrompt = useCallback(() => {
@@ -1899,7 +1943,7 @@ function XTerminal({
         return false;
       }
 
-      applySuggestion(selected.command, execute);
+      applySuggestion(selected.command, execute, selected.wordRange);
       if (execute) {
         refreshCommandLineTimestamp();
       }
