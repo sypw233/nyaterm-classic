@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { MdAdd, MdClose, MdExpandMore, MdImage } from "react-icons/md";
+import { MdAdd, MdClose, MdExpandMore, MdImage, MdTune } from "react-icons/md";
 import {
   DEFAULT_CONNECTION_ICON,
   isCustomConnectionIcon,
@@ -15,7 +15,9 @@ import { buildGroupPath, type ConnectionOption, sortLabel } from "@/components/n
 import {
   ConnectionBasicInformation,
   ConnectionEditor,
+  EditorSection,
 } from "@/components/sessions/ConnectionEditor";
+import { ConnectionOverrideSettings } from "@/components/sessions/ConnectionOverrideSettings";
 import { ConnectionTagsField } from "@/components/sessions/ConnectionTagsField";
 import type {
   AlgorithmTab,
@@ -54,6 +56,7 @@ import { validateSshAgentForwardingEndpoints } from "@/lib/sshAgent";
 import type {
   AccountPasswordSource,
   ConnectionCustomIcon,
+  ConnectionOverrides,
   Group,
   OtpEntry,
   ProxyConfig,
@@ -236,6 +239,11 @@ export default function NewSessionPage() {
   const [newGroupNamePending, setNewGroupNamePending] = useState("");
   const [description, setDescription] = useState("");
   const [aiSystemPrompt, setAiSystemPrompt] = useState("");
+  const [overrides, setOverrides] = useState<ConnectionOverrides>({});
+  const overriddenCount = useMemo(
+    () => Object.values(overrides).filter((entry) => entry !== undefined).length,
+    [overrides],
+  );
   const [tags, setTags] = useState<string[]>([]);
   const [host, setHost] = useState("");
   const [sshPort, setSshPort] = useState(22);
@@ -396,6 +404,7 @@ export default function NewSessionPage() {
         setGroupId(found.group_id || "");
         setDescription(found.description || "");
         setAiSystemPrompt(found.ai_system_prompt ?? "");
+        setOverrides(found.overrides ?? {});
         setTags(found.tags ?? []);
         setIconKey(found.icon || "");
         setIconAutoDetect(found.icon_auto_detect ?? !found.icon);
@@ -564,6 +573,7 @@ export default function NewSessionPage() {
     setNewGroupNamePending("");
     setDescription("");
     setAiSystemPrompt("");
+    setOverrides({});
     setTags([]);
     setTagDraft("");
     setHost("");
@@ -1229,6 +1239,7 @@ export default function NewSessionPage() {
         group_id: finalGroupId || undefined,
         description: normalizedDescription || undefined,
         ai_system_prompt: normalizedAiSystemPrompt || undefined,
+        overrides: Object.keys(overrides).length > 0 ? overrides : undefined,
         tags: normalizedTags.length > 0 ? normalizedTags : undefined,
         sort_order: sortOrder,
         icon: iconKey || undefined,
@@ -2093,6 +2104,18 @@ export default function NewSessionPage() {
               </div>
             </div>
           </ConnectionBasicInformation>
+
+          {/* Terminal appearance and behaviour overrides, shown under their own
+              category so the identity fields stay at the top of the form. */}
+          {currentTab !== "rdp" && currentTab !== "vnc" ? (
+            <EditorSection category="appearance">
+              <ConnectionOverrideSettings
+                value={overrides}
+                onChange={setOverrides}
+                showConnectionSettings={currentTab === "ssh"}
+              />
+            </EditorSection>
+          ) : null}
         </ConnectionEditor>
       </Tabs>
 
@@ -2107,7 +2130,17 @@ export default function NewSessionPage() {
           </div>
         )}
         <ActionFooter>
-          <label className="mr-auto inline-flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+          {overriddenCount > 0 ? (
+            <span className="mr-auto flex items-center gap-1.5 text-[0.6875rem] text-primary">
+              <MdTune className="shrink-0 text-xs" />
+              {t("connectionOverrides.footerSummary", { count: overriddenCount })}
+            </span>
+          ) : null}
+          <label
+            className={`inline-flex cursor-pointer items-center gap-2 text-xs text-muted-foreground ${
+              overriddenCount > 0 ? "" : "mr-auto"
+            }`}
+          >
             <Switch
               checked={saveAsDefault}
               onCheckedChange={setSaveAsDefault}

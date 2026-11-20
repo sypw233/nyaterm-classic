@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useApp } from "@/context/AppContext";
+import { GlobalSettingOverrideNotice } from "./GlobalSettingOverrideNotice";
 import { useSettingsDraft } from "@/context/SettingsDraftContext";
 import { useTheme } from "@/context/ThemeContext";
 import {
@@ -363,6 +364,8 @@ interface FontStackSectionProps {
   hasLoadedOptions: boolean;
   onRequestOptions: () => void;
   onChange: (value: string) => void;
+  /** Optional warning shown under the font stack, e.g. override notices. */
+  notice?: React.ReactNode;
 }
 
 type SortableFontItem = {
@@ -619,6 +622,7 @@ const FontStackSection = memo(function FontStackSection({
   hasLoadedOptions,
   onRequestOptions,
   onChange,
+  notice,
 }: FontStackSectionProps) {
   const { t } = useTranslation();
   const fontOptionLookup = useMemo(
@@ -837,6 +841,7 @@ const FontStackSection = memo(function FontStackSection({
           />
         ))}
       </Reorder.Group>
+      {notice ? <div className="pt-3">{notice}</div> : null}
     </SettingSection>
   );
 });
@@ -1070,22 +1075,26 @@ export function AppearanceTab() {
         hasLoadedOptions={hasLoadedSystemFontInfos}
         onRequestOptions={loadSystemFontInfos}
         onChange={updateTerminalFontFamily}
+        notice={<GlobalSettingOverrideNotice field="font_family" />}
       />
 
       <SettingSection contentClassName="space-y-5">
         <SettingFieldGrid>
-          <SettingNumberInput
-            label={t("settings.fontSize")}
-            min={MIN_TERMINAL_FONT_SIZE}
-            max={MAX_TERMINAL_FONT_SIZE}
-            value={appearance.font_size}
-            controlClassName="max-w-sm"
-            onChange={(v) =>
-              updateAppearance({
-                font_size: v || DEFAULT_TERMINAL_FONT_SIZE,
-              })
-            }
-          />
+          <div className="space-y-2">
+            <SettingNumberInput
+              label={t("settings.fontSize")}
+              min={MIN_TERMINAL_FONT_SIZE}
+              max={MAX_TERMINAL_FONT_SIZE}
+              value={appearance.font_size}
+              controlClassName="max-w-sm"
+              onChange={(v) =>
+                updateAppearance({
+                  font_size: v || DEFAULT_TERMINAL_FONT_SIZE,
+                })
+              }
+            />
+            <GlobalSettingOverrideNotice field="font_size" />
+          </div>
           <SettingSelect
             label={t("settings.terminalFontWeight")}
             desc={t("settings.terminalFontWeightDesc")}

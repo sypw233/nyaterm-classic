@@ -4,16 +4,17 @@ export const CONNECTION_CATEGORIES = {
     "authentication",
     "network",
     "terminal",
+    "appearance",
     "sftp",
     "forwarding",
     "post-login",
     "algorithms",
   ],
-  telnet: ["basic", "authentication", "network", "terminal", "compatibility"],
+  telnet: ["basic", "authentication", "network", "terminal", "appearance", "compatibility"],
   rdp: ["basic", "authentication", "network", "security", "display", "session"],
   vnc: ["basic", "authentication", "network", "security", "display", "session"],
-  serial: ["basic", "serial", "transfer"],
-  local: ["basic", "startup", "terminal"],
+  serial: ["basic", "serial", "appearance", "transfer"],
+  local: ["basic", "startup", "terminal", "appearance"],
 } as const;
 
 export type EditorProtocol = keyof typeof CONNECTION_CATEGORIES;

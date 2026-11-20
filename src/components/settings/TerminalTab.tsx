@@ -15,6 +15,7 @@ import { SelectItem } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useApp } from "@/context/AppContext";
+import { GlobalSettingOverrideNotice } from "./GlobalSettingOverrideNotice";
 import { useTheme } from "@/context/ThemeContext";
 import { open as openDialog } from "@/lib/backend/platform/dialog";
 import { downloadDir } from "@/lib/backend/platform/path";
@@ -192,20 +193,23 @@ export function TerminalTab() {
   return (
     <div className="space-y-5">
       <SettingSection contentClassName="space-y-5">
-        <SettingNumberInput
-          label={t("settings.scrollbackLines")}
-          desc={t("settings.scrollbackLinesDesc")}
-          min={100}
-          max={100000}
-          step={100}
-          value={appSettings.terminal.scrollback_lines}
-          controlClassName="max-w-sm"
-          onChange={(v) =>
-            updateAppSettings({
-              terminal: { ...appSettings.terminal, scrollback_lines: v || 5000 },
-            })
-          }
-        />
+        <div className="space-y-2">
+          <SettingNumberInput
+            label={t("settings.scrollbackLines")}
+            desc={t("settings.scrollbackLinesDesc")}
+            min={100}
+            max={100000}
+            step={100}
+            value={appSettings.terminal.scrollback_lines}
+            controlClassName="max-w-sm"
+            onChange={(v) =>
+              updateAppSettings({
+                terminal: { ...appSettings.terminal, scrollback_lines: v || 5000 },
+              })
+            }
+          />
+          <GlobalSettingOverrideNotice field="scrollback_lines" />
+        </div>
 
         <SettingSelect
           label={t("settings.keepAliveMode")}
@@ -865,19 +869,22 @@ export function TerminalTab() {
       </SettingSection>
 
       <SettingSection contentClassName="space-y-4">
-        <SettingRow
-          label={t("settings.keywordHighlightingExperimental")}
-          desc={t("settings.keywordHighlightingExperimentalDesc")}
-        >
-          <SettingSwitch
-            checked={keywordHighlightingEnabled}
-            onChange={(v) =>
-              updateAppSettings({
-                terminal: { ...appSettings.terminal, keyword_highlights_enabled: v },
-              })
-            }
-          />
-        </SettingRow>
+        <div className="space-y-2">
+          <SettingRow
+            label={t("settings.keywordHighlightingExperimental")}
+            desc={t("settings.keywordHighlightingExperimentalDesc")}
+          >
+            <SettingSwitch
+              checked={keywordHighlightingEnabled}
+              onChange={(v) =>
+                updateAppSettings({
+                  terminal: { ...appSettings.terminal, keyword_highlights_enabled: v },
+                })
+              }
+            />
+          </SettingRow>
+          <GlobalSettingOverrideNotice field="keyword_highlights_enabled" />
+        </div>
 
         <SettingRow
           label={t("settings.keywordHighlightWrappedLines")}
