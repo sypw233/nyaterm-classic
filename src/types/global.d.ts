@@ -1280,6 +1280,8 @@ export interface GeneralSettings {
   rdp_client_mode: RdpClientMode;
   /** Master switch for easter eggs. When false, no easter egg is shown. */
   easter_eggs_enabled: boolean;
+  /** Duration in milliseconds of the freeze-demo easter egg. */
+  freeze_demo_ms: number;
 }
 
 export type BackgroundImageFit = "cover" | "contain" | "stretch" | "tile";

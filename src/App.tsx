@@ -90,6 +90,7 @@ import { collectFileDocumentPaneIds, removePaneFromTabs } from "./lib/appWorkspa
 import { updateConnectionAutoIconAfterSessionStart } from "./lib/connectionAutoIcon";
 import { getDynamicTitle, startDynamicTitles, useDynamicTitles } from "./lib/dynamicTabTitles";
 import { getErrorMessage, shouldPromptConnectionEditOnFailure } from "./lib/errors";
+import { blockMainThread } from "./lib/freezeDemo";
 import {
   consumeFridayEgg,
   msUntilNextFridayNoon,
@@ -1757,6 +1758,13 @@ function App() {
     setIsLocked,
   ]);
 
+  // Easter egg: freeze the UI thread for the configured duration, then let it
+  // recover on its own. Guarded by the master switch and the lock screen.
+  const handleFreezeDemo = useCallback(() => {
+    if (appSettings.general.easter_eggs_enabled === false || isLocked) return;
+    blockMainThread(appSettings.general.freeze_demo_ms);
+  }, [appSettings.general.easter_eggs_enabled, appSettings.general.freeze_demo_ms, isLocked]);
+
   const handleQuitApplication = useCallback(() => {
     setShowQuitConfirm(false);
     void requestFileDocumentClose(
@@ -2750,6 +2758,7 @@ function App() {
       onManageSyncGroups: () => setShowSyncGroupDialog(true),
       onClearTerminal: () => window.dispatchEvent(new CustomEvent("nyaterm:clear-terminal")),
       onToggleRecording: handleToggleActiveSessionRecording,
+      onFreezeDemo: handleFreezeDemo,
     },
     appSettings.keybindings,
   );

@@ -62,13 +62,21 @@ export interface ShortcutCallbacks {
   onManageSyncGroups: () => void;
   onClearTerminal: () => void;
   onToggleRecording: () => void;
+  onFreezeDemo: () => void;
 }
 
 export function useGlobalShortcuts(
   cb: ShortcutCallbacks,
   keybindings: Record<string, string> = {},
 ) {
-  const k = (id: string) => resolveShortcutKeys(id, keybindings);
+  // An empty binding means "unbound". react-hotkeys-hook treats "" as matching
+  // a bare modifier press, so map it to an unmatchable sentinel instead. A key
+  // literally named this can never be produced by keyEventToHotkeyString().
+  const UNBOUND = "unbound+nomatch+never";
+  const k = (id: string) => {
+    const keys = resolveShortcutKeys(id, keybindings);
+    return keys ? keys : UNBOUND;
+  };
 
   useHotkeys(k("tab.newSession"), cb.onNewSession, HOTKEY_OPTIONS);
   useHotkeys(k("tab.temporarySshLink"), cb.onTemporarySshLink, HOTKEY_OPTIONS);
@@ -87,15 +95,18 @@ export function useGlobalShortcuts(
   useHotkeys(k("tab.prev"), cb.onPrevTab, HOTKEY_OPTIONS);
 
   const switchTabKeys = k("tab.switchTo");
-  useHotkeys(resolveIndexedKeys(switchTabKeys, 1), () => cb.onSwitchTab(0), HOTKEY_OPTIONS);
-  useHotkeys(resolveIndexedKeys(switchTabKeys, 2), () => cb.onSwitchTab(1), HOTKEY_OPTIONS);
-  useHotkeys(resolveIndexedKeys(switchTabKeys, 3), () => cb.onSwitchTab(2), HOTKEY_OPTIONS);
-  useHotkeys(resolveIndexedKeys(switchTabKeys, 4), () => cb.onSwitchTab(3), HOTKEY_OPTIONS);
-  useHotkeys(resolveIndexedKeys(switchTabKeys, 5), () => cb.onSwitchTab(4), HOTKEY_OPTIONS);
-  useHotkeys(resolveIndexedKeys(switchTabKeys, 6), () => cb.onSwitchTab(5), HOTKEY_OPTIONS);
-  useHotkeys(resolveIndexedKeys(switchTabKeys, 7), () => cb.onSwitchTab(6), HOTKEY_OPTIONS);
-  useHotkeys(resolveIndexedKeys(switchTabKeys, 8), () => cb.onSwitchTab(7), HOTKEY_OPTIONS);
-  useHotkeys(resolveIndexedKeys(switchTabKeys, 9), () => cb.onSwitchTab(-1), HOTKEY_OPTIONS);
+  // resolveIndexedKeys("") returns "", which react-hotkeys-hook would treat as
+  // matching a bare modifier; use the unmatchable sentinel for empty results.
+  const resolveTabKeys = (n: number) => resolveIndexedKeys(switchTabKeys, n) || UNBOUND;
+  useHotkeys(resolveTabKeys(1), () => cb.onSwitchTab(0), HOTKEY_OPTIONS);
+  useHotkeys(resolveTabKeys(2), () => cb.onSwitchTab(1), HOTKEY_OPTIONS);
+  useHotkeys(resolveTabKeys(3), () => cb.onSwitchTab(2), HOTKEY_OPTIONS);
+  useHotkeys(resolveTabKeys(4), () => cb.onSwitchTab(3), HOTKEY_OPTIONS);
+  useHotkeys(resolveTabKeys(5), () => cb.onSwitchTab(4), HOTKEY_OPTIONS);
+  useHotkeys(resolveTabKeys(6), () => cb.onSwitchTab(5), HOTKEY_OPTIONS);
+  useHotkeys(resolveTabKeys(7), () => cb.onSwitchTab(6), HOTKEY_OPTIONS);
+  useHotkeys(resolveTabKeys(8), () => cb.onSwitchTab(7), HOTKEY_OPTIONS);
+  useHotkeys(resolveTabKeys(9), () => cb.onSwitchTab(-1), HOTKEY_OPTIONS);
 
   useHotkeys(k("view.toggleLeftSidebar"), cb.onToggleLeftSidebar, HOTKEY_OPTIONS);
   useHotkeys(k("view.toggleRightSidebar"), cb.onToggleRightSidebar, HOTKEY_OPTIONS);
@@ -117,4 +128,5 @@ export function useGlobalShortcuts(
   useHotkeys(k("terminal.recording.toggle"), cb.onToggleRecording, HOTKEY_OPTIONS);
 
   useHotkeys(k("special.lockScreen"), cb.onLockScreen, HOTKEY_OPTIONS);
+  useHotkeys(k("special.freezeDemo"), cb.onFreezeDemo, HOTKEY_OPTIONS);
 }

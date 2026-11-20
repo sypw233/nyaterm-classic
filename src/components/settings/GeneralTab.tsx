@@ -6,8 +6,10 @@ import { useConfigTransfer } from "@/hooks/useConfigTransfer";
 import { AVAILABLE_LANGUAGES } from "@/i18n";
 import { runtime, supports } from "@/lib/backend/runtime";
 import { HEADER_STATUS_MODES, normalizeHeaderStatusMode } from "@/lib/headerStatus";
+import { resolveKeys } from "@/lib/shortcutRegistry";
 import {
   SettingFieldGrid,
+  SettingNumberInput,
   SettingRow,
   SettingSection,
   SettingSelect,
@@ -24,6 +26,7 @@ export function GeneralTab() {
     appSettings.ui.header_status_visible === false
       ? HIDDEN_HEADER_STATUS_VALUE
       : normalizeHeaderStatusMode(appSettings.ui.header_status_mode);
+  const freezeDemoBound = Boolean(resolveKeys("special.freezeDemo", appSettings.keybindings));
 
   return (
     <div className="space-y-5">
@@ -127,6 +130,22 @@ export function GeneralTab() {
             }
           />
         </SettingRow>
+
+        {freezeDemoBound && appSettings.general.easter_eggs_enabled !== false && (
+          <div className="border-l pl-4 ml-1" style={{ borderColor: "var(--df-border)" }}>
+            <SettingNumberInput
+              label={t("settings.freezeDemoDuration")}
+              desc={t("settings.freezeDemoDurationDesc")}
+              value={appSettings.general.freeze_demo_ms ?? 3000}
+              min={500}
+              max={30000}
+              step={500}
+              onChange={(v) =>
+                updateAppSettings({ general: { ...appSettings.general, freeze_demo_ms: v } })
+              }
+            />
+          </div>
+        )}
       </SettingSection>
 
       <SettingSection

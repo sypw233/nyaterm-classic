@@ -21,6 +21,12 @@ pub struct GeneralSettings {
     pub rdp_client_mode: String,
     #[serde(default = "default_true")]
     pub easter_eggs_enabled: bool,
+    #[serde(default = "default_freeze_demo_ms")]
+    pub freeze_demo_ms: u32,
+}
+
+fn default_freeze_demo_ms() -> u32 {
+    3000
 }
 
 impl Default for GeneralSettings {
@@ -33,6 +39,7 @@ impl Default for GeneralSettings {
             confirm_on_close: true,
             rdp_client_mode: default_rdp_client_mode(),
             easter_eggs_enabled: true,
+            freeze_demo_ms: default_freeze_demo_ms(),
         }
     }
 }
@@ -54,5 +61,6 @@ mod tests {
 
         assert_eq!(settings.rdp_client_mode, "builtin");
         assert!(settings.easter_eggs_enabled);
+        assert_eq!(settings.freeze_demo_ms, 3000);
     }
 }

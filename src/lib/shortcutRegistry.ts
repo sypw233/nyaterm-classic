@@ -317,6 +317,13 @@ export const SHORTCUT_REGISTRY: ShortcutDefinition[] = [
     labelKey: "settings.shortcutLabels.lockScreen",
     defaultKeys: "ctrl+shift+l, meta+shift+l",
   },
+  {
+    id: "special.freezeDemo",
+    category: "special",
+    labelKey: "settings.shortcutLabels.freezeDemo",
+    // Unbound by default: the user must assign a key before it takes effect.
+    defaultKeys: "",
+  },
 ];
 
 const registryMap = new Map<string, ShortcutDefinition>();

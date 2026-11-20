@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { MdEdit, MdRefresh, MdSearch } from "react-icons/md";
+import { MdBlock, MdEdit, MdRefresh, MdSearch } from "react-icons/md";
 import { toast } from "sonner";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useApp } from "@/context/AppContext";
@@ -110,22 +110,36 @@ export function KeyboardShortcutsTab() {
   }, []);
 
   const handleConfirmRecording = useCallback(() => {
-    if (!recordingId || !pendingKeys) {
+    if (!recordingId) {
       handleCancelRecording();
       return;
     }
-    const def = SHORTCUT_REGISTRY.find((d) => d.id === recordingId);
-    const isDefault = def && pendingKeys === def.defaultKeys;
+    // Empty pendingKeys means the user chose "unbound" (e.g. via Delete).
     const next = { ...overrides };
-    if (isDefault) {
-      delete next[recordingId];
+    if (!pendingKeys) {
+      next[recordingId] = "";
     } else {
-      next[recordingId] = pendingKeys;
+      const def = SHORTCUT_REGISTRY.find((d) => d.id === recordingId);
+      const isDefault = def && pendingKeys === def.defaultKeys;
+      if (isDefault) {
+        delete next[recordingId];
+      } else {
+        next[recordingId] = pendingKeys;
+      }
     }
     updateAppSettings({ keybindings: next });
     setRecordingId(null);
     setPendingKeys(null);
   }, [recordingId, pendingKeys, overrides, updateAppSettings, handleCancelRecording]);
+
+  const handleClear = useCallback(
+    (id: string) => {
+      updateAppSettings({ keybindings: { ...overrides, [id]: "" } });
+      setRecordingId(null);
+      setPendingKeys(null);
+    },
+    [overrides, updateAppSettings],
+  );
 
   const handleReset = (id: string) => {
     const next = { ...overrides };
@@ -165,6 +179,12 @@ export function KeyboardShortcutsTab() {
         handleCancelRecording();
         return;
       }
+      // Bare Delete/Backspace means "unbound" rather than a real binding.
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        handleClear(recordingId);
+        return;
+      }
       if (e.key === "Enter" && pendingKeys) {
         handleConfirmRecording();
         return;
@@ -188,6 +208,7 @@ export function KeyboardShortcutsTab() {
     handleCancelRecording,
     handleConfirmRecording,
     handleIndexedShortcutCapture,
+    handleClear,
   ]);
 
   useEffect(() => {
@@ -254,6 +275,7 @@ export function KeyboardShortcutsTab() {
                   onConfirmRecording={handleConfirmRecording}
                   onCancelRecording={handleCancelRecording}
                   onReset={handleReset}
+                  onClear={handleClear}
                   recorderRef={recordingId === sc.id ? recorderRef : undefined}
                   t={t}
                 />
@@ -279,6 +301,7 @@ interface ShortcutRowProps {
   onConfirmRecording: () => void;
   onCancelRecording: () => void;
   onReset: (id: string) => void;
+  onClear: (id: string) => void;
   recorderRef?: React.Ref<HTMLDivElement>;
   t: (key: string, opts?: Record<string, string>) => string;
 }
@@ -292,6 +315,7 @@ function ShortcutRow({
   onConfirmRecording,
   onCancelRecording,
   onReset,
+  onClear,
   recorderRef,
   t,
 }: ShortcutRowProps) {
@@ -365,14 +389,20 @@ function ShortcutRow({
           </div>
         ) : (
           <>
-            <KbdGroup className="flex-wrap sm:justify-end">
-              {keyParts.map((key, i) => (
-                <React.Fragment key={`${shortcut.id}-${key}`}>
-                  <Kbd>{key.trim()}</Kbd>
-                  {i < keyParts.length - 1 && <span className="text-muted-foreground">+</span>}
-                </React.Fragment>
-              ))}
-            </KbdGroup>
+            {keyParts.length > 0 ? (
+              <KbdGroup className="flex-wrap sm:justify-end">
+                {keyParts.map((key, i) => (
+                  <React.Fragment key={`${shortcut.id}-${key}`}>
+                    <Kbd>{key.trim()}</Kbd>
+                    {i < keyParts.length - 1 && <span className="text-muted-foreground">+</span>}
+                  </React.Fragment>
+                ))}
+              </KbdGroup>
+            ) : (
+              <span className="text-xs italic text-muted-foreground">
+                {t("settings.keybindingsUnbound")}
+              </span>
+            )}
             <div className="flex gap-0.5">
               <button
                 type="button"
@@ -382,6 +412,16 @@ function ShortcutRow({
               >
                 <MdEdit className="text-sm" />
               </button>
+              {(shortcut.isCustom || shortcut.keys) && (
+                <button
+                  type="button"
+                  onClick={() => onClear(shortcut.id)}
+                  className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  title={t("settings.keybindingsClear")}
+                >
+                  <MdBlock className="text-sm" />
+                </button>
+              )}
               {shortcut.isCustom && (
                 <button
                   type="button"
@@ -399,6 +439,11 @@ function ShortcutRow({
       {isRecording && shortcut.id === "tab.switchTo" && (
         <p className="w-full text-xs text-muted-foreground">
           {t("settings.keybindingsIndexedHint")}
+        </p>
+      )}
+      {isRecording && shortcut.id !== "tab.switchTo" && (
+        <p className="w-full text-xs text-muted-foreground">
+          {t("settings.keybindingsRecordHint")}
         </p>
       )}
     </div>

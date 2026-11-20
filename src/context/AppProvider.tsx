@@ -98,6 +98,7 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
     confirm_on_close: true,
     rdp_client_mode: "builtin",
     easter_eggs_enabled: true,
+    freeze_demo_ms: 3000,
   },
   appearance: {
     theme: "github-dark",
