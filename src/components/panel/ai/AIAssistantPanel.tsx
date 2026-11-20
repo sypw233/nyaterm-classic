@@ -53,6 +53,7 @@ import { useApp } from "@/context/AppContext";
 import { useTheme } from "@/context/ThemeContext";
 import type { AIErrorDetectedDetail } from "@/lib/aiEvents";
 import { AI_ERROR_DETECTED_EVENT } from "@/lib/aiEvents";
+import { buildMentionSessionOptions } from "@/lib/aiSessionMentions";
 import {
   getModelReasoningOptions,
   resolveAILanguage,
@@ -284,16 +285,30 @@ function AIAssistantPanel({ activePane, activeConnection, intent }: AIAssistantP
     return panes;
   }, [tabs]);
 
+  const mentionOptions = useMemo(
+    () =>
+      buildMentionSessionOptions({
+        panes: allSessionPanes,
+        tabs,
+        savedConnections,
+      }),
+    [allSessionPanes, tabs, savedConnections],
+  );
+
   const filteredMentionPanes = useMemo(() => {
-    const q = mentionQuery.toLowerCase();
-    if (!q) return allSessionPanes;
-    return allSessionPanes.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.sessionId.toLowerCase().includes(q) ||
-        p.type.toLowerCase().includes(q),
+    const paneById = new Map(allSessionPanes.map((pane) => [pane.sessionId, pane]));
+    const options = mentionOptions.filter((option) =>
+      option.searchText.includes(mentionQuery.trim().toLowerCase()),
     );
-  }, [allSessionPanes, mentionQuery]);
+    return options
+      .map((option) => paneById.get(option.sessionId))
+      .filter((pane): pane is SessionPane => !!pane);
+  }, [allSessionPanes, mentionOptions, mentionQuery]);
+
+  const mentionOptionById = useMemo(
+    () => new Map(mentionOptions.map((option) => [option.sessionId, option])),
+    [mentionOptions],
+  );
 
   const targetPanes = useMemo(
     () =>
@@ -1855,21 +1870,30 @@ function AIAssistantPanel({ activePane, activeConnection, intent }: AIAssistantP
             <span className="text-[0.625rem] font-medium text-muted-foreground">
               {t("ai.targetSession")}:
             </span>
-            {targetPanes.map((p) => (
-              <span
-                key={p.sessionId}
-                className="inline-flex items-center gap-0.5 rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[0.625rem] font-medium text-primary"
-              >
-                {p.name}
-                <button
-                  type="button"
-                  className="ml-0.5 rounded-full p-0 hover:text-destructive"
-                  onClick={() => removeTargetPane(p.sessionId)}
+            {targetPanes.map((p) => {
+              const option = mentionOptionById.get(p.sessionId);
+              return (
+                <span
+                  key={p.sessionId}
+                  className="inline-flex max-w-full items-center gap-0.5 rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[0.625rem] font-medium text-primary"
+                  title={option ? [p.name, option.detail, option.tabLabel].filter(Boolean).join(" · ") : p.name}
                 >
-                  <MdClose className="text-[0.625rem]" />
-                </button>
-              </span>
-            ))}
+                  <span className="min-w-0 truncate">{p.name}</span>
+                  {option?.detail || option?.tabLabel ? (
+                    <span className="min-w-0 truncate text-primary/70">
+                      {[option.detail, option.tabLabel].filter(Boolean).join(" · ")}
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="ml-0.5 shrink-0 rounded-full p-0 hover:text-destructive"
+                    onClick={() => removeTargetPane(p.sessionId)}
+                  >
+                    <MdClose className="text-[0.625rem]" />
+                  </button>
+                </span>
+              );
+            })}
           </div>
         ) : null}
         <div className="relative">
@@ -1888,6 +1912,7 @@ function AIAssistantPanel({ activePane, activeConnection, intent }: AIAssistantP
                   filteredMentionPanes.map((pane, idx) => {
                     const isSelected = targetPanes.some((p) => p.sessionId === pane.sessionId);
                     const isFocused = idx === mentionIndex;
+                    const option = mentionOptionById.get(pane.sessionId);
                     return (
                       <button
                         key={pane.sessionId}
@@ -1895,17 +1920,29 @@ function AIAssistantPanel({ activePane, activeConnection, intent }: AIAssistantP
                           if (isFocused && el) el.scrollIntoView({ block: "nearest" });
                         }}
                         type="button"
-                        className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-muted/60 ${isFocused ? "bg-accent" : ""} ${isSelected ? "bg-primary/10" : ""}`}
+                        className={`flex w-full flex-col gap-0.5 rounded px-2 py-1.5 text-left text-xs hover:bg-muted/60 ${isFocused ? "bg-accent" : ""} ${isSelected ? "bg-primary/10" : ""}`}
                         onClick={() => selectMentionPane(pane)}
                         onPointerEnter={() => setMentionIndex(idx)}
                       >
-                        <span
-                          className={`size-2 shrink-0 rounded-full ${isSelected ? "bg-primary" : "bg-muted-foreground/40"}`}
-                        />
-                        <span className="min-w-0 truncate font-medium">{pane.name}</span>
-                        <span className="ml-auto shrink-0 text-[0.625rem] text-muted-foreground">
-                          {pane.type}
+                        <span className="flex w-full min-w-0 items-center gap-2">
+                          <span
+                            className={`size-2 shrink-0 rounded-full ${isSelected ? "bg-primary" : "bg-muted-foreground/40"}`}
+                          />
+                          <span className="min-w-0 truncate font-medium">{pane.name}</span>
+                          <span className="ml-auto shrink-0 text-[0.625rem] text-muted-foreground">
+                            {pane.type}
+                          </span>
                         </span>
+                        {option ? (
+                          <span className="flex min-w-0 items-center gap-1.5 pl-4 text-[0.625rem] text-muted-foreground">
+                            <span className="min-w-0 truncate font-mono">{option.detail}</span>
+                            {option.tabLabel ? (
+                              <span className="min-w-0 truncate text-foreground/70">
+                                {option.tabLabel}
+                              </span>
+                            ) : null}
+                          </span>
+                        ) : null}
                       </button>
                     );
                   })
