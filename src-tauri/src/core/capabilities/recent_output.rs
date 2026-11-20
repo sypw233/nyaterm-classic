@@ -21,10 +21,25 @@ impl RecentOutputStore {
         if text.is_empty() {
             return;
         }
-        let clean = strip_ansi_escapes::strip_str(text).replace('\r', "");
+
+        // Fast path for ordinary shell output: no escape sequence and no
+        // carriage return means the ANSI stripper would return the input
+        // unchanged, so running the full VTE parser plus a second allocation
+        // over every output chunk is pure waste. Most terminal output is a
+        // single-colour log line, so this covers the common case.
+        let needs_rewrite = text
+            .as_bytes()
+            .iter()
+            .any(|byte| *byte == 0x1b || *byte == b'\r');
+
         let mut sessions = self.sessions.lock().unwrap();
         let output = sessions.entry(session_id.to_string()).or_default();
-        output.partial.push_str(&clean);
+        if needs_rewrite {
+            let clean = strip_ansi_escapes::strip_str(text).replace('\r', "");
+            output.partial.push_str(&clean);
+        } else {
+            output.partial.push_str(text);
+        }
         while let Some(index) = output.partial.find('\n') {
             let line = output.partial[..index].to_string();
             output.partial.drain(..=index);
@@ -109,5 +124,25 @@ mod tests {
         let result = store.read("s", 1);
         assert!(result.len() <= MAX_BYTES);
         assert!(result.ends_with("END"));
+    }
+
+    #[test]
+    fn plain_text_fast_path_matches_the_stripping_path() {
+        // The fast path skips the VTE parser when there is nothing to strip.
+        // Verify it produces exactly what the stripping path would.
+        let store = RecentOutputStore::default();
+        store.append("s", "plain line one\nplain line two\r\nthird\n");
+        assert_eq!(
+            store.read("s", 10),
+            "plain line one\nplain line two\nthird"
+        );
+    }
+
+    #[test]
+    fn escape_sequences_are_still_stripped_after_a_plain_chunk() {
+        let store = RecentOutputStore::default();
+        store.append("s", "before ");
+        store.append("s", "\x1b[32mgreen\x1b[0m\n");
+        assert_eq!(store.read("s", 10), "before green");
     }
 }
