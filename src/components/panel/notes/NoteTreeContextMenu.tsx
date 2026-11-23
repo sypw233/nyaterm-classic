@@ -5,6 +5,7 @@ import {
   MdDelete,
   MdDriveFileMove,
   MdEdit,
+  MdLink,
   MdOpenInNew,
   MdRefresh,
 } from "react-icons/md";
@@ -30,6 +31,9 @@ export interface NoteTreeMenuLabels {
   root: string;
   expandAll: string;
   collapseAll: string;
+  bindToConnection?: string;
+  unbindFromConnection?: string;
+  boundToConnection?: string;
 }
 
 interface NoteTreeContextMenuProps {
@@ -43,6 +47,9 @@ interface NoteTreeContextMenuProps {
   onMove: (node: NoteTreeNode, parentId: string | null) => void;
   onDelete: (node: NoteTreeNode) => void;
   onRefresh: () => void;
+  onBindToConnection?: (node: NoteTreeNode) => void;
+  isBoundToConnection?: (node: NoteTreeNode) => boolean;
+  hasActiveConnection?: boolean;
 }
 
 function containsNode(node: NoteTreeNode, targetId: string): boolean {
@@ -60,6 +67,9 @@ export default function NoteTreeContextMenu({
   onMove,
   onDelete,
   onRefresh,
+  onBindToConnection,
+  isBoundToConnection,
+  hasActiveConnection,
 }: NoteTreeContextMenuProps) {
   const preventNextContextMenuAutoFocusRef = useRef(false);
   const parentId = node?.kind === "folder" ? node.id : (node?.parentId ?? null);
@@ -95,6 +105,14 @@ export default function NoteTreeContextMenu({
                 <MdCreateNewFolder />
                 {labels.newFolder}
               </ContextMenuItem>
+              {onBindToConnection && hasActiveConnection ? (
+                <ContextMenuItem onClick={() => onBindToConnection(node)}>
+                  <MdLink />
+                  {isBoundToConnection?.(node)
+                    ? labels.unbindFromConnection
+                    : labels.bindToConnection}
+                </ContextMenuItem>
+              ) : null}
             </>
           ) : null}
           <ContextMenuItem

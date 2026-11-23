@@ -1641,6 +1641,9 @@
     "ungroupedConnections": "그룹 없음"
   },
   "notes": {
+    "autoSwitchHint": "바인딩된 연결이 활성화되면 이 폴더로 전환합니다",
+    "bindToConnection": "폴더를 현재 연결에 바인딩",
+    "boundToConnection": "현재 연결에 바인딩됨",
     "closeBlockedDescription": "닫기 전에 노트를 저장하지 못했습니다.",
     "closeBlockedTitle": "저장 실패",
     "collapseAll": "모두 접기",
@@ -1660,11 +1663,16 @@
     "export": "노트 내보내기…",
     "exportSuccess": "노트 {{count}}개를 내보냈습니다",
     "externalUpdate": "외부 콘텐츠가 업데이트됨",
+    "import": "Markdown 가져오기…",
+    "importFailed": "가져오기 실패",
+    "importFolder": "폴더 가져오기…",
+    "importSuccess": "{{count}}개의 노트를 가져왔습니다",
     "moveTo": "이동",
     "newFolder": "새 폴더",
     "newNote": "새 노트",
     "open": "열기",
     "overwrite": "덮어쓰기",
+    "readOnly": "읽기 전용",
     "reload": "다시 불러오기",
     "rename": "이름 바꾸기",
     "retry": "다시 시도",
@@ -1677,8 +1685,10 @@
     "saving": "저장 중...",
     "search": "노트 검색...",
     "title": "노트",
+    "unbindFromConnection": "현재 연결에서 바인딩 해제",
     "unsaved": "저장되지 않음",
-    "untitled": "제목 없음"
+    "untitled": "제목 없음",
+    "viewExternal": "외부 Markdown 열기"
   },
   "otp": {
     "cancel": "취소",

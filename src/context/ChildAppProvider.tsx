@@ -243,6 +243,7 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
     file_explorer_favorite_dirs_by_connection_id: {},
     notes_expanded_folder_ids: [],
     notes_last_selected_node_id: null,
+    notes_folder_id_by_connection_id: {},
     activity_bar_layout: cloneDefaultActivityBarLayout(),
   },
   keybindings: {},

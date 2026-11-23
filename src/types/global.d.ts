@@ -943,6 +943,7 @@ export interface UiConfig {
   file_explorer_favorite_dirs_by_connection_id: Record<string, string[]>;
   notes_expanded_folder_ids: string[];
   notes_last_selected_node_id: string | null;
+  notes_folder_id_by_connection_id: Record<string, string>;
   activity_bar_layout: ActivityBarLayout;
 }
 

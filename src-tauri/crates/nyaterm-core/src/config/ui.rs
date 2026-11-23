@@ -345,6 +345,9 @@ pub struct UiConfig {
     pub notes_expanded_folder_ids: Vec<String>,
     #[serde(default)]
     pub notes_last_selected_node_id: Option<String>,
+    /// Notes folder to auto-select for each connection id.
+    #[serde(default)]
+    pub notes_folder_id_by_connection_id: HashMap<String, String>,
     #[serde(default)]
     pub activity_bar_layout: ActivityBarLayout,
 }
@@ -519,6 +522,7 @@ impl Default for UiConfig {
             file_explorer_favorite_dirs_by_connection_id: HashMap::new(),
             notes_expanded_folder_ids: vec![],
             notes_last_selected_node_id: None,
+            notes_folder_id_by_connection_id: HashMap::new(),
             activity_bar_layout: ActivityBarLayout::default(),
         }
     }

@@ -1642,6 +1642,9 @@
     "ungroupedConnections": "Разгруппировано"
   },
   "notes": {
+    "autoSwitchHint": "Переключаться на эту папку, когда привязанное соединение активно",
+    "bindToConnection": "Привязать папку к текущему соединению",
+    "boundToConnection": "Привязано к текущему соединению",
     "closeBlockedDescription": "Не удалось сохранить заметку перед закрытием.",
     "closeBlockedTitle": "Не удалось сохранить",
     "collapseAll": "Свернуть все",
@@ -1662,11 +1665,16 @@
     "exportSuccess_one": "Экспортировано примечание {{count}}.",
     "exportSuccess_other": "Экспортированные примечания {{count}}.",
     "externalUpdate": "Внешний контент обновлен.",
+    "import": "Импорт Markdown…",
+    "importFailed": "Ошибка импорта",
+    "importFolder": "Импорт папки…",
+    "importSuccess": "Импортировано заметок: {{count}}",
     "moveTo": "Перейти в",
     "newFolder": "Новая папка",
     "newNote": "Новая заметка",
     "open": "Открыть",
     "overwrite": "Перезаписать",
+    "readOnly": "Только для чтения",
     "reload": "Перезагрузить",
     "rename": "Переименование",
     "retry": "Повторить попытку",
@@ -1679,8 +1687,10 @@
     "saving": "Сохранение...",
     "search": "Поиск по заметкам...",
     "title": "Примечания",
+    "unbindFromConnection": "Отвязать от текущего соединения",
     "unsaved": "Не сохранено",
-    "untitled": "Без названия"
+    "untitled": "Без названия",
+    "viewExternal": "Открыть внешний Markdown"
   },
   "otp": {
     "cancel": "Отмена",

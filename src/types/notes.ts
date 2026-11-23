@@ -1,5 +1,11 @@
 export type NoteNodeKind = "folder" | "note";
 
+export interface NoteImportResult {
+  folderCount: number;
+  noteCount: number;
+  rootIds: string[];
+}
+
 export interface NoteExportResult {
   outputPath: string;
   folderCount: number;

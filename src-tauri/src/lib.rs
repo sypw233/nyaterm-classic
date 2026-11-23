@@ -243,6 +243,8 @@ pub fn run() {
             cmd::log::export_diagnostics,
             cmd::note::list_note_tree,
             cmd::note::export_notes,
+            cmd::note::import_notes,
+            cmd::note::open_note_external,
             cmd::note::get_note,
             cmd::note::create_note_folder,
             cmd::note::create_note,

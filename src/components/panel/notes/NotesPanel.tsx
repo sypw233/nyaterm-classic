@@ -1,14 +1,8 @@
 import { open } from "@/lib/backend/platform/dialog";
 import { runtime } from "@/lib/backend/runtime";
 import { downloadJson } from "@/lib/backend/browserArtifacts";
-import {
-  type DragEvent,
-  type KeyboardEvent,
-  useDeferredValue,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useDeferredValue, useMemo, useRef, useState } from "react";
+import type { DragEvent, KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { MdAdd, MdCreateNewFolder, MdDescription } from "react-icons/md";
 import { toast } from "sonner";
@@ -23,11 +17,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { useApp } from "@/context/AppContext";
+import { useNotesAutoSwitch } from "@/hooks/useNotesAutoSwitch";
+import { useNotesExternalDrop } from "@/hooks/useNotesExternalDrop";
 import { useNotesTree } from "@/hooks/useNotesTree";
 import { getErrorMessage } from "@/lib/errors";
 import { invoke } from "@/lib/invoke";
 import { logger } from "@/lib/logger";
-import { openNoteEditor } from "@/lib/windowManager";
+import { resolveWorkspaceActivePane } from "@/lib/tmux/tree";
+import { openNoteEditor, openExternalNoteEditor } from "@/lib/windowManager";
 import type { NoteExportResult, NoteTreeNode } from "@/types/notes";
 import NotesPanelHeader from "./NotesPanelHeader";
 import NoteTree from "./NoteTree";
@@ -74,11 +72,17 @@ export default function NotesPanel() {
     moveNode,
     deleteNode,
     runAction,
+    importPaths,
+    noteFolderIdForConnection,
+    setNoteFolderForConnection,
   } = useNotesTree();
+  const { tabs, activeTabId } = useApp();
   const [search, setSearch] = useState("");
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<NoteTreeNode | null>(null);
   const [dragOverNodeId, setDragOverNodeId] = useState<string | null>(null);
+  const [externalDropActive, setExternalDropActive] = useState(false);
+  const dropContainerRef = useRef<HTMLDivElement | null>(null);
   const dragSourceRef = useRef<NoteTreeNode | null>(null);
   const deferredSearch = useDeferredValue(search);
 
@@ -94,6 +98,29 @@ export default function NotesPanel() {
   const selectedNode = useMemo(() => findNoteNode(tree, selectedNodeId), [selectedNodeId, tree]);
   const folderTargets = useMemo(() => flattenNoteFolders(tree), [tree]);
 
+  // The connection active in this window, derived the same way as App.tsx.
+  const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? null;
+  const activePane = activeTab
+    ? resolveWorkspaceActivePane(tabs, activeTab)
+    : null;
+  const activeConnectionId = activePane?.connectionId ?? null;
+  const hasActiveConnection = Boolean(activeConnectionId);
+
+  const selectFolder = useCallback(
+    (folderId: string) => {
+      setSelectedNodeId(folderId);
+      setExpandedFolderIds(new Set([...expandedFolderIds, folderId]));
+    },
+    [expandedFolderIds, setExpandedFolderIds, setSelectedNodeId],
+  );
+
+  useNotesAutoSwitch({
+    tree,
+    boundFolderIdForConnection: noteFolderIdForConnection,
+    selectFolder,
+    enabled: hasActiveConnection,
+  });
+
   const labels = {
     open: t("notes.open"),
     newNote: t("notes.newNote"),
@@ -108,6 +135,12 @@ export default function NotesPanel() {
     collapseAll: t("notes.collapseAll"),
     more: t("common.more"),
     export: t("notes.export"),
+    import: t("notes.import"),
+    importFolder: t("notes.importFolder"),
+    viewExternal: t("notes.viewExternal"),
+    bindToConnection: t("notes.bindToConnection"),
+    unbindFromConnection: t("notes.unbindFromConnection"),
+    boundToConnection: t("notes.boundToConnection"),
   };
 
   const exportNotes = async () => {
@@ -139,6 +172,77 @@ export default function NotesPanel() {
     if (!selectedNode) return null;
     return selectedNode.kind === "folder" ? selectedNode.id : selectedNode.parentId;
   };
+
+  const importFromPaths = async (paths: string[], parentId = creationParentId()) => {
+    try {
+      const result = await importPaths(paths, parentId);
+      if (result.rootIds.length > 0) setSelectedNodeId(result.rootIds[0]);
+      toast.success(t("notes.importSuccess", { count: result.noteCount }));
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+      logger.error({
+        domain: "ui.error",
+        event: "notes.import_failed",
+        message: "Failed to import notes",
+        error: err,
+      });
+    }
+  };
+
+  const importMarkdown = async () => {
+    if (runtime === "web") return;
+    try {
+      const selected = await open({
+        multiple: true,
+        directory: false,
+        filters: [{ name: "Markdown", extensions: ["md", "markdown"] }],
+      });
+      if (!selected || (Array.isArray(selected) && selected.length === 0)) return;
+      const paths = Array.isArray(selected) ? selected : [selected];
+      await importFromPaths(paths);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const importFolder = async () => {
+    if (runtime === "web") return;
+    try {
+      const selected = await open({ multiple: false, directory: true });
+      if (!selected || Array.isArray(selected)) return;
+      await importFromPaths([selected]);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const viewExternalMarkdown = async () => {
+    if (runtime === "web") return;
+    try {
+      const selected = await open({
+        multiple: false,
+        directory: false,
+        filters: [{ name: "Markdown", extensions: ["md", "markdown"] }],
+      });
+      if (!selected || Array.isArray(selected)) return;
+      await openExternalNoteEditor(selected);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const handleDropExternalPaths = useCallback(
+    (paths: string[]) => void importFromPaths(paths),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [importPaths, creationParentId, setSelectedNodeId],
+  );
+
+  useNotesExternalDrop({
+    containerRef: dropContainerRef,
+    enabled: !loading,
+    onDropPaths: handleDropExternalPaths,
+    onDropStateChange: setExternalDropActive,
+  });
 
   const startCreateNote = (parentId = creationParentId()) => {
     void runAction(async () => {
@@ -181,6 +285,7 @@ export default function NotesPanel() {
   };
 
   const moveToParent = (node: NoteTreeNode, parentId: string | null) => {
+
     if (
       node.kind === "folder" &&
       parentId &&
@@ -190,6 +295,18 @@ export default function NotesPanel() {
     }
     void runAction(() => moveNode(node.kind, node.id, parentId, Date.now()));
   };
+
+  const toggleBindToConnection = (node: NoteTreeNode) => {
+    if (!activeConnectionId || node.kind !== "folder") return;
+    const bound = noteFolderIdForConnection(activeConnectionId) === node.id;
+    setNoteFolderForConnection(activeConnectionId, bound ? null : node.id);
+  };
+
+  const isBoundToConnection = (node: NoteTreeNode) =>
+    Boolean(
+      activeConnectionId &&
+        noteFolderIdForConnection(activeConnectionId) === node.id,
+    );
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!selectedNode) return;
@@ -275,9 +392,21 @@ export default function NotesPanel() {
         onCollapseAll={() => setExpandedFolderIds(new Set())}
         onRefresh={() => void refresh()}
         onExport={() => void exportNotes()}
+        onImport={() => void importMarkdown()}
+        onImportFolder={() => void importFolder()}
+        onViewExternal={() => void viewExternalMarkdown()}
         labels={labels}
       />
-      <div className="min-h-0 flex-1" role="tree" tabIndex={0} onKeyDown={handleKeyDown}>
+      <div
+        ref={dropContainerRef}
+        className="relative min-h-0 flex-1"
+        role="tree"
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
+      >
+        {externalDropActive ? (
+          <div className="pointer-events-none absolute inset-0 z-10 border-2 border-dashed border-[var(--df-primary)] bg-[var(--df-primary)]/5" />
+        ) : null}
         {loading ? (
           <div className="flex h-full items-center justify-center text-xs text-[var(--df-text-dimmed)]">
             {t("common.loading")}
@@ -338,6 +467,9 @@ export default function NotesPanel() {
             }}
             onDragOverRoot={handleDragOverRoot}
             onDropRoot={handleDropRoot}
+            onBindToConnection={toggleBindToConnection}
+            isBoundToConnection={isBoundToConnection}
+            hasActiveConnection={hasActiveConnection}
           />
         )}
       </div>

@@ -1642,6 +1642,9 @@
     "ungroupedConnections": "Ungrouped"
   },
   "notes": {
+    "autoSwitchHint": "Switch to this folder when the bound connection is active",
+    "bindToConnection": "Bind folder to current connection",
+    "boundToConnection": "Bound to current connection",
     "closeBlockedDescription": "The note could not be saved before closing.",
     "closeBlockedTitle": "Save failed",
     "collapseAll": "Collapse All",
@@ -1662,11 +1665,16 @@
     "exportSuccess_one": "Exported {{count}} note",
     "exportSuccess_other": "Exported {{count}} notes",
     "externalUpdate": "External content updated",
+    "import": "Import Markdown…",
+    "importFailed": "Import failed",
+    "importFolder": "Import folder…",
+    "importSuccess": "Imported {{count}} note(s)",
     "moveTo": "Move to",
     "newFolder": "New Folder",
     "newNote": "New Note",
     "open": "Open",
     "overwrite": "Overwrite",
+    "readOnly": "Read-only",
     "reload": "Reload",
     "rename": "Rename",
     "retry": "Retry",
@@ -1679,8 +1687,10 @@
     "saving": "Saving...",
     "search": "Search notes...",
     "title": "Notes",
+    "unbindFromConnection": "Unbind from current connection",
     "unsaved": "Unsaved",
-    "untitled": "Untitled"
+    "untitled": "Untitled",
+    "viewExternal": "Open external Markdown"
   },
   "otp": {
     "cancel": "Cancel",

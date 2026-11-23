@@ -1641,6 +1641,9 @@
     "ungroupedConnections": "未分組"
   },
   "notes": {
+    "autoSwitchHint": "當綁定的連線處於活動狀態時切換到此資料夾",
+    "bindToConnection": "將資料夾綁定到目前連線",
+    "boundToConnection": "已綁定到目前連線",
     "closeBlockedDescription": "關閉前無法儲存這則筆記。",
     "closeBlockedTitle": "儲存失敗",
     "collapseAll": "全部摺疊",
@@ -1660,11 +1663,16 @@
     "export": "匯出筆記…",
     "exportSuccess": "已匯出 {{count}} 篇筆記",
     "externalUpdate": "外部內容已更新",
+    "import": "匯入 Markdown…",
+    "importFailed": "匯入失敗",
+    "importFolder": "匯入資料夾…",
+    "importSuccess": "已匯入 {{count}} 則筆記",
     "moveTo": "移動到",
     "newFolder": "新建資料夾",
     "newNote": "新建筆記",
     "open": "開啟",
     "overwrite": "覆蓋儲存",
+    "readOnly": "唯讀",
     "reload": "重新載入",
     "rename": "重新命名",
     "retry": "重試",
@@ -1677,8 +1685,10 @@
     "saving": "正在儲存...",
     "search": "搜尋筆記...",
     "title": "筆記",
+    "unbindFromConnection": "取消與目前連線的綁定",
     "unsaved": "未儲存",
-    "untitled": "未命名筆記"
+    "untitled": "未命名筆記",
+    "viewExternal": "開啟外部 Markdown 檔案"
   },
   "otp": {
     "cancel": "取消",

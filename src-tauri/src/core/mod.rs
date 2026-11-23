@@ -15,6 +15,7 @@ pub mod mcp;
 pub mod monitoring;
 pub mod network;
 pub mod note_export;
+pub mod note_import;
 mod output;
 pub mod plugins;
 pub mod portable_snapshot;

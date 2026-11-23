@@ -10,6 +10,7 @@ import type {
   NoteDocument,
   NoteFolder,
   NoteNodeKind,
+  NoteImportResult,
   NoteSummary,
   NoteTreePayload,
 } from "@/types/notes";
@@ -200,6 +201,35 @@ export function useNotesTree() {
     [selectedNodeId, setSelectedNodeId],
   );
 
+  /** Import markdown files/directories into the notes library (Desktop only). */
+  const importPaths = useCallback(
+    async (paths: string[], parentId: string | null) => {
+      const result = await invoke<NoteImportResult>("import_notes", {
+        paths,
+        targetParentId: parentId,
+      });
+      await refresh();
+      return result;
+    },
+    [refresh],
+  );
+
+  const noteFolderIdForConnection = useCallback(
+    (connectionId: string) =>
+      appSettings.ui.notes_folder_id_by_connection_id?.[connectionId] ?? null,
+    [appSettings.ui.notes_folder_id_by_connection_id],
+  );
+
+  const setNoteFolderForConnection = useCallback(
+    (connectionId: string, folderId: string | null) => {
+      const next = { ...(appSettings.ui.notes_folder_id_by_connection_id ?? {}) };
+      if (folderId) next[connectionId] = folderId;
+      else delete next[connectionId];
+      updateUi({ notes_folder_id_by_connection_id: next });
+    },
+    [appSettings.ui.notes_folder_id_by_connection_id, updateUi],
+  );
+
   const runAction = useCallback(async (action: () => Promise<unknown>) => {
     try {
       await action();
@@ -224,6 +254,9 @@ export function useNotesTree() {
     setSelectedNodeId,
     expandedFolderIds,
     setExpandedFolderIds,
+    importPaths,
+    noteFolderIdForConnection,
+    setNoteFolderForConnection,
     createFolder,
     createNote,
     renameNode,

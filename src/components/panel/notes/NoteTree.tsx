@@ -34,6 +34,9 @@ interface NoteTreeProps {
   onDragEnd: () => void;
   onDragOverRoot: (event: DragEvent<HTMLDivElement>) => void;
   onDropRoot: (event: DragEvent<HTMLDivElement>) => void;
+  onBindToConnection?: (node: NoteTreeNode) => void;
+  isBoundToConnection?: (node: NoteTreeNode) => boolean;
+  hasActiveConnection?: boolean;
 }
 
 export default function NoteTree(props: NoteTreeProps) {
@@ -113,6 +116,9 @@ export default function NoteTree(props: NoteTreeProps) {
         onMove={props.onMove}
         onDelete={props.onDelete}
         onRefresh={props.onRefresh}
+        onBindToConnection={props.onBindToConnection}
+        isBoundToConnection={props.isBoundToConnection}
+        hasActiveConnection={props.hasActiveConnection}
       />
     </ContextMenu>
   );

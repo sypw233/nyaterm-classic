@@ -1044,6 +1044,31 @@ export function openFilePreview(data: FilePreviewWindowData) {
   });
 }
 
+export function openExternalNoteEditor(path: string) {
+  const label = `${NOTE_EDITOR_WINDOW_PREFIX}${ownerToken()}-external-${hashPath(path)}`;
+  const title = `${path.split(/[\\/]/).pop() || i18n.t("notes.untitled")} - ${i18n.t("notes.title")} - NyaTerm`;
+  const url = `index.html?window=note-editor&externalPath=${encodeURIComponent(path)}&owner=${encodeURIComponent(ownerMainWindowLabel)}`;
+  return openChildWindow({
+    label,
+    title,
+    url,
+    kind: "modeless",
+    parentLabel: ownerMainWindowLabel,
+    width: 980,
+    height: 760,
+    resizable: true,
+    stateKey: "note-editor",
+  });
+}
+
+function hashPath(path: string): string {
+  let hash = 0;
+  for (let i = 0; i < path.length; i += 1) {
+    hash = (hash * 31 + path.charCodeAt(i)) >>> 0;
+  }
+  return hash.toString(36);
+}
+
 export function openNoteEditor(noteId: string, noteTitle: string) {
   const label = `${NOTE_EDITOR_WINDOW_PREFIX}${ownerToken()}-${noteId}`;
   const title = `${noteTitle || i18n.t("notes.untitled")} - ${i18n.t("notes.title")} - NyaTerm`;

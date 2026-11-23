@@ -20,6 +20,9 @@ interface NotesPanelHeaderProps {
   onCollapseAll: () => void;
   onRefresh: () => void;
   onExport: () => void;
+  onImport: () => void;
+  onImportFolder: () => void;
+  onViewExternal: () => void;
   labels: {
     search: string;
     newNote: string;
@@ -29,6 +32,9 @@ interface NotesPanelHeaderProps {
     refresh: string;
     more: string;
     export: string;
+    import: string;
+    importFolder: string;
+    viewExternal: string;
   };
 }
 
@@ -70,6 +76,9 @@ export default function NotesPanelHeader({
   onCollapseAll,
   onRefresh,
   onExport,
+  onImport,
+  onImportFolder,
+  onViewExternal,
   labels,
 }: NotesPanelHeaderProps) {
   return (
@@ -122,7 +131,10 @@ export default function NotesPanelHeader({
               <MdMoreVert className="text-lg" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-36 text-xs">
+          <DropdownMenuContent align="end" className="w-44 text-xs">
+            <DropdownMenuItem onClick={onImport}>{labels.import}</DropdownMenuItem>
+            <DropdownMenuItem onClick={onImportFolder}>{labels.importFolder}</DropdownMenuItem>
+            <DropdownMenuItem onClick={onViewExternal}>{labels.viewExternal}</DropdownMenuItem>
             <DropdownMenuItem onClick={onExport}>{labels.export}</DropdownMenuItem>
             <DropdownMenuItem onClick={onExpandAll}>{labels.expandAll}</DropdownMenuItem>
             <DropdownMenuItem onClick={onCollapseAll}>{labels.collapseAll}</DropdownMenuItem>

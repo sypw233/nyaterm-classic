@@ -49,6 +49,31 @@ pub fn list_note_tree() -> AppResult<NoteTreePayload> {
 }
 
 #[tauri::command]
+pub fn import_notes(
+    app: tauri::AppHandle,
+    paths: Vec<String>,
+    target_parent_id: Option<String>,
+) -> AppResult<crate::core::note_import::NoteImportResult> {
+    let result = crate::core::note_import::import_notes(&paths, target_parent_id)?;
+    emit_notes_changed(
+        &app,
+        "replaced",
+        None,
+        result.root_ids.clone(),
+        Vec::new(),
+        Vec::new(),
+        Some(true),
+    );
+    schedule_cloud_sync_notify(app);
+    Ok(result)
+}
+
+#[tauri::command]
+pub fn open_note_external(path: String) -> AppResult<crate::config::NoteDocument> {
+    crate::core::note_import::read_external_note(&path)
+}
+
+#[tauri::command]
 pub fn get_note(note_id: String) -> AppResult<NoteDocument> {
     crate::storage::get_note(&note_id)?
         .ok_or_else(|| AppError::Config(format!("Note '{note_id}' does not exist")))
