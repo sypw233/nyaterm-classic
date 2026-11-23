@@ -1,6 +1,7 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createSessionPane } from "@/lib/workspaceTabs";
+import { IDLE_REMOTE_STATS_INTERVAL_SECONDS } from "@/lib/remoteStatsVisibility";
 import type { RemoteStats, SavedConnection, UiConfig } from "@/types/global";
 import type { InstalledPlugin } from "@/types/plugins";
 import { useWorkspaceMonitoring } from "./useWorkspaceMonitoring";
@@ -134,8 +135,16 @@ describe("useWorkspaceMonitoring", () => {
     expect(mocks.npu).toHaveBeenLastCalledWith("ssh-1", false, 3);
 
     rerender({ ...options, liveSessionIds: new Set() });
+    // Nothing displays the stats now, so the remote stats hook falls back to
+    // the slow idle poll instead of the 3-second interval. GPU/NPU overviews
+    // use their own interval setting and are unaffected by that fallback.
     expect(result.current.activeStatsSessionId).toBeNull();
-    expect(mocks.stats).toHaveBeenLastCalledWith(null, false, 3, new Set());
+    expect(mocks.stats).toHaveBeenLastCalledWith(
+      null,
+      false,
+      IDLE_REMOTE_STATS_INTERVAL_SECONDS,
+      new Set(),
+    );
     expect(mocks.gpu).toHaveBeenLastCalledWith(null, false, 3);
 
     rerender({
