@@ -86,6 +86,22 @@ type GroupedSection<T> = {
 
 const UNGROUPED_ID = "__ungrouped__";
 
+/**
+ * Whether a network group section starts expanded before the user toggles it.
+ *
+ * With no tunnel groups configured, every tunnel lands in "Ungrouped". Opening
+ * that section by default keeps the tunnels visible instead of hiding them all
+ * behind a collapsed header. Named groups and all proxy sections keep the
+ * existing collapsed-by-default behaviour.
+ */
+export function sectionExpandedByDefault(
+  tab: "proxy" | "tunnel",
+  sectionId: string,
+  groupCount: number,
+): boolean {
+  return tab === "tunnel" && sectionId === UNGROUPED_ID && groupCount === 0;
+}
+
 function sortNetworkGroups(groups: NetworkGroup[]) {
   return [...groups].sort((left, right) => {
     if (left.sort_order !== right.sort_order) return left.sort_order - right.sort_order;
@@ -577,7 +593,19 @@ export default function NetworkPanel() {
   const { appSettings, savedConnections, savedGroups, updateUi } = useApp();
   const activeTab: NetworkTab =
     runtime === "web" || appSettings.ui.network_panel_active_tab === "proxy" ? "proxy" : "tunnel";
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  // Sections are collapsed by default. `sectionOverrides` records the explicit
+  // expanded state only for sections the user toggled, so a default (such as
+  // the tunnel "Ungrouped" section with no groups) can start expanded without
+  // preventing the user from collapsing it again.
+  const [sectionOverrides, setSectionOverrides] = useState<Record<string, boolean>>({});
+  const sectionIsExpanded = (key: string, defaultExpanded: boolean) =>
+    sectionOverrides[key] ?? defaultExpanded;
+  const toggleSection = useCallback((key: string, defaultExpanded: boolean) => {
+    setSectionOverrides((prev) => ({
+      ...prev,
+      [key]: !(prev[key] ?? defaultExpanded),
+    }));
+  }, []);
 
   const [proxies, setProxies] = useState<ProxyConfig[]>([]);
   const [proxyGroups, setProxyGroups] = useState<NetworkGroup[]>([]);
@@ -635,15 +663,6 @@ export default function NetworkPanel() {
     () => buildGroupedSections(tunnels, tunnelGroups, t("network.ungrouped")),
     [tunnels, tunnelGroups, t],
   );
-
-  const toggleSection = useCallback((id: string) => {
-    setExpandedSections((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
 
   const loadProxyGroups = useCallback(async () => {
     try {
@@ -927,8 +946,18 @@ export default function NetworkPanel() {
                     <NetworkGroupSection
                       key={section.id}
                       section={section}
-                      collapsed={!expandedSections.has(`tunnel:${section.id}`)}
-                      onToggle={() => toggleSection(`tunnel:${section.id}`)}
+                      collapsed={
+                        !sectionIsExpanded(
+                          `tunnel:${section.id}`,
+                          sectionExpandedByDefault("tunnel", section.id, tunnelGroups.length),
+                        )
+                      }
+                      onToggle={() =>
+                        toggleSection(
+                          `tunnel:${section.id}`,
+                          sectionExpandedByDefault("tunnel", section.id, tunnelGroups.length),
+                        )
+                      }
                       onRename={(group) => setGroupDialog({ tab: "tunnel", group })}
                       onDelete={(group, itemCount) =>
                         setDeleteGroupState({ tab: "tunnel", group, itemCount })
@@ -1007,8 +1036,8 @@ export default function NetworkPanel() {
                     <NetworkGroupSection
                       key={section.id}
                       section={section}
-                      collapsed={!expandedSections.has(`proxy:${section.id}`)}
-                      onToggle={() => toggleSection(`proxy:${section.id}`)}
+                      collapsed={!sectionIsExpanded(`proxy:${section.id}`, false)}
+                      onToggle={() => toggleSection(`proxy:${section.id}`, false)}
                       onRename={(group) => setGroupDialog({ tab: "proxy", group })}
                       onDelete={(group, itemCount) =>
                         setDeleteGroupState({ tab: "proxy", group, itemCount })

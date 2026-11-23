@@ -3,7 +3,26 @@ import { describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { createTunnelDraft } from "@/components/network/TunnelFormContent";
-import { TunnelRow, TunnelRuntimeBadge } from "./NetworkPanel";
+import { TunnelRow, TunnelRuntimeBadge, sectionExpandedByDefault } from "./NetworkPanel";
+
+describe("sectionExpandedByDefault", () => {
+  it("expands the ungrouped tunnel section when no tunnel groups exist", () => {
+    expect(sectionExpandedByDefault("tunnel", "__ungrouped__", 0)).toBe(true);
+  });
+
+  it("keeps named tunnel sections collapsed", () => {
+    expect(sectionExpandedByDefault("tunnel", "group-1", 0)).toBe(false);
+  });
+
+  it("keeps the ungrouped tunnel section collapsed once groups exist", () => {
+    expect(sectionExpandedByDefault("tunnel", "__ungrouped__", 1)).toBe(false);
+  });
+
+  it("never expands proxy sections by default", () => {
+    expect(sectionExpandedByDefault("proxy", "__ungrouped__", 0)).toBe(false);
+    expect(sectionExpandedByDefault("proxy", "group-1", 0)).toBe(false);
+  });
+});
 
 vi.mock("react-i18next", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react-i18next")>()),
