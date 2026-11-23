@@ -4,7 +4,11 @@ All notable changes to this project will be documented in this file.
 
 This changelog is inferred from release bump commits in git history (for example `chore: bump version to vX.Y.Z`) and grouped by Conventional Commit type.
 
-## [Unreleased]
+## [1.3.7] - 2026-11-23
+
+A performance release for the terminal on the 1.x line. It reduces IPC round
+trips, output-copying, React re-render work and encoding overhead; all changes
+are reimplemented on the Tauri/React stack and are not 2.x syncs.
 
 ### Performance
 
@@ -24,8 +28,7 @@ This changelog is inferred from release bump commits in git history (for example
   terminal panes no longer re-render on unrelated context updates.
 - **terminal:** Cache the suggestion popup's screen rectangle for a short window
   to collapse two forced layout reads per search, and count snapshot UTF-8 sizes
-  without allocating an encoded copy. Snapshot replay now writes the first chunk
-  immediately and drains several chunks per animation frame.
+  without allocating an encoded copy.
 - **telnet:** Avoid one heap allocation per character in the force-character-at-a-time
   write path; pass UTF-8 character slices directly to the writer.
 - **encoding:** Return the owned input buffer unchanged for UTF-8 sessions instead

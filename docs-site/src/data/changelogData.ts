@@ -10,6 +10,22 @@ export type ChangelogRelease = {
 
 const changelogReleasesEn: ChangelogRelease[] = [
   {
+    version: "[1.3.7] - 2026-11-23",
+    sections: [
+      {
+        title: "Performance",
+        items: [
+          "**terminal:** Coalesce rapid keyboard input into one IPC round trip, flushing Enter and control keys immediately.",
+          "**terminal:** Move recent-output ANSI scanning out of the emit lock and avoid copying the common single-chunk output batch.",
+          "**terminal:** Submit batched input with one session lock, and release the global lock before per-command checks.",
+          "**terminal:** Reduce React re-render work with lazy refs, memoized search options and stable pane callbacks.",
+          "**terminal:** Cache suggestion popup layout reads and speed up snapshot size checks with allocation-free UTF-8 counting.",
+          "**telnet/encoding:** Avoid per-character allocations in forced character mode and return owned buffers unchanged for UTF-8 writes.",
+        ],
+      },
+    ],
+  },
+  {
     version: "[1.2.12] - 2026-09-29",
     sections: [
       {
@@ -2255,6 +2271,22 @@ const changelogReleasesEn: ChangelogRelease[] = [
 ];
 
 const changelogReleasesZhCN: ChangelogRelease[] = [
+  {
+    version: "[1.3.7] - 2026-11-23",
+    sections: [
+      {
+        title: "性能",
+        items: [
+          "**终端：** 将连续的键盘输入合并为一次 IPC 往返，回车与控制键仍立即发送。",
+          "**终端：** 将最近输出的 ANSI 扫描移出 emit 锁，常见单块输出不再重复拷贝。",
+          "**终端：** 批量输入只获取一次会话锁，并在逐命令检查前释放全局锁。",
+          "**终端：** 通过惰性 ref、记忆化搜索选项与稳定的 Pane 回调减少 React 重渲染。",
+          "**终端：** 缓存补全弹窗的布局读取，并以无分配的 UTF-8 计数加快快照大小检查。",
+          "**Telnet/编码：** 避免逐字符模式下的逐字符分配，UTF-8 写入直接复用原有缓冲区。",
+        ],
+      },
+    ],
+  },
   {
     version: "[1.2.12] - 2026-09-29",
     sections: [
