@@ -252,36 +252,17 @@ export function writeTextInFrames(terminal: Terminal, text: string): Promise<voi
   let remaining: QueuedOutputChunk = { data: text, bytes: utf8ByteLength(text) };
 
   return new Promise((resolve) => {
-    const writeOne = (): boolean => {
-      if (!remaining.data) return false;
-      const [head, tail] = splitOutputChunk(remaining, maxBytes);
-      remaining = tail;
-      terminal.write(head.data);
-      return true;
-    };
-
-    // Write the first chunk synchronously so snapshot replay starts immediately
-    // instead of waiting one animation frame before showing anything.
-    writeOne();
-
-    const writeFrame = () => {
+    const writeNext = () => {
       if (!remaining.data) {
         resolve();
         return;
       }
-      // Drain several chunks per frame within a short budget. One RAF per
-      // 32 KB chunk made a 2 MB snapshot take ~64 frames (~1 s at 60 fps).
-      const deadline = performance.now() + 8;
-      do {
-        if (!writeOne()) break;
-      } while (remaining.data && performance.now() < deadline);
-      requestAnimationFrame(writeFrame);
+
+      const [head, tail] = splitOutputChunk(remaining, maxBytes);
+      remaining = tail;
+      terminal.write(head.data, () => requestAnimationFrame(writeNext));
     };
 
-    if (remaining.data) {
-      requestAnimationFrame(writeFrame);
-    } else {
-      resolve();
-    }
+    requestAnimationFrame(writeNext);
   });
 }
