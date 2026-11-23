@@ -940,59 +940,96 @@ impl SessionManager {
 
     /// Sends a command to a session's I/O loop; errors if session not found.
     pub async fn send_command(&self, id: &str, cmd: SessionCommand) -> AppResult<()> {
-        let sessions = self.sessions.lock().await;
-        if let Some(handle) = sessions.get(id) {
-            if let SessionCommand::Write { data, origin, .. } = &cmd {
-                if self.terminal_executions.lock().unwrap().contains_key(id)
-                    && *origin != InputOrigin::TerminalResponse
-                    && data.as_slice() != [3]
-                {
-                    return Err(AppError::SessionBusy(
-                        "This session is executing an automated command.".into(),
-                    ));
-                }
-            }
-            if matches!(cmd, SessionCommand::Write { .. })
-                && handle.info.ssh_runtime_mode == Some(SshRuntimeMode::Sftp)
-            {
-                return Err(AppError::Config(
-                    "Terminal input is unavailable for SFTP-only sessions".to_string(),
-                ));
-            }
-            if matches!(
-                cmd,
-                SessionCommand::GetEncoding { .. } | SessionCommand::SetEncoding { .. }
-            ) && handle.info.ssh_runtime_mode == Some(SshRuntimeMode::Sftp)
-            {
-                return Err(AppError::Config(
-                    "Terminal encoding is unavailable for SFTP-only sessions".to_string(),
-                ));
-            }
-            if let SessionCommand::Write {
-                origin,
-                sensitivity,
-                ..
-            } = &cmd
-            {
-                let _ = *sensitivity;
-                if let Some(barrier) = handle.startup_input_barrier.as_ref() {
-                    if *origin == InputOrigin::TerminalResponse {
-                        barrier.note_terminal_response_enqueued();
-                    } else {
-                        barrier.cancel_for_input(*origin);
-                    }
-                }
-            }
-            handle
-                .cmd_tx
-                .send(cmd)
-                .map_err(|e| AppError::Channel(e.to_string()))
-        } else {
-            Err(AppError::SessionNotFound(format!(
-                "Session '{}' not found",
-                id
-            )))
+        // Clone only the fields validation needs, then release the global map
+        // lock before doing any checks or channel send. Holding `sessions`
+        // across the nested execution/barrier locks serialized every command
+        // from every session behind one async mutex.
+        let (sftp_only, cmd_tx, barrier) = {
+            let sessions = self.sessions.lock().await;
+            let handle = sessions
+                .get(id)
+                .ok_or_else(|| AppError::SessionNotFound(format!("Session '{}' not found", id)))?;
+            (
+                handle.info.ssh_runtime_mode == Some(SshRuntimeMode::Sftp),
+                handle.cmd_tx.clone(),
+                handle.startup_input_barrier.clone(),
+            )
+        };
+        self.validate_and_send_parts(id, cmd, sftp_only, &cmd_tx, barrier.as_deref())
+    }
+
+    /// Sends several commands to one session while holding the session map
+    /// lock only once. Used by the batched input path so a single IPC batch
+    /// does not re-acquire the global lock for every fragment.
+    pub async fn send_commands(&self, id: &str, commands: Vec<SessionCommand>) -> AppResult<()> {
+        let (sftp_only, cmd_tx, barrier) = {
+            let sessions = self.sessions.lock().await;
+            let handle = sessions
+                .get(id)
+                .ok_or_else(|| AppError::SessionNotFound(format!("Session '{}' not found", id)))?;
+            (
+                handle.info.ssh_runtime_mode == Some(SshRuntimeMode::Sftp),
+                handle.cmd_tx.clone(),
+                handle.startup_input_barrier.clone(),
+            )
+        };
+        for cmd in commands {
+            self.validate_and_send_parts(id, cmd, sftp_only, &cmd_tx, barrier.as_deref())?;
         }
+        Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn validate_and_send_parts(
+        &self,
+        id: &str,
+        cmd: SessionCommand,
+        sftp_only: bool,
+        cmd_tx: &SessionCommandSender,
+        barrier: Option<&StartupInputBarrier>,
+    ) -> AppResult<()> {
+        if let SessionCommand::Write { data, origin, .. } = &cmd {
+            if self.terminal_executions.lock().unwrap().contains_key(id)
+                && *origin != InputOrigin::TerminalResponse
+                && data.as_slice() != [3]
+            {
+                return Err(AppError::SessionBusy(
+                    "This session is executing an automated command.".into(),
+                ));
+            }
+        }
+        if matches!(cmd, SessionCommand::Write { .. }) && sftp_only {
+            return Err(AppError::Config(
+                "Terminal input is unavailable for SFTP-only sessions".to_string(),
+            ));
+        }
+        if matches!(
+            cmd,
+            SessionCommand::GetEncoding { .. } | SessionCommand::SetEncoding { .. }
+        ) && sftp_only
+        {
+            return Err(AppError::Config(
+                "Terminal encoding is unavailable for SFTP-only sessions".to_string(),
+            ));
+        }
+        if let SessionCommand::Write {
+            origin,
+            sensitivity,
+            ..
+        } = &cmd
+        {
+            let _ = *sensitivity;
+            if let Some(barrier) = barrier {
+                if *origin == InputOrigin::TerminalResponse {
+                    barrier.note_terminal_response_enqueued();
+                } else {
+                    barrier.cancel_for_input(*origin);
+                }
+            }
+        }
+        cmd_tx
+            .send(cmd)
+            .map_err(|e| AppError::Channel(e.to_string()))
     }
 
     /// Returns metadata for all active sessions.

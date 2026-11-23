@@ -15,6 +15,21 @@ This changelog is inferred from release bump commits in git history (for example
   per-fragment WebSocket path.
 - **terminal:** Reuse a module-level constant for the global shortcuts swallowed
   by the terminal key handler instead of rebuilding the array on every keydown.
+- **terminal:** Move the recent-output ANSI scan/strip work out of the output
+  emit critical section, and avoid copying the common single-chunk output batch
+  by moving its buffer into the payload. Batch input now holds the session map
+  lock once for all fragments instead of once per fragment.
+- **terminal:** Avoid per-render object allocations in the terminal component
+  (lazy refs, memoized search options) and stabilize pane callbacks so memoized
+  terminal panes no longer re-render on unrelated context updates.
+- **terminal:** Cache the suggestion popup's screen rectangle for a short window
+  to collapse two forced layout reads per search, and count snapshot UTF-8 sizes
+  without allocating an encoded copy. Snapshot replay now writes the first chunk
+  immediately and drains several chunks per animation frame.
+- **telnet:** Avoid one heap allocation per character in the force-character-at-a-time
+  write path; pass UTF-8 character slices directly to the writer.
+- **encoding:** Return the owned input buffer unchanged for UTF-8 sessions instead
+  of allocating a full copy during terminal write preparation.
 
 ## [1.3.6] - 2026-11-20
 

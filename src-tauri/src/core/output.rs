@@ -19,6 +19,7 @@ const OUTPUT_CATASTROPHIC_BACKLOG_BYTES: usize = 64 * 1024 * 1024;
 const OUTPUT_CATASTROPHIC_BACKLOG_BYTES: usize = OUTPUT_PAUSE_HIGH_WATERMARK_BYTES + 64 * 1024;
 
 type OutputSink = dyn Fn(TerminalOutputPayload) + Send + Sync + 'static;
+type RecentOutputHook = dyn Fn(&str) + Send + Sync + 'static;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -53,6 +54,11 @@ struct FlushResult {
 /// renderer/IPC backlog is too high.
 pub struct SessionOutputCoalescer {
     sink: Arc<OutputSink>,
+    /// Recent-output bookkeeping runs outside `emit_lock`: it owns its own
+    /// lock and does not need to serialize with IPC emit order, so keeping the
+    /// ANSI scan/allocations out of the emit critical zone reduces contention
+    /// between concurrent producers.
+    recent_output: Option<Arc<RecentOutputHook>>,
     flow_control_tx: Option<SessionCommandSender>,
     /// Serializes all sink emissions so concurrent producer/attach threads
     /// cannot interleave terminal output chunks out of order.
@@ -72,12 +78,22 @@ impl SessionOutputCoalescer {
         let session_manager = app
             .try_state::<Arc<crate::core::SessionManager>>()
             .map(|state| state.inner().clone());
-        Self::with_flow_sink(flow_control_tx, move |payload| {
-            if let (Some(manager), Some(session_id)) = (&session_manager, &session_id) {
-                manager.append_recent_output(session_id, &payload.data);
-            }
-            let _ = app.emit(&output_event, &payload);
-        })
+        let recent_session_id = session_id.clone();
+        let recent_output: Option<Arc<RecentOutputHook>> =
+            session_manager.map(|manager| -> Arc<RecentOutputHook> {
+                Arc::new(move |data: &str| {
+                    if let Some(id) = &recent_session_id {
+                        manager.append_recent_output(id, data);
+                    }
+                })
+            });
+        Self::with_flow_sink_and_recent(
+            flow_control_tx,
+            recent_output,
+            move |payload| {
+                let _ = app.emit(&output_event, &payload);
+            },
+        )
     }
 
     #[cfg(test)]
@@ -87,18 +103,32 @@ impl SessionOutputCoalescer {
     {
         Arc::new(Self {
             sink: Arc::new(sink),
+            recent_output: None,
             flow_control_tx: None,
             emit_lock: Mutex::new(()),
             state: Mutex::new(OutputState::default()),
         })
     }
 
+    #[cfg(test)]
     pub fn with_flow_sink<F>(flow_control_tx: SessionCommandSender, sink: F) -> Arc<Self>
+    where
+        F: Fn(TerminalOutputPayload) + Send + Sync + 'static,
+    {
+        Self::with_flow_sink_and_recent(flow_control_tx, None, sink)
+    }
+
+    fn with_flow_sink_and_recent<F>(
+        flow_control_tx: SessionCommandSender,
+        recent_output: Option<Arc<RecentOutputHook>>,
+        sink: F,
+    ) -> Arc<Self>
     where
         F: Fn(TerminalOutputPayload) + Send + Sync + 'static,
     {
         Arc::new(Self {
             sink: Arc::new(sink),
+            recent_output,
             flow_control_tx: Some(flow_control_tx),
             emit_lock: Mutex::new(()),
             state: Mutex::new(OutputState::default()),
@@ -118,8 +148,20 @@ impl SessionOutputCoalescer {
     }
 
     fn emit_payload(&self, payload: TerminalOutputPayload) {
+        // Recent-output bookkeeping owns its own lock and does not need IPC
+        // emit ordering, so keep its ANSI scan/allocations out of the emit
+        // critical zone.
+        self.note_recent_output(&payload);
         let _emit_guard = self.lock_emit();
         (self.sink)(payload);
+    }
+
+    fn note_recent_output(&self, payload: &TerminalOutputPayload) {
+        if let Some(hook) = &self.recent_output {
+            if !payload.data.is_empty() {
+                hook(&payload.data);
+            }
+        }
     }
 
     fn lock_state(&self) -> MutexGuard<'_, OutputState> {
@@ -233,8 +275,13 @@ impl SessionOutputCoalescer {
         // emission, then hold the state lock while draining; a competing push
         // queues after the detached backlog instead of overtaking it before
         // the renderer settles/publishes title state.
-        let emit_guard = self.lock_emit();
+        let mut drained = Vec::new();
         while let Some(payload) = take_pending_batch(&mut state) {
+            self.note_recent_output(&payload);
+            drained.push(payload);
+        }
+        let emit_guard = self.lock_emit();
+        for payload in drained {
             (self.sink)(payload);
         }
         drop(emit_guard);
@@ -388,7 +435,21 @@ fn take_pending_batch(state: &mut OutputState) -> Option<TerminalOutputPayload> 
     }
 
     let mut remaining = batch_limit(state);
-    let mut data = String::new();
+
+    // Fast path: the steady state is a single chunk that fits in the batch.
+    // Move its String into the payload instead of copying it into a fresh
+    // buffer (the old code always did a full push_str copy).
+    if let Some(front) = state.pending.front() {
+        if front.len() <= remaining {
+            let front = state.pending.pop_front().expect("front checked above");
+            state.pending_bytes = state.pending_bytes.saturating_sub(front.len());
+            return Some(payload_from_data(state, front));
+        }
+    }
+
+    // Multiple chunks (or a split): reserve the exact upper bound once so the
+    // geometric reallocations of String::new() are avoided.
+    let mut data = String::with_capacity(remaining.min(state.pending_bytes));
 
     while remaining > 0 {
         let Some(front) = state.pending.pop_front() else {
@@ -422,7 +483,7 @@ fn take_all_pending(state: &mut OutputState) -> Option<TerminalOutputPayload> {
         return None;
     }
 
-    let mut data = String::new();
+    let mut data = String::with_capacity(state.pending_bytes);
     while let Some(chunk) = state.pending.pop_front() {
         state.pending_bytes = state.pending_bytes.saturating_sub(chunk.len());
         data.push_str(&chunk);
@@ -928,5 +989,50 @@ mod tests {
         assert_eq!(emitted[0].bytes, OUTPUT_CLOSE_FLUSH_MAX_BYTES);
         assert_eq!(emitted[0].dropped_bytes, 0);
         assert!(emitted[0].data.chars().all(|ch| ch == 'a'));
+    }
+
+    #[test]
+    fn single_pending_chunk_is_moved_into_payload_exactly() {
+        let mut state = super::OutputState::default();
+        let text = "hello 世界\r\n".repeat(16);
+        state.pending.push_back(text.clone());
+        state.pending_bytes = text.len();
+
+        let payload = super::take_pending_batch(&mut state).expect("one chunk yields a payload");
+        assert_eq!(payload.data, text);
+        assert_eq!(payload.bytes, text.len());
+        assert!(state.pending.is_empty());
+        assert_eq!(state.pending_bytes, 0);
+    }
+
+    #[test]
+    fn multiple_pending_chunks_keep_order_and_bytes() {
+        let mut state = super::OutputState::default();
+        for chunk in ["alpha", "beta", "gamma"] {
+            state.pending.push_back(chunk.to_string());
+            state.pending_bytes += chunk.len();
+        }
+
+        let payload = super::take_pending_batch(&mut state).expect("chunks yield a payload");
+        assert_eq!(payload.data, "alphabetagamma");
+        assert_eq!(payload.bytes, 14);
+        assert!(state.pending.is_empty());
+        assert_eq!(state.pending_bytes, 0);
+    }
+
+    #[test]
+    fn oversized_chunk_splits_on_char_boundary_and_keeps_tail() {
+        let mut state = super::OutputState::default();
+        let chunk = format!("{}界", "x".repeat(OUTPUT_FLOOD_BATCH_BYTES));
+        state.pending.push_back(chunk.clone());
+        state.pending_bytes = chunk.len();
+
+        let payload = super::take_pending_batch(&mut state).expect("split yields a payload");
+        assert_eq!(payload.bytes, payload.data.len());
+        assert!(payload.data.is_char_boundary(payload.data.len()));
+        assert!(!state.pending.is_empty(), "tail must be retained");
+        let retained: usize = state.pending.iter().map(|chunk| chunk.len()).sum();
+        assert_eq!(payload.data.len() + retained, chunk.len());
+        assert_eq!(state.pending_bytes, retained);
     }
 }

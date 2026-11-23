@@ -17,7 +17,10 @@ import { useCommandHistory } from "@/hooks/useCommandHistory";
 import { useCredentialAutofill } from "@/hooks/useCredentialAutofill";
 import { useKeywordHighlighter } from "@/hooks/useKeywordHighlighter";
 import { useShellIntegration } from "@/hooks/useShellIntegration";
-import { useTerminalSearch } from "@/hooks/useTerminalSearch";
+import {
+  useTerminalSearch,
+  type UseTerminalSearchOptions,
+} from "@/hooks/useTerminalSearch";
 import { useTerminalSettings } from "@/hooks/useTerminalSettings";
 import {
   renderAiCommandEnd,
@@ -168,6 +171,7 @@ import {
   markTerminalUserInput,
   registerTerminalUserInputMarker,
 } from "@/lib/terminalControlInput";
+import { useLazyRef } from "@/lib/useLazyRef";
 import { XTERM_SECURE_WINDOW_OPTIONS } from "@/lib/xtermSecurity";
 import {
   publishApplicationTitle,
@@ -226,7 +230,7 @@ function XTerminal({
   const lastDimensionsRef = useRef<{ cols: number; rows: number } | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const fitSchedulerRef = useRef<TerminalFitScheduler | null>(null);
-  const resizeDeduperRef = useRef(new TerminalResizeDeduper());
+  const resizeDeduperRef = useLazyRef(() => new TerminalResizeDeduper());
   const [terminalInstance, setTerminalInstance] = useState<Terminal | null>(
     null,
   );
@@ -385,19 +389,19 @@ function XTerminal({
   // Shared so the effect can reconfigure without recreating the sampler.
   const adaptiveFrameLimitRef = useRef<AdaptiveFrameLimit | null>(null);
   // Throttles (or pauses) rendering while the window is unfocused.
-  const backgroundGateRef = useRef(new FrameRateGate({ fps: 0 }));
+  const backgroundGateRef = useLazyRef(() => new FrameRateGate({ fps: 0 }));
   // Caps the repaint rate of all terminal output, including plain scrolling
   // output on the normal screen. On a software-rendered host the per-frame
   // cost is fixed, so limiting frames is the only lever that reduces CPU for
   // `cat`/build-log traffic.
-  const renderGateRef = useRef(new FrameRateGate({ fps: 0 }));
+  const renderGateRef = useLazyRef(() => new FrameRateGate({ fps: 0 }));
   // Set by the output-controller effect so the focus effect can tell it to
   // drain backlogged TUI repaints with a bounded cadence after refocus.
   const noteWindowFocusRef = useRef<((focused: boolean) => void) | null>(null);
   // Tracks focus so the adaptive sampler can ignore the unfocused period, when
   // a low repaint rate is an artefact of the background cap, not real workload.
   const windowFocusedRef = useRef(document.hasFocus());
-  const alternateScreenTrackerRef = useRef(new AlternateScreenStateTracker());
+  const alternateScreenTrackerRef = useLazyRef(() => new AlternateScreenStateTracker());
   const handleVisibilityChangeRef = useRef<(() => void) | null>(null);
   const replaceInputCommandRef = useRef<((command: string) => void) | null>(
     null,
@@ -409,7 +413,7 @@ function XTerminal({
   // Shells this session opened on another host/container/distro. Path and
   // command suggestions describe this session's own file system, which is the
   // wrong one while nested.
-  const foreignShellsRef = useRef(new ForeignShellTracker());
+  const foreignShellsRef = useLazyRef(() => new ForeignShellTracker());
 
   const clearSearchSelectionState = useCallback(() => {
     pendingSearchSelectionRef.current = false;
@@ -895,6 +899,15 @@ function XTerminal({
   );
 
   // Search Addon state and handlers
+  const terminalSearchOptions: UseTerminalSearchOptions = useMemo(
+    () => ({
+      terminal: terminalInstance,
+      sessionId,
+      visible: visible && active,
+      performanceMode: performanceMode === "strained" ? "busy" : performanceMode,
+    }),
+    [terminalInstance, sessionId, visible, active, performanceMode],
+  );
   const {
     registerSearchAddon,
     showSearchBar,
@@ -912,12 +925,7 @@ function XTerminal({
     handleSearchNext,
     handleSearchPrev,
     handleCloseSearch,
-  } = useTerminalSearch(terminalRef, {
-    terminal: terminalInstance,
-    sessionId,
-    visible: visible && active,
-    performanceMode: performanceMode === "strained" ? "busy" : performanceMode,
-  });
+  } = useTerminalSearch(terminalRef, terminalSearchOptions);
 
   // Shell integration state
   const { shellIntegrationRef } = useShellIntegration();

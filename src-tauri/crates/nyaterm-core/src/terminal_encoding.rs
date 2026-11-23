@@ -126,7 +126,16 @@ pub fn prepare_terminal_write_input(
     if backspace_as_bs {
         remap_del_to_bs(&mut data);
     }
+    // The common case (UTF-8, no remap needed) can consume the owned buffer
+    // directly instead of allocating a second copy via encode_terminal_input.
+    if encoding_is_utf8(encoding) {
+        return data;
+    }
     encode_terminal_input(&data, encoding)
+}
+
+fn encoding_is_utf8(encoding: &str) -> bool {
+    terminal_encoding(encoding) == UTF_8
 }
 
 fn ansi_sequence_end(data: &[u8], start: usize) -> usize {

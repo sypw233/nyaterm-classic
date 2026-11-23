@@ -310,6 +310,21 @@ function PaneNodeView({
   }
   const isSftpOnly = !splitNode && observedSftpRef.current.enabled;
 
+  // Stable wrappers: inlining these into each pane's props creates new function
+  // identities on every render, defeating the memo on PaneXTerminal/RDP/VNC
+  // hosts and re-rendering the whole terminal on unrelated context updates.
+  const tabId = tab.id;
+  const paneId = node.id;
+  const handleDisconnectedClose = useCallback(() => {
+    void onDisconnectedCloseRequested?.(tabId, paneId);
+  }, [onDisconnectedCloseRequested, tabId, paneId]);
+  const handleConnectionError = useCallback(
+    (errorSessionId: string, error: string) => {
+      onConnectionError?.(tabId, paneId, errorSessionId, error);
+    },
+    [onConnectionError, tabId, paneId],
+  );
+
   useEffect(() => {
     if (!isSftpOnly || !sessionId) return;
     setClosedSftpSessionId(null);
@@ -488,21 +503,15 @@ function PaneNodeView({
             pane={node}
             active={isActive}
             visible={visible}
-            onConnectionError={(sessionId, error) =>
-              onConnectionError?.(tab.id, node.id, sessionId, error)
-            }
+            onConnectionError={handleConnectionError}
           />
         ) : (
           <VncPaneHost
             pane={node}
             active={isActive}
             visible={visible}
-            onDisconnectedCloseRequested={() =>
-              void onDisconnectedCloseRequested?.(tab.id, node.id)
-            }
-            onConnectionError={(sessionId, error) =>
-              onConnectionError?.(tab.id, node.id, sessionId, error)
-            }
+            onDisconnectedCloseRequested={handleDisconnectedClose}
+            onConnectionError={handleConnectionError}
           />
         )
       ) : isSftpOnly ? (
@@ -555,12 +564,8 @@ function PaneNodeView({
                 connectionId={node.connectionId}
                 temporaryConfig={node.temporaryConfig}
                 onReconnected={onReconnected}
-                onDisconnectedCloseRequested={() =>
-                  void onDisconnectedCloseRequested?.(tab.id, node.id)
-                }
-                onConnectionError={(sessionId, error) =>
-                  onConnectionError?.(tab.id, node.id, sessionId, error)
-                }
+                onDisconnectedCloseRequested={handleDisconnectedClose}
+                onConnectionError={handleConnectionError}
                 syncGroups={syncGroups}
                 broadcastToAll={broadcastToAll}
                 sessionInfoById={sessionInfoById}

@@ -27,14 +27,38 @@ interface SerializedTerminalSnapshot {
   captureEndLine: number;
 }
 
-const snapshotUtf8Encoder = new TextEncoder();
+/**
+ * Count UTF-8 bytes without allocating an encoded copy. The old
+ * `encoder.encode(text).length` allocated a full Uint8Array for every retry
+ * while probing snapshot size (up to 2 MB × ~12 halvings).
+ */
+function utf8ByteLength(text: string): number {
+  let bytes = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    const code = text.charCodeAt(i);
+    if (code < 0x80) {
+      bytes += 1;
+    } else if (code < 0x800) {
+      bytes += 2;
+    } else if (code >= 0xd800 && code <= 0xdbff && i + 1 < text.length) {
+      const low = text.charCodeAt(i + 1);
+      if (low >= 0xdc00 && low <= 0xdfff) {
+        bytes += 4; // valid surrogate pair
+        i += 1;
+      } else {
+        bytes += 3; // unpaired high surrogate (replacement char)
+      }
+    } else if (code >= 0xdc00 && code <= 0xdfff) {
+      bytes += 3; // unpaired low surrogate
+    } else {
+      bytes += 3;
+    }
+  }
+  return bytes;
+}
 
 export function createOutputQueue(): OutputQueue {
   return { chunks: [], headIndex: 0, bytes: 0 };
-}
-
-function utf8ByteLength(text: string): number {
-  return snapshotUtf8Encoder.encode(text).length;
 }
 
 function utf8BytesForCodePoint(codePoint: number): number {
@@ -228,17 +252,36 @@ export function writeTextInFrames(terminal: Terminal, text: string): Promise<voi
   let remaining: QueuedOutputChunk = { data: text, bytes: utf8ByteLength(text) };
 
   return new Promise((resolve) => {
-    const writeNext = () => {
+    const writeOne = (): boolean => {
+      if (!remaining.data) return false;
+      const [head, tail] = splitOutputChunk(remaining, maxBytes);
+      remaining = tail;
+      terminal.write(head.data);
+      return true;
+    };
+
+    // Write the first chunk synchronously so snapshot replay starts immediately
+    // instead of waiting one animation frame before showing anything.
+    writeOne();
+
+    const writeFrame = () => {
       if (!remaining.data) {
         resolve();
         return;
       }
-
-      const [head, tail] = splitOutputChunk(remaining, maxBytes);
-      remaining = tail;
-      terminal.write(head.data, () => requestAnimationFrame(writeNext));
+      // Drain several chunks per frame within a short budget. One RAF per
+      // 32 KB chunk made a 2 MB snapshot take ~64 frames (~1 s at 60 fps).
+      const deadline = performance.now() + 8;
+      do {
+        if (!writeOne()) break;
+      } while (remaining.data && performance.now() < deadline);
+      requestAnimationFrame(writeFrame);
     };
 
-    requestAnimationFrame(writeNext);
+    if (remaining.data) {
+      requestAnimationFrame(writeFrame);
+    } else {
+      resolve();
+    }
   });
 }

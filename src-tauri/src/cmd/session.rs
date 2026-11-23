@@ -1030,6 +1030,7 @@ pub async fn write_to_session_batch(
         ));
     }
 
+    let mut commands = Vec::with_capacity(inputs.len());
     for input in inputs {
         if let Some(command) = input.register_submission.as_deref() {
             let trimmed = command.trim();
@@ -1042,29 +1043,25 @@ pub async fn write_to_session_batch(
         let origin = input.origin.unwrap_or(InputOrigin::Keyboard);
         let sensitivity = input.sensitivity.unwrap_or_default();
         let automated = !matches!(origin, InputOrigin::Keyboard | InputOrigin::SyncInput);
-        let result = state
-            .send_command(
-                &session_id,
-                SessionCommand::Write {
-                    data: input.data.into_bytes(),
-                    raw: false,
-                    automated,
-                    origin,
-                    sensitivity,
-                },
-            )
-            .await;
-        if let Err(error) = result {
-            tracing::warn!(
-                session_id = %session_id,
-                error = %error,
-                reason = "batch_input_rejected",
-                "Terminal input batch entry rejected"
-            );
-            return Err(error);
-        }
+        commands.push(SessionCommand::Write {
+            data: input.data.into_bytes(),
+            raw: false,
+            automated,
+            origin,
+            sensitivity,
+        });
     }
-    Ok(())
+
+    // One lock acquisition for the whole batch instead of one per fragment.
+    state.send_commands(&session_id, commands).await.map_err(|error| {
+        tracing::warn!(
+            session_id = %session_id,
+            error = %error,
+            reason = "batch_input_rejected",
+            "Terminal input batch rejected"
+        );
+        error
+    })
 }
 
 #[tauri::command]

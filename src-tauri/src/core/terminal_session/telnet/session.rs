@@ -466,11 +466,28 @@ async fn telnet_session_task(
                                 }
                             }
                             let send_data = prepare_terminal_write_input(data, &encoding, false, false);
-                            for chunk in split_write_chunks(&send_data, config.force_character_at_a_time) {
-                                if let Err(e) = writer.write_all(&chunk).await {
-                                    write_failed = Some(e);
-                                    break;
+                            if config.force_character_at_a_time {
+                                // Iterate UTF-8 character boundaries without allocating one
+                                // Vec<u8> per character (the old split_write_chunks path).
+                                match std::str::from_utf8(&send_data) {
+                                    Ok(text) => {
+                                        for ch in text.chars() {
+                                            let mut buf = [0u8; 4];
+                                            let chunk = ch.encode_utf8(&mut buf).as_bytes();
+                                            if let Err(e) = writer.write_all(chunk).await {
+                                                write_failed = Some(e);
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    Err(_) => {
+                                        if let Err(e) = writer.write_all(&send_data).await {
+                                            write_failed = Some(e);
+                                        }
+                                    }
                                 }
+                            } else if let Err(e) = writer.write_all(&send_data).await {
+                                write_failed = Some(e);
                             }
                         }
 

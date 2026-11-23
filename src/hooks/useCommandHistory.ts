@@ -146,6 +146,14 @@ export function useCommandHistory(
   const selectedIndexRef = useRef(-1);
   const showSuggestionsRef = useRef(false);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Reading getBoundingClientRect() forces a synchronous layout. One search
+  // publishes twice (known results + path completion), so cache the screen
+  // rect briefly to collapse those into one layout read.
+  const screenRectCacheRef = useRef<{
+    element: Element | null;
+    at: number;
+    rect: DOMRect;
+  } | null>(null);
   const enabledRef = useRef(suggestionsEnabled);
   // Gate for the word provider. Disabling it restores the pre-existing
   // whole-line-only behaviour without touching the other providers.
@@ -206,7 +214,19 @@ export function useCommandHistory(
       const screenEl = terminal.element?.querySelector(".xterm-screen");
       if (!screenEl) return { top: 0, left: 0 };
 
-      const screenRect = screenEl.getBoundingClientRect();
+      const now = Date.now();
+      let cached = screenRectCacheRef.current;
+      let screenRect: DOMRect;
+      if (
+        cached &&
+        cached.element === screenEl &&
+        now - cached.at < 250
+      ) {
+        screenRect = cached.rect;
+      } else {
+        screenRect = screenEl.getBoundingClientRect();
+        screenRectCacheRef.current = { element: screenEl, at: now, rect: screenRect };
+      }
 
       return {
         top: screenRect.top + (cursorY + 1) * cellHeight,
