@@ -997,6 +997,76 @@ pub async fn write_to_session(
     result
 }
 
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BatchedSessionInput {
+    data: String,
+    origin: Option<InputOrigin>,
+    sensitivity: Option<InputSensitivity>,
+    /// Command to register as a submitted command on the backend before the
+    /// write is delivered. Only meaningful for the entry carrying Enter.
+    register_submission: Option<String>,
+}
+
+/// Submit several terminal input fragments in one IPC round trip.
+///
+/// This is used by the keyboard batcher to collapse the rapid `onData` events
+/// produced while typing or holding a key. Control characters that must not be
+/// delayed are flushed immediately by the caller and never reach a batch.
+#[tauri::command]
+pub async fn write_to_session_batch(
+    state: tauri::State<'_, Arc<SessionManager>>,
+    session_id: String,
+    inputs: Vec<BatchedSessionInput>,
+) -> AppResult<()> {
+    // Keep a hard bound so a malformed caller cannot hammer a session loop.
+    const MAX_BATCH_INPUTS: usize = 256;
+    if inputs.is_empty() {
+        return Ok(());
+    }
+    if inputs.len() > MAX_BATCH_INPUTS {
+        return Err(AppError::Config(
+            "Terminal input batch exceeds the allowed size".to_string(),
+        ));
+    }
+
+    for input in inputs {
+        if let Some(command) = input.register_submission.as_deref() {
+            let trimmed = command.trim();
+            if !trimmed.is_empty() {
+                state
+                    .register_command_submission(&session_id, trimmed.to_string())
+                    .await;
+            }
+        }
+        let origin = input.origin.unwrap_or(InputOrigin::Keyboard);
+        let sensitivity = input.sensitivity.unwrap_or_default();
+        let automated = !matches!(origin, InputOrigin::Keyboard | InputOrigin::SyncInput);
+        let result = state
+            .send_command(
+                &session_id,
+                SessionCommand::Write {
+                    data: input.data.into_bytes(),
+                    raw: false,
+                    automated,
+                    origin,
+                    sensitivity,
+                },
+            )
+            .await;
+        if let Err(error) = result {
+            tracing::warn!(
+                session_id = %session_id,
+                error = %error,
+                reason = "batch_input_rejected",
+                "Terminal input batch entry rejected"
+            );
+            return Err(error);
+        }
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn write_bytes_to_session(
     state: tauri::State<'_, Arc<SessionManager>>,

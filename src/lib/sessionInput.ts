@@ -47,7 +47,7 @@ export type InputOrigin =
 
 export type InputSensitivity = "normal" | "secret";
 
-function inferPreview(data: string): SessionInputPreview {
+export function inferSessionInputPreview(data: string): SessionInputPreview {
   return { kind: "data", data };
 }
 
@@ -200,7 +200,7 @@ export async function sendSessionInput(
   data: string,
   options: SendSessionInputOptions = {},
 ): Promise<void> {
-  const preview = options.preview === undefined ? inferPreview(data) : options.preview;
+  const preview = options.preview === undefined ? inferSessionInputPreview(data) : options.preview;
   if (preview) {
     emitSessionInputPreview(sessionId, preview);
   }

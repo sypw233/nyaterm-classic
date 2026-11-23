@@ -291,6 +291,7 @@ pub fn run() {
             cmd::session::cancel_session_creation,
             cmd::session::list_serial_ports,
             cmd::session::write_to_session,
+            cmd::session::write_to_session_batch,
             cmd::session::write_bytes_to_session,
             cmd::session::get_session_encoding,
             cmd::session::set_session_encoding,

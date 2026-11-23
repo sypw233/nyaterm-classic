@@ -65,6 +65,7 @@ import {
   sendSessionInput,
   sendSessionInputWithSync,
 } from "@/lib/sessionInput";
+import { TerminalInputBatcher } from "@/lib/terminalInputBatcher";
 import { buildWordCompletionKeystrokes } from "@/lib/wordCompletion";
 import { registerTerminalContextProvider } from "@/lib/terminalContext";
 import {
@@ -364,6 +365,12 @@ function XTerminal({
   const onConnectionErrorRef = useRef(onConnectionError);
   const sessionIdRef = useRef(sessionId);
   const syncPeerSessionIdsRef = useRef(syncPeerSessionIds);
+  // Coalesces rapid keyboard onData events into one IPC round trip on Desktop.
+  // Lazily created per session id so reconnects get a fresh batcher.
+  const inputBatcherRef = useRef<{
+    sessionId: string;
+    batcher: TerminalInputBatcher;
+  } | null>(null);
   const visibleRef = useRef(visible);
   const suspendHibernationRef = useRef(suspendHibernation);
   const activeRef = useRef(active);
@@ -1526,14 +1533,30 @@ function XTerminal({
       if (shouldBlockXTerminalData(appLockedRef.current, origin)) {
         return Promise.resolve();
       }
-      const peers = syncPeerSessionIdsRef.current;
-      if (origin === "keyboard" && peers && peers.length > 0) {
-        return sendSessionInputWithSync(sessionId, data, peers, {
-          preview: null,
-          registerSubmission: command,
-          origin,
-        }).catch(() => {});
+      if (origin === "keyboard") {
+        let entry = inputBatcherRef.current;
+        if (!entry || entry.sessionId !== sessionId) {
+          entry?.batcher.dispose();
+          entry = {
+            sessionId,
+            batcher: new TerminalInputBatcher({
+              sessionId,
+              peerSessionIds: syncPeerSessionIdsRef.current ?? [],
+              getPeerSessionIds: () => syncPeerSessionIdsRef.current,
+            }),
+          };
+          inputBatcherRef.current = entry;
+        }
+        return entry.batcher
+          .enqueue(data, {
+            preview: null,
+            registerSubmission: command,
+            origin,
+          })
+          .catch(() => {});
       }
+      // Terminal responses (DA, focus, bracketed-paste acks) must stay
+      // immediate; they are small and latency-sensitive.
       return sendSessionInput(sessionId, data, {
         preview: null,
         registerSubmission: command,
@@ -3114,6 +3137,10 @@ function XTerminal({
 
     return () => {
       disposed = true;
+      // Flush any keyboard fragments still coalescing so no keystroke is lost
+      // when a terminal tab is closed or rebuilt.
+      inputBatcherRef.current?.batcher.dispose();
+      inputBatcherRef.current = null;
       handleVisibilityChangeRef.current = null;
       const cleanupDetachedEpoch = detachedHibernateEpochRef.current;
       const isHibernateRendererCleanup =

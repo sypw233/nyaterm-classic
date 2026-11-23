@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 This changelog is inferred from release bump commits in git history (for example `chore: bump version to vX.Y.Z`) and grouped by Conventional Commit type.
 
+## [Unreleased]
+
+### Performance
+
+- **terminal:** Coalesce rapid keyboard input fragments into one IPC round trip
+  on Desktop. A short microtask window merges consecutive `onData` events, while
+  Enter, Ctrl+C, Ctrl+D, ESC and other control bytes still flush immediately so
+  interactive latency and terminal responses are unchanged. Web keeps its
+  per-fragment WebSocket path.
+- **terminal:** Reuse a module-level constant for the global shortcuts swallowed
+  by the terminal key handler instead of rebuilding the array on every keydown.
+
 ## [1.3.6] - 2026-11-20
 
 A feature release that brings per-connection configuration to the 1.x line and

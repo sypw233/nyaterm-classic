@@ -30,6 +30,38 @@ import {
 const BACKSPACE_INPUT = "\x7f";
 const CTRL_U_INPUT = "\x15";
 
+/**
+ * Global shortcuts swallowed by the terminal key handler so they never reach
+ * the shell. Kept as a module constant; rebuilding this array on every keydown
+ * (including key repeat) is pure garbage-collector pressure.
+ */
+const SWALLOWED_SHORTCUT_IDS = [
+  "tab.newSession",
+  "tab.openNewSessionMenu",
+  "tab.close",
+  "tab.next",
+  "tab.prev",
+  "tab.newLocalTerminal",
+  "tab.temporarySshLink",
+  "tab.quickSwitch",
+  "tab.duplicateSession",
+  "tab.multiplexSsh",
+  "tab.duplicateSessionWithCommand",
+  "tab.multiplexSshWithCommand",
+  "view.toggleLeftSidebar",
+  "view.toggleRightSidebar",
+  "view.zoomIn",
+  "view.zoomOut",
+  "view.resetZoom",
+  "view.openSettings",
+  "view.openChat",
+  "view.showAllCommands",
+  "terminal.manageSyncGroups",
+  "terminal.showCommandSuggestions",
+  "terminal.recording.toggle",
+  "special.lockScreen",
+] as const;
+
 interface MutableRef<T> {
   current: T;
 }
@@ -628,33 +660,7 @@ export function installXTerminalKeyboardController({
       }
     }
 
-    const swallowIds = [
-      "tab.newSession",
-      "tab.openNewSessionMenu",
-      "tab.close",
-      "tab.next",
-      "tab.prev",
-      "tab.newLocalTerminal",
-      "tab.temporarySshLink",
-      "tab.quickSwitch",
-      "tab.duplicateSession",
-      "tab.multiplexSsh",
-      "tab.duplicateSessionWithCommand",
-      "tab.multiplexSshWithCommand",
-      "view.toggleLeftSidebar",
-      "view.toggleRightSidebar",
-      "view.zoomIn",
-      "view.zoomOut",
-      "view.resetZoom",
-      "view.openSettings",
-      "view.openChat",
-      "view.showAllCommands",
-      "terminal.manageSyncGroups",
-      "terminal.showCommandSuggestions",
-      "terminal.recording.toggle",
-      "special.lockScreen",
-    ];
-    for (const sid of swallowIds) {
+    for (const sid of SWALLOWED_SHORTCUT_IDS) {
       if (matchesKeyEvent(resolveShortcutKeys(sid, kb), e)) {
         e.preventDefault();
         return false;
