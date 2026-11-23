@@ -161,6 +161,14 @@ export class TerminalOutputDrain<TWriteContext = unknown> {
     this.schedule();
   }
 
+  /** Re-evaluate scheduling after an external change such as window focus. */
+  reschedule() {
+    if (this.disposed) return;
+    this.cancelForeground();
+    this.cancelBackground();
+    this.schedule();
+  }
+
   enqueue(chunk: QueuedOutputChunk) {
     if (this.disposed || chunk.bytes <= 0 || !chunk.data) return;
     pushOutputQueue(this.queue, chunk);

@@ -103,6 +103,10 @@ export function createXTerminalOutputController({
   );
   const pressureTracker = new TerminalOutputPressureTracker();
   let recoveryTimer: ReturnType<typeof setTimeout> | null = null;
+  // Bounded catch-up window after focus returns: see getWriteChunkBytes and
+  // getForegroundDelayMs. While it is active, backlogged TUI repaints are
+  // replayed with a small inter-write gap so input and scrolling stay responsive.
+  let catchUpUntil = 0;
   const isAlternateScreenActive = () =>
     terminal.buffer.active.type === "alternate" ||
     alternateScreenTrackerRef.current.isAlternateScreenActive();
@@ -115,7 +119,33 @@ export function createXTerminalOutputController({
     getAlternateScreenMaxFps: () => tuiMaxFpsRef.current,
   });
 
-  const getWriteChunkBytes = () => outputScheduler.getWriteChunkBytes();
+  /**
+   * True briefly after the window regains focus while a TUI still has queued
+   * repaints. The queue check means a terminal with no backlog is never slowed
+   * down, and the time bound means catch-up cannot linger forever.
+   */
+  const isRefocusCatchUpActive = () =>
+    Date.now() < catchUpUntil &&
+    isAlternateScreenActive() &&
+    (outputDrainRef.current?.getQueueBytes() ?? 0) >
+      XTERM_PERFORMANCE_CONFIG.output.lowLatencyFlushBacklogBytes;
+
+  /** Called on window focus transitions so queued repaints drain smoothly. */
+  const noteWindowFocus = (focused: boolean) => {
+    if (focused) {
+      catchUpUntil = Date.now() + XTERM_PERFORMANCE_CONFIG.output.refocusCatchUpWindowMs;
+    } else {
+      catchUpUntil = 0;
+    }
+  };
+
+  const getWriteChunkBytes = () => {
+    const { output } = XTERM_PERFORMANCE_CONFIG;
+    if (isRefocusCatchUpActive() && isAlternateScreenActive()) {
+      return output.refocusCatchUpWriteChunkBytes;
+    }
+    return outputScheduler.getWriteChunkBytes();
+  };
 
   const getRecoveryThresholdBytes = () =>
     visibleRef.current
@@ -205,7 +235,14 @@ export function createXTerminalOutputController({
       // misconfigured gate cannot spam the drain.
       return PAUSED_RETRY_MS;
     }
-    return Math.max(alternateDelay, backgroundDelay, renderDelay);
+    return Math.max(
+      alternateDelay,
+      backgroundDelay,
+      renderDelay,
+      isRefocusCatchUpActive()
+        ? XTERM_PERFORMANCE_CONFIG.output.refocusCatchUpIntervalMs
+        : 0,
+    );
   };
 
   const updateOutputDrainMode = () => {
@@ -408,6 +445,7 @@ export function createXTerminalOutputController({
     maybeRecoverPerformanceMode,
     refreshOutputPressureMode,
     updateOutputDrainMode,
+    noteWindowFocus,
     flushFrameGateAndDrain,
     writeTerminalTextAfterOutputQueue,
     flushQueuedOutputBeforeStatusNotice,

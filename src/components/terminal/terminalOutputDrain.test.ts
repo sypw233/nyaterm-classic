@@ -542,6 +542,30 @@ describe("TerminalOutputDrain", () => {
     expect(writes).toEqual(["alt"]);
   });
 
+  it("reschedule applies a changed foreground delay immediately", async () => {
+    let delayMs = 200;
+    const { drain, flushFrame, timers, writes } = createHarness({
+      getForegroundDelayMs: () => delayMs,
+      writeChunkBytes: 8,
+    });
+
+    drain.setMode("foreground");
+    drain.enqueue({ data: "alt", bytes: 3 });
+    expect([...timers.values()][0]?.at).toBe(200);
+    expect(writes).toEqual([]);
+
+    // Focus returns: the caller drops the unfocused delay and asks the drain
+    // to reschedule. The stale 200ms timer must not delay the first write.
+    delayMs = 0;
+    drain.reschedule();
+    await settle();
+    // The write is now waiting on an animation frame, not a stale timer.
+    expect([...timers.values()].some((t) => t.at === 200)).toBe(false);
+    flushFrame();
+    await settle();
+    expect(writes).toEqual(["alt"]);
+  });
+
   it("acks only bytes completed by write callbacks", async () => {
     const { acks, drain, flushFrame, pendingWriteCallbacks } = createHarness({
       autoCompleteWrites: false,

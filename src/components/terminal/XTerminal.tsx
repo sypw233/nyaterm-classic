@@ -384,6 +384,12 @@ function XTerminal({
   // cost is fixed, so limiting frames is the only lever that reduces CPU for
   // `cat`/build-log traffic.
   const renderGateRef = useRef(new FrameRateGate({ fps: 0 }));
+  // Set by the output-controller effect so the focus effect can tell it to
+  // drain backlogged TUI repaints with a bounded cadence after refocus.
+  const noteWindowFocusRef = useRef<((focused: boolean) => void) | null>(null);
+  // Tracks focus so the adaptive sampler can ignore the unfocused period, when
+  // a low repaint rate is an artefact of the background cap, not real workload.
+  const windowFocusedRef = useRef(document.hasFocus());
   const alternateScreenTrackerRef = useRef(new AlternateScreenStateTracker());
   const handleVisibilityChangeRef = useRef<(() => void) | null>(null);
   const replaceInputCommandRef = useRef<((command: string) => void) | null>(
@@ -764,6 +770,14 @@ function XTerminal({
     });
 
     const timer = window.setInterval(() => {
+      // While unfocused, the repaint rate reflects the background cap rather
+      // than terminal workload. Feeding those low samples would release an
+      // engaged cap, and on refocus it would need two 1s windows to re-engage
+      // while the backlog drains uncapped. Preserve the state instead.
+      if (!windowFocusedRef.current) {
+        rowsInWindow = 0;
+        return;
+      }
       const rowsPerSecond = (rowsInWindow * 1000) / SAMPLE_MS;
       rowsInWindow = 0;
       tuiMaxFpsRef.current = limit.sample(rowsPerSecond);
@@ -791,17 +805,23 @@ function XTerminal({
     const gate = backgroundGateRef.current;
 
     const apply = (focused: boolean) => {
+      const wasFocused = windowFocusedRef.current;
+      windowFocusedRef.current = focused;
+      noteWindowFocusRef.current?.(focused);
+
       if (focused || policy === "none") {
         gate.setPaused(false);
         gate.configure(0);
-        return;
-      }
-      if (policy === "pause") {
+      } else if (policy === "pause") {
         gate.setPaused(true);
-        return;
+      } else {
+        gate.setPaused(false);
+        gate.configure(fps);
       }
-      gate.setPaused(false);
-      gate.configure(fps);
+
+      // Do this after the gate is reconfigured so the next write picks up the
+      // new delay instead of a pending timer armed with the unfocused cadence.
+      if (focused && !wasFocused) outputDrainRef.current?.reschedule();
     };
 
     apply(document.hasFocus());
@@ -2371,6 +2391,7 @@ function XTerminal({
       maybeRecoverPerformanceMode,
       refreshOutputPressureMode,
       updateOutputDrainMode,
+      noteWindowFocus,
       flushFrameGateAndDrain,
       writeTerminalTextAfterOutputQueue,
       flushQueuedOutputBeforeStatusNotice,
@@ -2397,6 +2418,7 @@ function XTerminal({
       backgroundGateRef,
       renderGateRef,
     });
+    noteWindowFocusRef.current = noteWindowFocus;
 
     writeOrderedTerminalStatus = (data: string) => {
       void writeTerminalTextAfterOutputQueue(data);

@@ -58,6 +58,15 @@ export const XTERM_PERFORMANCE_CONFIG = {
     alternateScreenMaxWriteFps: 20,
     /** Backlog threshold before alternate-screen foreground writes are throttled. */
     alternateScreenThrottleBacklogBytes: 32 * 1024,
+    /**
+     * After the window regains focus, queued full-screen repaints are drained
+     * with a bounded cadence and larger chunks for a short window. Without
+     * this, removing the unfocused gate all at once replays a backlog of
+     * expensive repaints back-to-back and blocks input/scrolling for seconds.
+     */
+    refocusCatchUpWindowMs: 3_000,
+    refocusCatchUpIntervalMs: 50,
+    refocusCatchUpWriteChunkBytes: 64 * 1024,
     /** Recovery threshold after overload while visible. */
     visibleRecoveryThresholdBytes: 200_000,
     /** Recovery threshold after overload while hidden. */
