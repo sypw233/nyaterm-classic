@@ -431,11 +431,11 @@ export function SerialForm({
             <div className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/30 px-3 py-2">
               <div className="min-w-0">
                 <Label className="text-xs font-medium text-foreground/80">
-                  {t("connection.serialAiCaptureEcho", "AI capture command echo")}
+                  {t("dialog.serialAiCaptureEcho", "AI capture command echo")}
                 </Label>
                 <p className="mt-0.5 text-[0.6875rem] leading-tight text-muted-foreground">
                   {t(
-                    "connection.serialAiCaptureEchoHint",
+                    "dialog.serialAiCaptureEchoHint",
                     "Let the AI read command output by detecting the device prompt. Turn off to only send commands without reading results.",
                   )}
                 </p>
