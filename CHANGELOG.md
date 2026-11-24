@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 This changelog is inferred from release bump commits in git history (for example `chore: bump version to vX.Y.Z`) and grouped by Conventional Commit type.
 
+## [1.3.9] - 2026-11-24
+
+A small UI polish release for the inline command blocks that AI and MCP
+commands print into the terminal. Not a 2.x sync.
+
+### Changed
+
+- **ai:** Command blocks now open with a titled frame (`source #step`) and show
+  an explicit `INPUT` section containing the command, followed by a labelled
+  `OUTPUT` section and a status footer with success/exit code and a readable
+  duration. Previously the command floated above an unlabelled box, which made
+  input and output hard to tell apart.
+- **ai:** Captured output that uses bare carriage returns for progress (for
+  example `systeminfo` on Windows) is split into separate lines, and lines wider
+  than 100 characters are wrapped, so the box rail and footer stay aligned.
+
 ## [1.3.8] - 2026-11-24
 
 A feature release for AI command approval and update delivery on the 1.x line.
