@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 
 This changelog is inferred from release bump commits in git history (for example `chore: bump version to vX.Y.Z`) and grouped by Conventional Commit type.
 
+## [1.3.8] - 2026-11-24
+
+A feature release for AI command approval and update delivery on the 1.x line.
+Both capabilities are implemented on the Tauri/React stack and are not 2.x syncs.
+
+### Added
+
+- **ai:** The chat panel's execution-policy menu now adjusts the Smart-mode
+  auto-run risk threshold directly (Low/Medium/High/Critical), without opening
+  Settings.
+- **ai:** New optional `AiSettings.agent_auto_allow_command_prefixes` lets users
+  list command prefixes that auto-run in Smart mode. Matching is case-insensitive
+  on the leading command text, and a Critical local assessment always still
+  requires confirmation.
+- **ai:** New optional `AiSettings.agent_risk_reference` chooses how the model
+  and local risk assessments are combined in Smart mode: `strict` (the default,
+  higher of the two), `ai`, or `local`.
+- **updater:** Opt-in background auto-download. When enabled, the silent startup
+  check downloads an available update without installing it and shows a
+  persistent toast offering to restart once ready. Silent failures are logged
+  only. The check-for-updates dialog reuses the shared download state, offers a
+  "Download in background" action, and asks before restarting to install.
+
+### Changed
+
+- **ai:** Agent messages now render the streamed reasoning as the opening
+  thought of the Agent block, followed by steps ordered by `stepIndex`. Each
+  step shows its thought then command, producing thought -> command ->
+  thought -> command order instead of commands above a bottom-stacked thought
+  blob.
+- **ai:** The reasoning box reveals a collapse/expand button on the left on
+  hover while keeping its header trigger.
+- **updater:** Download and install are now separate operations with a
+  process-wide generation guard, so a new check or a closed/reopened dialog
+  cannot be overwritten by stale results. Portable builds keep their staged
+  check/download/apply flow.
+
 ## [1.3.7] - 2026-11-23
 
 A performance release for the terminal on the 1.x line. It reduces IPC round
