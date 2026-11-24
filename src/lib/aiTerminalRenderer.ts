@@ -10,6 +10,8 @@ const RED = "\x1b[38;5;203m";
 const YELLOW = "\x1b[38;5;214m";
 
 const RULE_WIDTH = 36;
+/** Wrap output lines wider than this so they never overrun the │ rail. */
+const MAX_OUTPUT_WIDTH = 100;
 
 function sanitizeCommandForTerminal(command: string): string {
   return command
@@ -18,11 +20,29 @@ function sanitizeCommandForTerminal(command: string): string {
     .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/gu, " ");
 }
 
-function sanitizeOutputLine(line: string): string {
-  return line
-    .replace(/\r/gu, "")
-    .replace(/\x1b/gu, "^[")
-    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/gu, " ");
+/**
+ * Normalize one captured output line for display inside the │ rail.
+ *
+ * Windows tools such as `systeminfo` write progress with bare `\r` (no `\n`),
+ * so a naive `split("\n")` leaves dozens of updates glued into one enormous
+ * line that overruns the box. Split on `\r` as well, then drop empty progress
+ * fragments. Long lines are wrapped so the closing box stays aligned.
+ */
+function normalizeOutputLines(output: string): string[] {
+  const segments = output.split(/\r\n|\r|\n/u);
+  const result: string[] = [];
+  for (const segment of segments) {
+    const clean = segment
+      .replace(/\x1b/gu, "^[")
+      .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/gu, "")
+      .trimEnd();
+    if (clean.trim().length === 0) continue;
+    // Wrap wide lines on character boundaries so the rail stays aligned.
+    for (let start = 0; start < clean.length; start += MAX_OUTPUT_WIDTH) {
+      result.push(clean.slice(start, start + MAX_OUTPUT_WIDTH));
+    }
+  }
+  return result;
 }
 
 function rule(label: string): string {
@@ -58,12 +78,13 @@ export function renderAiCommandEnd(event: Extract<AiCaptureEvent, { type: "comma
     `${DIM}${ACCENT}├─ ${LABEL}OUTPUT${RESET} ${rule("OUTPUT")}${RESET}`,
   ];
 
-  const lines = event.output ? event.output.split("\n") : [];
+  // Backend truncates by \n lines; normalize here too (handles \r progress).
+  const lines = event.output ? normalizeOutputLines(event.output) : [];
   if (lines.length === 0) {
     parts.push(`${rail}   ${DIM}(no output)${RESET}`);
   } else {
     for (const line of lines) {
-      parts.push(`${rail}   ${DIM}${sanitizeOutputLine(line)}${RESET}`);
+      parts.push(`${rail}   ${DIM}${line}${RESET}`);
     }
     if (event.truncated) {
       parts.push(`${rail}   ${YELLOW}… output truncated${RESET}`);

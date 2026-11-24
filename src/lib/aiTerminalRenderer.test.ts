@@ -61,4 +61,31 @@ describe("AI command terminal rendering", () => {
     });
     expect(end).toContain("(no output)");
   });
+
+  it("splits bare carriage-return progress and wraps long lines", () => {
+    const progress = "正在加载操作系统信息...\r正在加载计算机信息...\r主机名: NWVM-051021";
+    const end = renderAiCommandEnd({
+      type: "commandEnd",
+      output: progress,
+      exitCode: 0,
+      durationMs: 2718,
+      truncated: false,
+    });
+    // Each \r segment must become its own railed line, not one glued line.
+    expect(end).toContain("│   正在加载操作系统信息...");
+    expect(end).toContain("│   正在加载计算机信息...");
+    expect(end).toContain("│   主机名: NWVM-051021");
+    expect(end).not.toMatch(/正在加载操作系统信息\.\.\.正在加载计算机信息/);
+
+    const wide = "x".repeat(180);
+    const wrapped = renderAiCommandEnd({
+      type: "commandEnd",
+      output: wide,
+      exitCode: 0,
+      durationMs: 10,
+      truncated: false,
+    });
+    expect(wrapped).toContain(`│   ${"x".repeat(100)}`);
+    expect(wrapped).toContain(`│   ${"x".repeat(80)}`);
+  });
 });
