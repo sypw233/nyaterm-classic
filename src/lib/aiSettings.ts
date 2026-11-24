@@ -716,6 +716,8 @@ export const DEFAULT_AI_SETTINGS: AISettings = {
   agent_background_execution_enabled: false,
   agent_command_execution_mode: "confirm_each",
   agent_smart_auto_execute_max_risk: "low",
+  agent_risk_reference: "strict",
+  agent_auto_allow_command_prefixes: [],
   codex: {
     enabled: false,
     executable_path: null,

@@ -49,14 +49,14 @@ pub use connection::{
     validate_ssh_agent_settings,
 };
 #[allow(unused_imports)]
-pub use default_session::{
-    DefaultSessionSettings, SessionKind, apply_session_defaults, load_default_session_settings,
-    save_default_session_settings,
-};
-#[allow(unused_imports)]
 pub use credential::{
     CredentialsConfig, SavedCredential, load_credential_by_id, load_credentials,
     reorder_credentials, save_credentials, upsert_credential,
+};
+#[allow(unused_imports)]
+pub use default_session::{
+    DefaultSessionSettings, SessionKind, apply_session_defaults, load_default_session_settings,
+    save_default_session_settings,
 };
 #[allow(unused_imports)]
 pub use key::{
@@ -90,17 +90,17 @@ pub use quick_command::{
 #[allow(unused_imports)]
 pub use settings::{
     AI_REQUEST_USER_AGENT_DEFAULT, ActionLinksMatcherSettings, AgentCommandExecutionMode,
-    AiAgentKind, AiApiFormat, AiBackendKind, AiCustomActionConfig, AiHttpHeader, AiMode,
-    AiModelConfigItem, AiModelSource, AiPermissionMode, AiProviderApiProtocol, AiProviderCredential,
-    AiProviderKind, AiProviderProfile, AiProxyMode, AiProxyProtocol, AiProxySettings,
-    AiReasoningEffort, AiSettings, AppSettings, AppearanceSettings, ClaudeCodeIntegrationSettings,
-    CodexIntegrationSettings, CodexThreadMode, ConnectionOverrides, CustomHeaderError,
-    DiagnosticsLogLevel,
-    DiagnosticsSettings, ExternalMcpSessionScope, ExternalMcpSettings, GeneralSettings,
-    InteractionSettings, KeywordHighlightRule, MAX_AI_CUSTOM_HEADERS, MAX_AI_CUSTOM_HEADER_NAME_LEN,
-    MAX_AI_CUSTOM_HEADER_VALUE_LEN, McpTerminalDisplayMode, ProxySettings, RecordingSettings,
-    RiskLevel, SearchEngine, SearchSettings, SecuritySettings, TerminalColorsConfig,
-    TerminalSettings, ThemeColorsConfig, ThemeConfig, TransferSettings, TranslationSettings,
+    AgentRiskReference, AiAgentKind, AiApiFormat, AiBackendKind, AiCustomActionConfig,
+    AiHttpHeader, AiMode, AiModelConfigItem, AiModelSource, AiPermissionMode,
+    AiProviderApiProtocol, AiProviderCredential, AiProviderKind, AiProviderProfile, AiProxyMode,
+    AiProxyProtocol, AiProxySettings, AiReasoningEffort, AiSettings, AppSettings,
+    AppearanceSettings, ClaudeCodeIntegrationSettings, CodexIntegrationSettings, CodexThreadMode,
+    ConnectionOverrides, CustomHeaderError, DiagnosticsLogLevel, DiagnosticsSettings,
+    ExternalMcpSessionScope, ExternalMcpSettings, GeneralSettings, InteractionSettings,
+    KeywordHighlightRule, MAX_AI_CUSTOM_HEADER_NAME_LEN, MAX_AI_CUSTOM_HEADER_VALUE_LEN,
+    MAX_AI_CUSTOM_HEADERS, McpTerminalDisplayMode, ProxySettings, RecordingSettings, RiskLevel,
+    SearchEngine, SearchSettings, SecuritySettings, TerminalColorsConfig, TerminalSettings,
+    ThemeColorsConfig, ThemeConfig, TransferSettings, TranslationSettings,
     ai_model_id_for_credential, ai_model_id_for_provider, custom_header_pairs, decrypt_ai_settings,
     encrypt_ai_settings, is_valid_custom_header_name, is_valid_custom_header_value,
     load_app_settings, mask_ai_settings, merge_masked_ai_settings, normalize_ai_settings,

@@ -643,9 +643,37 @@ fn assess_agent_command_risk(parsed: &AgentLlmResponse, command: &str) -> RiskAs
     }
 }
 
+/// Combine the AI and local risk assessments according to the user's chosen
+/// reference mode. "Strict" keeps the original conservative max() behaviour.
+fn combined_risk(settings: &AiSettings, assessment: &RiskAssessment) -> RiskLevel {
+    match settings.agent_risk_reference {
+        crate::config::AgentRiskReference::Ai => assessment.model_risk.clone(),
+        crate::config::AgentRiskReference::Local => assessment.local_risk.clone(),
+        crate::config::AgentRiskReference::Strict => assessment.effective_risk.clone(),
+    }
+}
+
+/// Whether the command starts with one of the user's auto-allow prefixes.
+/// Matching is on the leading command token(s) only; the local classifier still
+/// vetoes Critical commands.
+fn matches_auto_allow_prefix(settings: &AiSettings, command: &str) -> bool {
+    let normalized = command.trim_start();
+    settings
+        .agent_auto_allow_command_prefixes
+        .iter()
+        .any(|prefix| {
+            let prefix = prefix.trim();
+            !prefix.is_empty()
+                && normalized
+                    .to_ascii_lowercase()
+                    .starts_with(&prefix.to_ascii_lowercase())
+        })
+}
+
 fn decide_agent_command_execution(
     settings: &AiSettings,
     assessment: &RiskAssessment,
+    command: &str,
 ) -> (ApprovalDecision, Option<AgentApprovalReasonCode>) {
     match settings.agent_command_execution_mode {
         AgentCommandExecutionMode::ConfirmEach => (
@@ -654,13 +682,18 @@ fn decide_agent_command_execution(
         ),
         AgentCommandExecutionMode::Auto => (ApprovalDecision::Auto, None),
         AgentCommandExecutionMode::Smart => {
+            // A Critical command always needs approval, even if the user listed
+            // its prefix or the selected reference would downgrade it.
             if assessment.effective_risk == RiskLevel::Critical {
                 return (
                     ApprovalDecision::NeedsApproval,
                     Some(AgentApprovalReasonCode::CriticalRisk),
                 );
             }
-            if assessment.effective_risk <= settings.agent_smart_auto_execute_max_risk {
+            let reference_risk = combined_risk(settings, assessment);
+            let within_threshold = reference_risk <= settings.agent_smart_auto_execute_max_risk;
+            let allowlisted = matches_auto_allow_prefix(settings, command);
+            if within_threshold || allowlisted {
                 (ApprovalDecision::Auto, None)
             } else {
                 (
@@ -831,7 +864,7 @@ pub(super) async fn run_external_agent_command_step(
     let command_target =
         resolve_agent_command_target(request, parsed.target_terminal_session_id.as_deref())?;
     let (decision, approval_reason_code) = if request.agent_kind == AiAgentKind::Nyaterm {
-        decide_agent_command_execution(settings, &assessment)
+        decide_agent_command_execution(settings, &assessment, &command)
     } else {
         decide_external_agent_command_execution(&request.permission_mode, &assessment)
     };
@@ -1571,7 +1604,7 @@ mod tests {
         settings.agent_smart_auto_execute_max_risk = RiskLevel::Low;
         let assessment = assess_agent_command_risk(&parsed_response(Some(RiskLevel::Low)), "ls");
         assert_eq!(
-            decide_agent_command_execution(&settings, &assessment).0,
+            decide_agent_command_execution(&settings, &assessment, "ls").0,
             ApprovalDecision::Auto
         );
     }
@@ -1587,14 +1620,65 @@ mod tests {
             "rm -rf /tmp/build-cache",
         );
         assert_eq!(
-            decide_agent_command_execution(&settings, &medium_threshold).0,
+            decide_agent_command_execution(&settings, &medium_threshold, "ls").0,
             ApprovalDecision::Auto
         );
 
         let critical =
             assess_agent_command_risk(&parsed_response(Some(RiskLevel::Low)), "rm -rf /");
         assert_eq!(
-            decide_agent_command_execution(&settings, &critical).0,
+            decide_agent_command_execution(&settings, &critical, "rm -rf /").0,
+            ApprovalDecision::NeedsApproval
+        );
+    }
+
+    #[test]
+    fn risk_reference_prefers_the_selected_assessment() {
+        // AI says low, local says high.
+        let high_local = assess_agent_command_risk(
+            &parsed_response(Some(RiskLevel::Low)),
+            "sudo systemctl restart nginx",
+        );
+        let mut settings = AiSettings::default();
+        settings.agent_command_execution_mode = AgentCommandExecutionMode::Smart;
+        settings.agent_smart_auto_execute_max_risk = RiskLevel::Low;
+
+        settings.agent_risk_reference = crate::config::AgentRiskReference::Strict;
+        assert_eq!(
+            decide_agent_command_execution(&settings, &high_local, "sudo systemctl restart nginx")
+                .0,
+            ApprovalDecision::NeedsApproval
+        );
+
+        settings.agent_risk_reference = crate::config::AgentRiskReference::Ai;
+        assert_eq!(
+            decide_agent_command_execution(&settings, &high_local, "sudo systemctl restart nginx")
+                .0,
+            ApprovalDecision::Auto
+        );
+    }
+
+    #[test]
+    fn auto_allow_prefix_bypasses_threshold_but_not_critical() {
+        let mut settings = AiSettings::default();
+        settings.agent_command_execution_mode = AgentCommandExecutionMode::Smart;
+        settings.agent_smart_auto_execute_max_risk = RiskLevel::Low;
+        settings.agent_auto_allow_command_prefixes = vec!["kubectl get".into()];
+
+        let high = assess_agent_command_risk(
+            &parsed_response(Some(RiskLevel::High)),
+            "kubectl get pods -A",
+        );
+        assert_eq!(
+            decide_agent_command_execution(&settings, &high, "kubectl get pods -A").0,
+            ApprovalDecision::Auto
+        );
+
+        let critical =
+            assess_agent_command_risk(&parsed_response(Some(RiskLevel::High)), "rm -rf /");
+        settings.agent_auto_allow_command_prefixes = vec!["rm ".into()];
+        assert_eq!(
+            decide_agent_command_execution(&settings, &critical, "rm -rf /").0,
             ApprovalDecision::NeedsApproval
         );
     }
@@ -1606,13 +1690,13 @@ mod tests {
         let mut settings = AiSettings::default();
         settings.agent_command_execution_mode = AgentCommandExecutionMode::ConfirmEach;
         assert_eq!(
-            decide_agent_command_execution(&settings, &assessment).0,
+            decide_agent_command_execution(&settings, &assessment, "ls").0,
             ApprovalDecision::NeedsApproval
         );
 
         settings.agent_command_execution_mode = AgentCommandExecutionMode::Auto;
         assert_eq!(
-            decide_agent_command_execution(&settings, &assessment).0,
+            decide_agent_command_execution(&settings, &assessment, "ls").0,
             ApprovalDecision::Auto
         );
     }
@@ -1999,7 +2083,7 @@ pub(super) async fn run_agent_stream(
                     }
                 };
                 let (decision, approval_reason_code) =
-                    decide_agent_command_execution(&settings, &assessment);
+                    decide_agent_command_execution(&settings, &assessment, &command);
 
                 tracing::info!(
                     stream_id = %stream_id,

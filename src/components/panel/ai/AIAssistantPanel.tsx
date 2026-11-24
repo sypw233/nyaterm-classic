@@ -85,6 +85,7 @@ import type {
   QuickCommand,
   QuickCommandCategory,
   QuickCommandsConfig,
+  RiskLevel,
   SessionInfo,
   SessionPane,
 } from "@/types/global";
@@ -1375,6 +1376,15 @@ function AIAssistantPanel({ activePane, activeConnection, intent }: AIAssistantP
     [updateDraftForScope],
   );
 
+  const updateAgentMaxRisk = useCallback(
+    (risk: RiskLevel) => {
+      updateAppSettings({
+        ai: { ...aiSettings, agent_smart_auto_execute_max_risk: risk },
+      });
+    },
+    [aiSettings, updateAppSettings],
+  );
+
   const updateAgentExecutionMode = useCallback(
     (nextMode: AIAgentCommandExecutionMode) => {
       updateAppSettings({
@@ -1569,6 +1579,29 @@ function AIAssistantPanel({ activePane, activeConnection, intent }: AIAssistantP
             t("ai.executionModeSmart"),
             t("ai.executionModeSmartDesc"),
           )}
+          {agentExecutionMode === "smart" ? (
+            <div className="mx-1 my-1 rounded border border-border/70 bg-muted/30 px-2 py-1.5">
+              <div className="mb-1 text-[0.6875rem] font-medium text-muted-foreground">
+                {t("ai.smartAutoExecuteMaxRisk")}
+              </div>
+              <div className="grid grid-cols-4 gap-1">
+                {(["low", "medium", "high", "critical"] as RiskLevel[]).map((risk) => (
+                  <button
+                    key={risk}
+                    type="button"
+                    className={`rounded px-1 py-1 text-[0.6875rem] transition-colors ${
+                      (aiSettings.agent_smart_auto_execute_max_risk ?? "low") === risk
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-muted"
+                    }`}
+                    onClick={() => updateAgentMaxRisk(risk)}
+                  >
+                    {t(`ai.risk${risk[0].toUpperCase()}${risk.slice(1)}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="-mx-1 my-1 h-px bg-border" />
           {renderExecutionModeItem(
             "auto",
@@ -1788,16 +1821,24 @@ function AIAssistantPanel({ activePane, activeConnection, intent }: AIAssistantP
             ) : (
               <div className="space-y-3">
                 {messages.map((message) => {
+                  const isAssistant = message.role === "assistant";
                   const messageSteps =
-                    message.role === "assistant" ? (agentStepsMap[message.id] ?? []) : [];
+                    isAssistant ? (agentStepsMap[message.id] ?? []).slice().sort((a, b) => a.stepIndex - b.stepIndex) : [];
 
                   return (
                     <div key={message.id} className="space-y-3">
-                      {messageSteps.length > 0 ? (
+                      {isAssistant && (messageSteps.length > 0 || message.reasoningContent) ? (
                         <div className="rounded-md border border-border/70 bg-muted/20 p-3 text-xs leading-5">
                           <div className="mb-3 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                             Agent
                           </div>
+                          {/* Standalone reasoning streamed before the steps is
+                              the opening thought; each step below then shows
+                              its own thought followed by its command. */}
+                          <AssistantReasoning
+                            message={message}
+                            loading={loading && streamingAssistantId === message.id}
+                          />
                           {messageSteps.map((step) => (
                             <AgentStepView
                               key={step.stepIndex}
@@ -1817,7 +1858,7 @@ function AIAssistantPanel({ activePane, activeConnection, intent }: AIAssistantP
                         <div className="mb-2 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                           {message.role === "user" ? "User" : "AI"}
                         </div>
-                        {message.role === "assistant" ? (
+                        {isAssistant && messageSteps.length === 0 && !message.reasoningContent ? (
                           <AssistantReasoning
                             message={message}
                             loading={loading && streamingAssistantId === message.id}

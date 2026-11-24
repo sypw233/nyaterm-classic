@@ -1550,6 +1550,7 @@ export interface DiagnosticsSettings {
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 export type AIMode = "ask" | "agent";
 export type AIAgentCommandExecutionMode = "confirm_each" | "smart" | "auto";
+export type AIAgentRiskReference = "strict" | "ai" | "local";
 export type AIAgentKind = "nyaterm" | "codex" | "claude_code";
 export type AIPermissionMode = "observer" | "confirm" | "auto" | "full_access";
 export type ExternalMcpSessionScope = "current_window" | "all_sessions";
@@ -1710,6 +1711,8 @@ export interface AISettings {
   agent_background_execution_enabled: boolean;
   agent_command_execution_mode: AIAgentCommandExecutionMode;
   agent_smart_auto_execute_max_risk: RiskLevel;
+  agent_risk_reference?: AIAgentRiskReference;
+  agent_auto_allow_command_prefixes?: string[];
   codex: CodexIntegrationSettings;
   claude_code: ClaudeCodeIntegrationSettings;
   external_mcp: ExternalMcpSettings;

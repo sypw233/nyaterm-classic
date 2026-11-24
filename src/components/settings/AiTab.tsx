@@ -469,7 +469,42 @@ export function AiGeneralTab() {
             <SelectItem value="high">{t("ai.riskHigh")}</SelectItem>
             <SelectItem value="critical">{t("ai.riskCritical")}</SelectItem>
           </SettingSelect>
+          <SettingSelect
+            label={t("ai.riskReference")}
+            desc={t("ai.riskReferenceDesc")}
+            value={ai.agent_risk_reference ?? "strict"}
+            onValueChange={(value) =>
+              update({ agent_risk_reference: value as AISettings["agent_risk_reference"] })
+            }
+          >
+            <SelectItem value="strict">{t("ai.riskReferenceStrict")}</SelectItem>
+            <SelectItem value="ai">{t("ai.riskReferenceAi")}</SelectItem>
+            <SelectItem value="local">{t("ai.riskReferenceLocal")}</SelectItem>
+          </SettingSelect>
         </SettingFieldGrid>
+        <div className="space-y-3">
+          <Label htmlFor="agent-auto-allow-prefixes">
+            {t("ai.autoAllowCommandPrefixes")}
+          </Label>
+          <Textarea
+            id="agent-auto-allow-prefixes"
+            aria-describedby="agent-auto-allow-prefixes-desc"
+            rows={4}
+            placeholder={t("ai.autoAllowCommandPrefixesPlaceholder")}
+            value={(ai.agent_auto_allow_command_prefixes ?? []).join("\n")}
+            onChange={(event) =>
+              update({
+                agent_auto_allow_command_prefixes: event.target.value
+                  .split("\n")
+                  .map((line) => line.trim())
+                  .filter(Boolean),
+              })
+            }
+          />
+          <p id="agent-auto-allow-prefixes-desc" className="text-xs text-muted-foreground">
+            {t("ai.autoAllowCommandPrefixesDesc")}
+          </p>
+        </div>
         <SettingFieldGrid>
           <SettingNumberInput
             label={t("ai.agentMaxSteps")}

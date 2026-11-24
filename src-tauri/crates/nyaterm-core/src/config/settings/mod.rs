@@ -14,9 +14,9 @@ mod transfer;
 mod translation;
 
 pub use ai::{
-    AI_REQUEST_USER_AGENT_DEFAULT, AgentCommandExecutionMode, AiAgentKind, AiApiFormat,
-    AiBackendKind, AiCustomActionConfig, AiHttpHeader, AiMode, AiModelConfigItem, AiModelSource,
-    AiPermissionMode, AiProviderApiProtocol, AiProviderCredential, AiProviderKind,
+    AI_REQUEST_USER_AGENT_DEFAULT, AgentCommandExecutionMode, AgentRiskReference, AiAgentKind,
+    AiApiFormat, AiBackendKind, AiCustomActionConfig, AiHttpHeader, AiMode, AiModelConfigItem,
+    AiModelSource, AiPermissionMode, AiProviderApiProtocol, AiProviderCredential, AiProviderKind,
     AiProviderProfile, AiProxyMode, AiProxyProtocol, AiProxySettings, AiReasoningEffort,
     AiSettings, ClaudeCodeIntegrationSettings, CodexIntegrationSettings, CodexThreadMode,
     ExternalMcpSessionScope, ExternalMcpSettings, McpTerminalDisplayMode, RiskLevel,
@@ -24,8 +24,8 @@ pub use ai::{
     mask_ai_settings, merge_masked_ai_settings, normalize_ai_settings,
 };
 pub use ai_headers::{
-    CustomHeaderError, MAX_AI_CUSTOM_HEADERS, MAX_AI_CUSTOM_HEADER_NAME_LEN,
-    MAX_AI_CUSTOM_HEADER_VALUE_LEN, custom_header_pairs, is_valid_custom_header_name,
+    CustomHeaderError, MAX_AI_CUSTOM_HEADER_NAME_LEN, MAX_AI_CUSTOM_HEADER_VALUE_LEN,
+    MAX_AI_CUSTOM_HEADERS, custom_header_pairs, is_valid_custom_header_name,
     is_valid_custom_header_value, normalize_custom_headers, validate_custom_header,
 };
 pub use appearance::{AppearanceSettings, TerminalColorsConfig, ThemeColorsConfig, ThemeConfig};

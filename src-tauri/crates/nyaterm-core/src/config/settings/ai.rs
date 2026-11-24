@@ -208,6 +208,24 @@ impl Default for AgentCommandExecutionMode {
     }
 }
 
+/// Which risk assessment decides auto-approval for an agent command.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AgentRiskReference {
+    /// Use the more conservative of the AI and local assessments (default).
+    Strict,
+    /// Prefer the risk level reported by the AI model.
+    Ai,
+    /// Prefer the risk level from the local deterministic classifier.
+    Local,
+}
+
+impl Default for AgentRiskReference {
+    fn default() -> Self {
+        Self::Strict
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum AiModelSource {
@@ -490,6 +508,13 @@ pub struct AiSettings {
     pub agent_command_execution_mode: AgentCommandExecutionMode,
     #[serde(default = "default_agent_smart_auto_execute_max_risk")]
     pub agent_smart_auto_execute_max_risk: RiskLevel,
+    /// How the AI and local risk assessments are combined (default: strict).
+    #[serde(default)]
+    pub agent_risk_reference: AgentRiskReference,
+    /// Command prefixes the user allows to auto-run (matched before the local
+    /// risk classifier, but never overriding a Critical assessment).
+    #[serde(default)]
+    pub agent_auto_allow_command_prefixes: Vec<String>,
     #[serde(default)]
     pub codex: CodexIntegrationSettings,
     #[serde(default)]
@@ -783,6 +808,8 @@ impl Default for AiSettings {
             agent_background_execution_enabled: false,
             agent_command_execution_mode: AgentCommandExecutionMode::ConfirmEach,
             agent_smart_auto_execute_max_risk: default_agent_smart_auto_execute_max_risk(),
+            agent_risk_reference: AgentRiskReference::default(),
+            agent_auto_allow_command_prefixes: Vec::new(),
             codex: CodexIntegrationSettings::default(),
             claude_code: ClaudeCodeIntegrationSettings::default(),
             external_mcp: ExternalMcpSettings::default(),
@@ -1199,7 +1226,10 @@ mod tests {
         normalize_ai_settings(&mut settings);
 
         let headers = &settings.provider_credentials[0].extra_headers;
-        assert_eq!(headers.len(), super::super::ai_headers::MAX_AI_CUSTOM_HEADERS);
+        assert_eq!(
+            headers.len(),
+            super::super::ai_headers::MAX_AI_CUSTOM_HEADERS
+        );
         let ids: std::collections::HashSet<_> = headers.iter().map(|h| h.id.as_str()).collect();
         assert_eq!(ids.len(), headers.len(), "ids must be unique");
         assert!(headers.iter().all(|h| !h.id.is_empty()));
@@ -1217,7 +1247,10 @@ mod tests {
         .expect("legacy External MCP settings");
 
         assert!(settings.enabled);
-        assert_eq!(settings.terminal_display_mode, McpTerminalDisplayMode::Inline);
+        assert_eq!(
+            settings.terminal_display_mode,
+            McpTerminalDisplayMode::Inline
+        );
         assert_eq!(settings.permission_mode, AiPermissionMode::Confirm);
         assert_eq!(
             settings.session_scope,

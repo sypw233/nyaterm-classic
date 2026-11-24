@@ -30,20 +30,21 @@ export function AssistantReasoning({ message, loading }: { message: AIMessage; l
   }
 
   return (
-    <Collapsible
-      open={open}
-      onOpenChange={setOpen}
-      className={`mt-3 rounded-md border bg-background/40 ${
-        stillThinking ? "border-primary/25 bg-primary/6 shadow-sm" : "border-border/60"
-      }`}
-    >
-      <CollapsibleTrigger asChild>
-        <button
-          type="button"
-          className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[0.6875rem] font-medium transition hover:text-foreground ${
-            stillThinking ? "text-primary" : "text-muted-foreground"
-          }`}
-        >
+    <div className="group relative">
+      <Collapsible
+        open={open}
+        onOpenChange={setOpen}
+        className={`mt-3 rounded-md border bg-background/40 ${
+          stillThinking ? "border-primary/25 bg-primary/6 shadow-sm" : "border-border/60"
+        }`}
+      >
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className={`flex w-full items-center justify-between gap-2 py-2 pl-7 pr-3 text-left text-[0.6875rem] font-medium transition hover:text-foreground ${
+              stillThinking ? "text-primary" : "text-muted-foreground"
+            }`}
+          >
           <span className="flex min-w-0 items-center gap-2">
             {stillThinking ? (
               <AnimatedStatusText label={t("ai.thinking")} />
@@ -57,11 +58,21 @@ export function AssistantReasoning({ message, loading }: { message: AIMessage; l
           </span>
         </button>
       </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="border-t border-border/60 px-3 py-3">
-          <MarkdownContent content={reasoningContent} />
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
+        <CollapsibleContent>
+          <div className="border-t border-border/60 px-3 py-3">
+            <MarkdownContent content={reasoningContent} />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+      <button
+        type="button"
+        aria-label={open ? t("ai.collapseReasoning") : t("ai.expandReasoning")}
+        title={open ? t("ai.collapseReasoning") : t("ai.expandReasoning")}
+        className="absolute left-1 top-4 z-10 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+        onClick={() => setOpen((value) => !value)}
+      >
+        {open ? <MdExpandLess className="text-sm" /> : <MdExpandMore className="text-sm" />}
+      </button>
+    </div>
   );
 }
