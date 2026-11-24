@@ -23,6 +23,9 @@ pub struct GeneralSettings {
     pub easter_eggs_enabled: bool,
     #[serde(default = "default_freeze_demo_ms")]
     pub freeze_demo_ms: u32,
+    /// Download updates in the background and prompt to restart when ready.
+    #[serde(default)]
+    pub background_auto_download: bool,
 }
 
 fn default_freeze_demo_ms() -> u32 {
@@ -40,6 +43,7 @@ impl Default for GeneralSettings {
             rdp_client_mode: default_rdp_client_mode(),
             easter_eggs_enabled: true,
             freeze_demo_ms: default_freeze_demo_ms(),
+            background_auto_download: false,
         }
     }
 }

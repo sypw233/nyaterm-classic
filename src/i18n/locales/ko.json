@@ -2270,6 +2270,8 @@
     "autoPushOnChangeDesc": "로컬 설정 변경이 안정된 후 새 암호화 동기화 스냅샷을 업로드합니다.",
     "autoSyncStrategy": "자동 동기화",
     "autoSyncStrategyDesc": "시작 시 확인과 로컬 데이터 변경 저장 후 지연된 자동 업로드를 제어합니다.",
+    "backgroundAutoDownload": "백그라운드 자동 다운로드",
+    "backgroundAutoDownloadDesc": "업데이트를 자동으로 백그라운드에서 다운로드하고 설치 전 재시작 여부를 묻습니다.",
     "backgroundContentOpacity": "콘텐츠 표면 불투명도",
     "backgroundContentOpacityDesc": "값이 낮을수록 이미지가 더 많이 보입니다. {{value}}가 균형 잡힌 기본값입니다.",
     "backgroundImage": "배경",
@@ -3392,8 +3394,10 @@
     "youdao": "유다오"
   },
   "updater": {
+    "backgroundReady": "{{version}} 업데이트가 다운로드되었습니다. 설치하려면 다시 시작하세요.",
     "checking": "업데이트 확인 중...",
     "currentVersion": "현재",
+    "downloadInBackground": "백그라운드 다운로드",
     "downloading": "업데이트 다운로드 중...",
     "hasNewVersion": "새 버전",
     "installing": "설치 중...",
@@ -3404,6 +3408,7 @@
     "readyToRestart": "업데이트가 준비되었습니다. 완료하려면 재시작하세요.",
     "releaseDate": "릴리스 날짜",
     "releaseNotes": "노트",
+    "restartLater": "나중에",
     "restartNow": "지금 재시작",
     "retry": "재시도",
     "updateFailed": "업데이트 실패",

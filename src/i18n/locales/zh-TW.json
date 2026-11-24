@@ -2270,6 +2270,8 @@
     "autoPushOnChangeDesc": "本機設定變更儲存完成並穩定後，自動上傳新的加密雲端同步快照。",
     "autoSyncStrategy": "自動同步策略",
     "autoSyncStrategyDesc": "控制啟動時檢查，以及本機設定儲存完成後的防抖自動推送。",
+    "backgroundAutoDownload": "背景下載更新",
+    "backgroundAutoDownloadDesc": "偵測到更新後自動在背景下載，完成後提示是否重新啟動安裝。",
     "backgroundContentOpacity": "內容底色不透明度",
     "backgroundContentOpacityDesc": "數值越低，背景圖越明顯。{{value}} 是較均衡的預設值。",
     "backgroundImage": "背景圖",
@@ -3392,8 +3394,10 @@
     "youdao": "有道翻譯"
   },
   "updater": {
+    "backgroundReady": "更新 {{version}} 已下載完成，重新啟動即可安裝。",
     "checking": "正在檢查更新...",
     "currentVersion": "目前版本",
+    "downloadInBackground": "背景下載",
     "downloading": "正在下載更新...",
     "hasNewVersion": "有新版本",
     "installing": "正在安裝...",
@@ -3404,6 +3408,7 @@
     "readyToRestart": "更新已就緒，重新啟動後完成更新。",
     "releaseDate": "釋出日期",
     "releaseNotes": "更新說明",
+    "restartLater": "稍後",
     "restartNow": "立即重新啟動",
     "retry": "重試",
     "updateFailed": "更新失敗",

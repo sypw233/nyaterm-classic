@@ -24,12 +24,71 @@ export interface UpdateInfo {
   body?: string;
 }
 
-let cachedUpdate: Update | null = null;
+/**
+ * Process-wide updater state. Kept outside React so a background download
+ * started on startup survives the update dialog opening/closing, and so a new
+ * check invalidates progress from an older one (generation guard).
+ */
+interface UpdaterState {
+  /** Monotonic id; stale results from an older generation are discarded. */
+  generation: number;
+  status: UpdateStatus;
+  info: UpdateInfo | null;
+  progress: UpdateProgress;
+  error: string;
+  portable: boolean;
+  /** The `Update` resource must stay alive between download() and install(). */
+  update: Update | null;
+}
 
+const state: UpdaterState = {
+  generation: 0,
+  status: "idle",
+  info: null,
+  progress: { downloaded: 0, total: 0 },
+  error: "",
+  portable: false,
+  update: null,
+};
+
+type Listener = () => void;
+const listeners = new Set<Listener>();
+
+function notify() {
+  for (const listener of listeners) listener();
+}
+
+export function subscribeUpdater(listener: Listener): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function getUpdaterState(): Readonly<UpdaterState> {
+  return state;
+}
+
+function resetState(portable: boolean) {
+  state.generation += 1;
+  state.status = "checking";
+  state.info = null;
+  state.progress = { downloaded: 0, total: 0 };
+  state.error = "";
+  state.portable = portable;
+  // Close the previous Update resource before replacing it.
+  const previous = state.update;
+  state.update = null;
+  if (previous) void previous.close().catch(() => {});
+  notify();
+}
+
+/** Check for an update and cache it. `silent` failures are swallowed. */
 export async function checkForUpdate(
   portable = false,
+  silent = false,
 ): Promise<UpdateInfo | null> {
   if (!supports("updater")) return null;
+  const generation = state.generation + 1;
+  resetState(portable);
   logger.info({
     domain: "updater.flow",
     event: "update.check_started",
@@ -38,67 +97,92 @@ export async function checkForUpdate(
 
   try {
     if (portable) {
-      cachedUpdate = null;
       const update = await invoke<UpdateInfo | null>("check_portable_update");
+      if (generation !== state.generation) return null;
+      state.info = update;
+      state.status = update ? "available" : "idle";
       logger.info({
         domain: "updater.flow",
         event: update ? "update.available" : "update.check_succeeded",
         message: update ? "Portable update available" : "No portable update available",
         data: update
-          ? {
-              version: update.version,
-              release_date: update.date,
-              mode: "portable",
-            }
+          ? { version: update.version, release_date: update.date, mode: "portable" }
           : { mode: "portable" },
       });
+      notify();
       return update;
     }
 
     const update = await check();
+    if (generation !== state.generation) {
+      // A newer check started while this one was in flight; release this resource.
+      if (update) void update.close().catch(() => {});
+      return null;
+    }
     if (!update) {
-      cachedUpdate = null;
+      state.status = "idle";
       logger.info({
         domain: "updater.flow",
         event: "update.check_succeeded",
         message: "No update available",
       });
+      notify();
       return null;
     }
 
-    cachedUpdate = update;
+    state.update = update;
+    state.info = { version: update.version, date: update.date, body: update.body };
+    state.status = "available";
     logger.info({
       domain: "updater.flow",
       event: "update.available",
       message: "Update available",
-      data: {
-        version: update.version,
-        release_date: update.date,
-      },
+      data: { version: update.version, release_date: update.date },
     });
-    return {
-      version: update.version,
-      date: update.date,
-      body: update.body,
-    };
+    notify();
+    return state.info;
   } catch (error) {
-    logger.error({
+    if (generation === state.generation) {
+      state.error = error instanceof Error ? error.message : String(error);
+      // Silent checks should not disturb the UI with an error state.
+      state.status = silent ? "idle" : "error";
+      notify();
+    }
+    logger[silent ? "warn" : "error"]({
       domain: "updater.flow",
       event: "update.check_failed",
       message: "Update check failed",
       error,
     });
-    throw error;
+    if (!silent) throw error;
+    return null;
   }
 }
 
-export async function downloadAndInstallUpdate(
-  portable: boolean,
+/**
+ * Download (and, for portable builds, stage) the cached update without
+ * installing it. Call installUpdate() after the user confirms the restart.
+ */
+export async function downloadUpdate(
   onProgress?: (progress: UpdateProgress) => void,
 ): Promise<void> {
-  if (portable) {
+  const generation = state.generation;
+  if (state.status !== "available") throw new Error("No update available");
+  state.status = "downloading";
+  state.progress = { downloaded: 0, total: 0 };
+  state.error = "";
+  notify();
+
+  const report = (progress: UpdateProgress) => {
+    if (generation !== state.generation) return;
+    state.progress = progress;
+    notify();
+    onProgress?.(progress);
+  };
+
+  if (state.portable) {
     const progressChannel = new Channel<UpdateProgress>();
-    progressChannel.onmessage = (progress) => onProgress?.(progress);
+    progressChannel.onmessage = report;
     logger.info({
       domain: "updater.flow",
       event: "update.download_started",
@@ -107,14 +191,22 @@ export async function downloadAndInstallUpdate(
     });
     try {
       await invoke<void>("download_portable_update", { onProgress: progressChannel });
+      if (generation !== state.generation) return;
+      state.status = "ready";
       logger.info({
         domain: "updater.flow",
         event: "update.download_finished",
         message: "Portable update download and verification finished",
         data: { mode: "portable" },
       });
+      notify();
       return;
     } catch (error) {
+      if (generation === state.generation) {
+        state.error = error instanceof Error ? error.message : String(error);
+        state.status = "error";
+        notify();
+      }
       logger.error({
         domain: "updater.flow",
         event: "update.install_failed",
@@ -126,60 +218,95 @@ export async function downloadAndInstallUpdate(
     }
   }
 
-  if (!cachedUpdate) throw new Error("No update available");
-
-  let downloaded = 0;
-  let total = 0;
+  const update = state.update;
+  if (!update) throw new Error("No update available");
 
   logger.info({
     domain: "updater.flow",
     event: "update.download_started",
-    message: "Starting update download and install",
-    data: {
-      version: cachedUpdate.version,
-    },
+    message: "Starting update download",
+    data: { version: update.version },
   });
 
+  let downloaded = 0;
+  let total = 0;
   try {
-    await cachedUpdate.downloadAndInstall((event) => {
+    await update.download((event) => {
       switch (event.event) {
         case "Started":
           total = event.data.contentLength ?? 0;
-          onProgress?.({ downloaded: 0, total });
+          report({ downloaded: 0, total });
           break;
         case "Progress":
           downloaded += event.data.chunkLength;
-          onProgress?.({ downloaded, total });
+          report({ downloaded, total });
           break;
         case "Finished":
-          onProgress?.({ downloaded: total, total });
+          report({ downloaded: total, total });
           logger.info({
             domain: "updater.flow",
             event: "update.download_finished",
             message: "Update download finished",
-            data: {
-              version: cachedUpdate?.version,
-              byte_size: total,
-            },
+            data: { version: update.version, byte_size: total },
           });
           break;
       }
     });
+    if (generation !== state.generation) return;
+    state.status = "ready";
+    notify();
   } catch (error) {
+    if (generation === state.generation) {
+      state.error = error instanceof Error ? error.message : String(error);
+      state.status = "error";
+      notify();
+    }
     logger.error({
       domain: "updater.flow",
       event: "update.install_failed",
-      message: "Update install failed",
-      data: {
-        version: cachedUpdate.version,
-      },
+      message: "Update download failed",
+      data: { version: update.version },
       error,
     });
     throw error;
   }
 }
 
-export async function relaunchApp(portable = false): Promise<void> {
+/** Install a previously downloaded update. Only call after user confirmation. */
+export async function installUpdate(): Promise<void> {
+  if (state.status !== "ready") throw new Error("No downloaded update to install");
+  const generation = state.generation;
+  state.status = "downloading";
+  notify();
+  try {
+    if (state.portable) {
+      await invoke<void>("apply_portable_update");
+    } else {
+      const update = state.update;
+      if (!update) throw new Error("No update available");
+      await update.install();
+    }
+    if (generation === state.generation) {
+      state.status = "ready";
+      notify();
+    }
+  } catch (error) {
+    if (generation === state.generation) {
+      state.error = error instanceof Error ? error.message : String(error);
+      state.status = "error";
+      notify();
+    }
+    logger.error({
+      domain: "updater.flow",
+      event: "update.install_failed",
+      message: "Update install failed",
+      error,
+    });
+    throw error;
+  }
+}
+
+export async function relaunchApp(portable = state.portable): Promise<void> {
   requireCapability("updater");
   logger.info({
     domain: "updater.flow",

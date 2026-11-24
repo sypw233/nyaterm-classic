@@ -6,6 +6,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { useTranslation } from "react-i18next";
 import { MdCheckCircle, MdError, MdRestartAlt } from "react-icons/md";
@@ -22,11 +23,14 @@ import {
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { useApp } from "@/context/AppContext";
-import type { UpdateInfo, UpdateProgress, UpdateStatus } from "@/lib/updater";
 import {
   checkForUpdate,
-  downloadAndInstallUpdate,
+  downloadUpdate,
+  installUpdate,
   relaunchApp,
+  subscribeUpdater,
+  getUpdaterState,
+  type UpdateInfo,
 } from "@/lib/updater";
 import { formatBytes } from "@/lib/byteSize";
 
@@ -165,93 +169,77 @@ export default function UpdateDialog({
 }: UpdateDialogProps) {
   const { t } = useTranslation();
   const { runtimeInfo, runtimeInfoLoaded } = useApp();
-  const [status, setStatus] = useState<UpdateStatus>("checking");
-  const [progress, setProgress] = useState<UpdateProgress>({
-    downloaded: 0,
-    total: 0,
-  });
-  const [error, setError] = useState<string>("");
+  const snapshot = useSyncExternalStore(subscribeUpdater, getUpdaterState);
+  const status = snapshot.status;
+  const progress = snapshot.progress;
+  const error = snapshot.error;
+  const localUpdateInfo = snapshot.info;
   const [currentVersion, setCurrentVersion] = useState("");
-  const [localUpdateInfo, setLocalUpdateInfo] = useState<UpdateInfo | null>(
-    null,
-  );
-  const isUpdating = useRef(false);
   const onUpdateFoundRef = useRef(onUpdateFound);
   onUpdateFoundRef.current = onUpdateFound;
 
   useEffect(() => {
     if (!open || !runtimeInfoLoaded || runtimeInfo.packageManager) return;
-
-    getVersion()
-      .then(setCurrentVersion)
-      .catch(() => {});
-    setProgress({ downloaded: 0, total: 0 });
-    setError("");
-    setLocalUpdateInfo(null);
-    isUpdating.current = false;
-
-    setStatus("checking");
-
-    let cancelled = false;
-    checkForUpdate(runtimeInfo.portable)
-      .then((info) => {
-        if (cancelled) return;
-        if (info) {
-          setLocalUpdateInfo(info);
-          setStatus("available");
-          onUpdateFoundRef.current?.(info);
-        } else {
-          setStatus("idle");
-        }
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : String(err));
-        setStatus("error");
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    open,
-    runtimeInfo.packageManager,
-    runtimeInfo.portable,
-    runtimeInfoLoaded,
-  ]);
+    getVersion().then(setCurrentVersion).catch(() => {});
+    // Reuse a background download/check already in flight. Only start a new
+    // check when there is nothing cached; otherwise the shared store is the
+    // single source of truth for phase and progress.
+    const phase = getUpdaterState().status;
+    if (phase === "idle" || phase === "error") {
+      void checkForUpdate(runtimeInfo.portable)
+        .then((info) => {
+          if (info) onUpdateFoundRef.current?.(info);
+        })
+        .catch(() => {});
+    }
+  }, [open, runtimeInfo.packageManager, runtimeInfo.portable, runtimeInfoLoaded]);
 
   const handleUpdate = useCallback(async () => {
-    if (isUpdating.current || runtimeInfo.packageManager) return;
-    isUpdating.current = true;
-    setStatus("downloading");
-    setError("");
-
+    if (runtimeInfo.packageManager) return;
     try {
-      await downloadAndInstallUpdate(runtimeInfo.portable, (p) => {
-        setProgress(p);
-      });
-      setStatus("ready");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setStatus("error");
-      isUpdating.current = false;
+      if (getUpdaterState().status !== "available") {
+        await checkForUpdate(runtimeInfo.portable);
+      }
+      // Download only. Installing happens when the user confirms the restart.
+      await downloadUpdate();
+    } catch {
+      // Errors are reflected in the shared store.
     }
   }, [runtimeInfo.packageManager, runtimeInfo.portable]);
 
   const handleRelaunch = useCallback(async () => {
     try {
+      // Non-portable updates are downloaded but not installed yet; install()
+      // applies them in place. Portable updates are applied by relaunchApp()
+      // (apply_portable_update), so don't apply them twice.
+      if (!runtimeInfo.portable && getUpdaterState().status === "ready") {
+        await installUpdate();
+      }
       await relaunchApp(runtimeInfo.portable);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setStatus("error");
+    } catch {
+      // Errors are reflected in the shared store and shown in the error view.
     }
   }, [runtimeInfo.portable]);
 
+  const [backgroundDownload, setBackgroundDownload] = useState(false);
+  const handleBackgroundDownload = useCallback(async () => {
+    if (runtimeInfo.packageManager) return;
+    setBackgroundDownload(true);
+    try {
+      if (getUpdaterState().status !== "available") {
+        await checkForUpdate(runtimeInfo.portable);
+      }
+      await downloadUpdate();
+    } catch {
+      // Errors are reflected in the shared store.
+    } finally {
+      setBackgroundDownload(false);
+    }
+  }, [runtimeInfo.packageManager, runtimeInfo.portable]);
+
   const canClose =
-    status === "checking" ||
-    status === "available" ||
-    status === "idle" ||
-    status === "error";
+    status !== "downloading" ||
+    backgroundDownload;
   const percent =
     progress.total > 0
       ? Math.round((progress.downloaded / progress.total) * 100)
@@ -332,7 +320,10 @@ export default function UpdateDialog({
               <Button variant="outline" size="sm" onClick={onClose}>
                 {t("common.cancel")}
               </Button>
-              <Button size="sm" onClick={handleUpdate}>
+              <Button variant="outline" size="sm" onClick={() => void handleBackgroundDownload()}>
+                {t("updater.downloadInBackground")}
+              </Button>
+              <Button size="sm" onClick={() => void handleUpdate()}>
                 {t("updater.updateNow")}
               </Button>
             </DialogFooter>
@@ -367,6 +358,9 @@ export default function UpdateDialog({
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="pt-2">
+              <Button variant="outline" size="sm" onClick={onClose}>
+                {t("updater.restartLater")}
+              </Button>
               <Button size="sm" onClick={handleRelaunch}>
                 <MdRestartAlt className="mr-1.5" />
                 {t("updater.restartNow")}

@@ -2273,6 +2273,8 @@
     "autoPushOnChangeDesc": "Upload a new encrypted sync snapshot after local configuration changes settle.",
     "autoSyncStrategy": "Auto Sync",
     "autoSyncStrategyDesc": "Control startup checks and debounced auto-push after local data changes are saved.",
+    "backgroundAutoDownload": "Download updates in the background",
+    "backgroundAutoDownloadDesc": "Automatically download available updates and ask before restarting to install.",
     "backgroundContentOpacity": "Content Surface Opacity",
     "backgroundContentOpacityDesc": "Lower values reveal more of the image. {{value}} is a balanced default.",
     "backgroundImage": "Background",
@@ -3395,8 +3397,10 @@
     "youdao": "Youdao"
   },
   "updater": {
+    "backgroundReady": "Update {{version}} is downloaded. Restart to install.",
     "checking": "Checking for updates...",
     "currentVersion": "Current",
+    "downloadInBackground": "Download in background",
     "downloading": "Downloading update...",
     "hasNewVersion": "New",
     "installing": "Installing...",
@@ -3407,6 +3411,7 @@
     "readyToRestart": "Update is ready. Restart to complete.",
     "releaseDate": "Release Date",
     "releaseNotes": "Notes",
+    "restartLater": "Later",
     "restartNow": "Restart Now",
     "retry": "Retry",
     "updateFailed": "Update failed",

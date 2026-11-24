@@ -2270,6 +2270,8 @@
     "autoPushOnChangeDesc": "本地配置变更保存完成并稳定后，自动上传新的加密同步快照。",
     "autoSyncStrategy": "自动同步策略",
     "autoSyncStrategyDesc": "控制启动时检查，以及本地配置保存完成后的防抖自动推送。",
+    "backgroundAutoDownload": "后台自动下载更新",
+    "backgroundAutoDownloadDesc": "检测到更新后自动在后台下载，完成后提示是否重启安装。",
     "backgroundContentOpacity": "内容底色不透明度",
     "backgroundContentOpacityDesc": "数值越低，背景图越明显。{{value}} 是较均衡的默认值。",
     "backgroundImage": "背景图",
@@ -3392,8 +3394,10 @@
     "youdao": "有道翻译"
   },
   "updater": {
+    "backgroundReady": "更新 {{version}} 已下载完成，重启即可安装。",
     "checking": "正在检查更新...",
     "currentVersion": "当前版本",
+    "downloadInBackground": "后台下载",
     "downloading": "正在下载更新...",
     "hasNewVersion": "有新版本",
     "installing": "正在安装...",
@@ -3404,6 +3408,7 @@
     "readyToRestart": "更新已就绪，重启后完成更新。",
     "releaseDate": "发布日期",
     "releaseNotes": "更新说明",
+    "restartLater": "稍后",
     "restartNow": "立即重启",
     "retry": "重试",
     "updateFailed": "更新失败",

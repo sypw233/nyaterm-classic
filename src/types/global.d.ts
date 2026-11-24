@@ -1286,6 +1286,8 @@ export interface GeneralSettings {
   easter_eggs_enabled: boolean;
   /** Duration in milliseconds of the freeze-demo easter egg. */
   freeze_demo_ms: number;
+  /** Download updates in the background and prompt to restart when ready. */
+  background_auto_download: boolean;
 }
 
 export type BackgroundImageFit = "cover" | "contain" | "stretch" | "tile";

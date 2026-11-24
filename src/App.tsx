@@ -131,7 +131,7 @@ import {
   carryOverSessionCwd,
   isTerminalDirectoryPath,
 } from "./lib/terminalSessionCwd";
-import { checkForUpdate, type UpdateInfo } from "./lib/updater";
+import { checkForUpdate, downloadUpdate, type UpdateInfo } from "./lib/updater";
 import {
   eventTargetsCurrentWindow,
   getOwnerMainWindowLabel,
@@ -340,22 +340,47 @@ function App() {
     () => setIsLocked(true),
   );
 
-  // Background update check on startup
+  // Background update check on startup. When background auto-download is on,
+  // download silently and prompt to restart once it is ready.
   useEffect(() => {
     if (!runtimeInfoLoaded || runtimeInfo.packageManager) return;
 
+    let cancelled = false;
     const timer = setTimeout(() => {
-      checkForUpdate(portable)
-        .then((info) => {
-          if (info) {
-            setUpdateInfo(info);
-            setHelpDotVisible(true);
+      checkForUpdate(portable, true)
+        .then(async (info) => {
+          if (cancelled || !info) return;
+          setUpdateInfo(info);
+          setHelpDotVisible(true);
+          if (!appSettings.general.background_auto_download) return;
+          try {
+            await downloadUpdate();
+            if (cancelled) return;
+            toast(t("updater.backgroundReady", { version: info.version }), {
+              duration: Number.POSITIVE_INFINITY,
+              action: {
+                label: t("updater.restartNow"),
+                onClick: () => setShowUpdateDialog(true),
+              },
+            });
+          } catch {
+            // Progress/errors are logged by the updater store; don't disturb
+            // the user for a failed background download.
           }
         })
         .catch(() => {});
     }, 3000);
-    return () => clearTimeout(timer);
-  }, [portable, runtimeInfo.packageManager, runtimeInfoLoaded]);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [
+    portable,
+    runtimeInfo.packageManager,
+    runtimeInfoLoaded,
+    appSettings.general.background_auto_download,
+    t,
+  ]);
 
   // Friday-night easter egg: show once per Friday, on startup (if it is already
   // Friday night) or exactly when the clock reaches a Friday noon while the

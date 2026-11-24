@@ -120,6 +120,21 @@ export function GeneralTab() {
         </SettingRow>
 
         <SettingRow
+          label={t("settings.backgroundAutoDownload")}
+          desc={t("settings.backgroundAutoDownloadDesc")}
+        >
+          <SettingSwitch
+            disabled={!supports("updater")}
+            checked={appSettings.general.background_auto_download ?? false}
+            onChange={(v) =>
+              updateAppSettings({
+                general: { ...appSettings.general, background_auto_download: v },
+              })
+            }
+          />
+        </SettingRow>
+
+        <SettingRow
           label={t("settings.easterEggsEnabled")}
           desc={t("settings.easterEggsEnabledDesc")}
         >
