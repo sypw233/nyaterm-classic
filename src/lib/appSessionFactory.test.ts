@@ -6,6 +6,7 @@ import {
   createSessionForConnection,
   createSessionForPane,
   launchSavedRdpWithSystemClient,
+  sendSerialReconnectWake,
   shouldLaunchSavedRdpWithSystemClient,
   resolveRdpClientMode,
 } from "./appSessionFactory";
@@ -15,6 +16,37 @@ const { invokeMock } = vi.hoisted(() => ({ invokeMock: vi.fn() }));
 vi.mock("@/lib/invoke", () => ({ invoke: invokeMock }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ emit: vi.fn() }));
+
+describe("sendSerialReconnectWake", () => {
+  beforeEach(() => {
+    vi.useRealTimers();
+    invokeMock.mockReset();
+    invokeMock.mockResolvedValue(undefined);
+  });
+
+  it("sends one Enter by default so a serial console prints its prompt", async () => {
+    vi.useFakeTimers();
+    const pending = sendSerialReconnectWake("serial-1", undefined);
+    await vi.advanceTimersByTimeAsync(300);
+    await pending;
+
+    expect(invokeMock).toHaveBeenCalledWith("write_to_session", {
+      sessionId: "serial-1",
+      data: "\r",
+      origin: "startup_command",
+      sensitivity: undefined,
+    });
+  });
+
+  it("sends nothing when the wake input is disabled", async () => {
+    vi.useFakeTimers();
+    const pending = sendSerialReconnectWake("serial-1", false);
+    await vi.advanceTimersByTimeAsync(300);
+    await pending;
+
+    expect(invokeMock).not.toHaveBeenCalled();
+  });
+});
 
 describe("SSH runtime mode creation", () => {
   beforeEach(() => {

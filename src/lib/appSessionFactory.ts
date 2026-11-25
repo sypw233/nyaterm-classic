@@ -401,6 +401,21 @@ export async function sendStartupCommandToSession(
   );
 }
 
+export async function sendSerialReconnectWake(
+  sessionId: string,
+  enabled: boolean | undefined,
+): Promise<void> {
+  // Legacy settings predate this option; match the documented default.
+  if (enabled === false) return;
+  // Give the freshly opened port a moment to settle before waking a console
+  // that only prints its prompt after receiving input.
+  await new Promise((resolve) => window.setTimeout(resolve, 300));
+  await sendSessionInput(sessionId, "\r", {
+    preview: { kind: "reset" },
+    origin: "startup_command",
+  });
+}
+
 export function focusTerminalSession(sessionId?: string | null) {
   if (!sessionId) return;
   requestAnimationFrame(() => {

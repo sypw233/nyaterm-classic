@@ -2772,6 +2772,8 @@
     "selectIcon": "Выбрать значок",
     "selectKeyFile": "Выбрать файл ключа...",
     "selectKeyFileTitle": "Выбор файла ключа",
+    "serialReconnectSendEnter": "Отправлять Enter после переподключения последовательного порта",
+    "serialReconnectSendEnterDesc": "Отправлять один Enter после повторного открытия последовательной сессии, чтобы консоли, выводящие приглашение только после ввода, возвращались к командной строке.",
     "sessionLock": "Блокировка сеанса",
     "sessionSecurity": "Безопасность сеанса",
     "shortcutCategories": {

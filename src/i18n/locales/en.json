@@ -2771,6 +2771,8 @@
     "selectIcon": "Select Icon",
     "selectKeyFile": "Select key file...",
     "selectKeyFileTitle": "Select Key File",
+    "serialReconnectSendEnter": "Send Enter after serial reconnect",
+    "serialReconnectSendEnterDesc": "Send one Enter when a serial session reopens so consoles that only print a prompt after input come back to the command line.",
     "sessionLock": "Session Lock",
     "sessionSecurity": "Session Security",
     "shortcutCategories": {

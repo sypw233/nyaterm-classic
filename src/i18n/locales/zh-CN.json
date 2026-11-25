@@ -2768,6 +2768,8 @@
     "selectIcon": "选择图标",
     "selectKeyFile": "选择私钥文件...",
     "selectKeyFileTitle": "选择私钥文件",
+    "serialReconnectSendEnter": "串口重连后发送回车",
+    "serialReconnectSendEnterDesc": "串口会话重连后发送一次回车，让只有收到输入才打印提示符的控制台回到命令行。",
     "sessionLock": "会话锁定",
     "sessionSecurity": "会话安全",
     "shortcutCategories": {

@@ -2768,6 +2768,8 @@
     "selectIcon": "選擇圖示",
     "selectKeyFile": "選擇私鑰檔案...",
     "selectKeyFileTitle": "選擇私鑰檔案",
+    "serialReconnectSendEnter": "序列埠重連後傳送 Enter",
+    "serialReconnectSendEnterDesc": "序列埠工作階段重連後傳送一次 Enter，讓只有收到輸入才會顯示提示字的控制台回到命令列。",
     "sessionLock": "工作階段鎖定",
     "sessionSecurity": "工作階段安全",
     "shortcutCategories": {

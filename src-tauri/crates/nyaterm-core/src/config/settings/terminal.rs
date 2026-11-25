@@ -92,6 +92,11 @@ pub struct TerminalSettings {
     pub paste_image_as_path: bool,
     #[serde(default = "default_false")]
     pub reconnect_restore_cwd: bool,
+    /// After a serial session reopens, send one Enter so consoles that only
+    /// print a prompt after being spoken to come straight back to the command
+    /// line. Devices that dislike a stray newline can turn this off.
+    #[serde(default = "default_true")]
+    pub serial_reconnect_send_enter: bool,
     /// Log per-frame terminal render statistics (renderer kind, rows rebuilt,
     /// write batches). Diagnostic aid for slow/no-GPU environments; the logging
     /// itself costs time, so it is off by default.
@@ -221,6 +226,7 @@ impl Default for TerminalSettings {
             show_multi_line_paste_dialog: true,
             paste_image_as_path: true,
             reconnect_restore_cwd: false,
+            serial_reconnect_send_enter: true,
             render_stats_enabled: false,
             frame_batched_output: false,
             tui_frame_limit_enabled: false,
@@ -249,6 +255,18 @@ mod tests {
 
         assert_eq!(settings.keep_alive_mode, "compatible");
         assert_eq!(settings.keep_alive_interval, 60);
+    }
+
+    #[test]
+    fn missing_serial_reconnect_send_enter_defaults_to_true() {
+        let settings: TerminalSettings = serde_json::from_value(serde_json::json!({
+            "scrollback_lines": 5000,
+            "keep_alive_interval": 60
+        }))
+        .expect("legacy terminal settings deserialize");
+
+        assert!(settings.serial_reconnect_send_enter);
+        assert!(TerminalSettings::default().serial_reconnect_send_enter);
     }
 
     #[test]

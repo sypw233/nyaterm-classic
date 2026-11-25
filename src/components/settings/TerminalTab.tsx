@@ -227,6 +227,20 @@ export function TerminalTab() {
           />
         </SettingRow>
 
+        <SettingRow
+          label={t("settings.serialReconnectSendEnter")}
+          desc={t("settings.serialReconnectSendEnterDesc")}
+        >
+          <SettingSwitch
+            checked={appSettings.terminal.serial_reconnect_send_enter ?? true}
+            onChange={(v) =>
+              updateAppSettings({
+                terminal: { ...appSettings.terminal, serial_reconnect_send_enter: v },
+              })
+            }
+          />
+        </SettingRow>
+
         <SettingInput
           label={t("settings.x11Display")}
           desc={t("settings.x11DisplayDesc")}

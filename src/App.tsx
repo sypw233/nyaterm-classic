@@ -62,6 +62,7 @@ import {
   launchSavedRdpWithSystemClient,
   type SavedConnectionOpenOptions,
   type StartupCommandRequest,
+  sendSerialReconnectWake,
   sendStartupCommandToSession,
 } from "./lib/appSessionFactory";
 import {
@@ -1592,6 +1593,25 @@ function App() {
     [replaceSessionReferences, tabs, updateAutoIconForSessionStart],
   );
 
+  const wakeSerialAfterReconnect = useCallback(
+    (paneType: string, sessionId: string) => {
+      if (paneType !== "Serial") return;
+      void sendSerialReconnectWake(
+        sessionId,
+        appSettings.terminal.serial_reconnect_send_enter,
+      ).catch((error) => {
+        logger.warn({
+          domain: "session.lifecycle",
+          event: "session.serial_reconnect_wake_failed",
+          message: "Failed to wake serial console after reconnect",
+          ids: { session_id: sessionId },
+          error,
+        });
+      });
+    },
+    [appSettings.terminal.serial_reconnect_send_enter],
+  );
+
   const handleConnectionError = useCallback(
     (tabId: string, paneId: string, sessionId: string, error: string) => {
       const tab = tabs.find((item) => item.id === tabId);
@@ -2235,6 +2255,7 @@ function App() {
         }
         preserveTerminalReconnectContent(newSessionId, reconnectContent);
         updatePaneSession(tab.id, pane.id, newSessionId);
+        wakeSerialAfterReconnect(pane.type, newSessionId);
         if (pane.connectionId) {
           recordRecentConnection(pane.connectionId);
           updateAutoIconForSessionStart(pane.connectionId, newSessionId);
@@ -2335,6 +2356,7 @@ function App() {
         }
         preserveTerminalReconnectContent(newSessionId, reconnectContent);
         updatePaneSession(tab.id, pane.id, newSessionId);
+        wakeSerialAfterReconnect(pane.type, newSessionId);
         if (pane.connectionId) {
           recordRecentConnection(pane.connectionId);
           updateAutoIconForSessionStart(pane.connectionId, newSessionId);
@@ -2518,6 +2540,7 @@ function App() {
         }
         preserveTerminalReconnectContent(newSessionId, reconnectContent);
         updatePaneSession(tabId, paneId, newSessionId);
+        wakeSerialAfterReconnect(pane.type, newSessionId);
         if (pane.connectionId) {
           recordRecentConnection(pane.connectionId);
           updateAutoIconForSessionStart(pane.connectionId, newSessionId);

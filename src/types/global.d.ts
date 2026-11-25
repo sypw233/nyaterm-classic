@@ -1500,6 +1500,8 @@ export interface TerminalSettings {
   show_multi_line_paste_dialog: boolean;
   paste_image_as_path: boolean;
   reconnect_restore_cwd: boolean;
+  /** Send one Enter after a serial session reopens; defaults to true. */
+  serial_reconnect_send_enter?: boolean;
   /** Log per-frame render statistics; off by default because logging costs time. */
   render_stats_enabled?: boolean;
   /** Coalesce output into one xterm write per frame; helps hosts without GPU. */
