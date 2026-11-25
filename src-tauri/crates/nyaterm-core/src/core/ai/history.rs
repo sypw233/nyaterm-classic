@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
@@ -216,10 +216,46 @@ pub fn append_message(app: &impl Sized, message: AiMessage) -> AppResult<()> {
         {
             session.updated_at = message.created_at.clone();
         }
-        history.messages.push(message);
+        upsert_message(history, message);
         trim_history(history);
         Ok(())
     })
+}
+
+/// Insert or replace a message by `(session_id, id)`.
+///
+/// Agent runs re-persist the evolving assistant message at every projection
+/// point, so the same id is appended repeatedly with growing content. The
+/// newest snapshot must replace the earlier projection in place instead of
+/// leaving duplicate rows behind.
+fn upsert_message(history: &mut AiHistoryFile, message: AiMessage) {
+    if let Some(existing) = history
+        .messages
+        .iter_mut()
+        .find(|item| item.id == message.id && item.session_id == message.session_id)
+    {
+        *existing = message;
+    } else {
+        history.messages.push(message);
+    }
+}
+
+/// Keep only the last projection of each message id, preserving order.
+///
+/// Databases written before projections were replaced in place hold several
+/// rows sharing one id. Filtering here lets every message render once without
+/// rewriting the stored history.
+fn dedupe_messages(messages: Vec<AiMessage>) -> Vec<AiMessage> {
+    let mut last_position: HashMap<String, usize> = HashMap::with_capacity(messages.len());
+    for (index, message) in messages.iter().enumerate() {
+        last_position.insert(message.id.clone(), index);
+    }
+    messages
+        .into_iter()
+        .enumerate()
+        .filter(|(index, message)| last_position.get(&message.id) == Some(index))
+        .map(|(_, message)| message)
+        .collect()
 }
 
 pub fn get_session_backend_metadata(
@@ -281,11 +317,12 @@ pub fn get_ai_sessions(app: &impl Sized) -> AppResult<Vec<AiSession>> {
 }
 
 pub fn get_ai_messages(app: &impl Sized, session_id: String) -> AppResult<Vec<AiMessage>> {
-    Ok(load_history(app)?
+    let messages: Vec<AiMessage> = load_history(app)?
         .messages
         .into_iter()
         .filter(|message| message.session_id == session_id)
-        .collect())
+        .collect();
+    Ok(dedupe_messages(messages))
 }
 
 pub fn clear_ai_history_storage(app: &impl Sized) -> AppResult<()> {
@@ -380,6 +417,83 @@ pub fn get_ai_audit_logs(app: &impl Sized, limit: Option<usize>) -> AppResult<Ve
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn append_message_replaces_the_earlier_projection_of_an_id() {
+        let mut history = AiHistoryFile::default();
+        let message = |content: &str| AiMessage {
+            id: "assistant-1".to_string(),
+            session_id: "session-1".to_string(),
+            role: AiMessageRole::Assistant,
+            content: content.to_string(),
+            created_at: "2026-04-28T00:00:02Z".to_string(),
+            reasoning_content: None,
+            command_cards: Vec::new(),
+        };
+
+        upsert_message(&mut history, message("partial answer"));
+        upsert_message(&mut history, message("final answer"));
+
+        assert_eq!(history.messages.len(), 1);
+        assert_eq!(history.messages[0].content, "final answer");
+    }
+
+    #[test]
+    fn upsert_does_not_merge_the_same_id_across_sessions() {
+        let mut history = AiHistoryFile::default();
+        let message = |session: &str| AiMessage {
+            id: "shared-id".to_string(),
+            session_id: session.to_string(),
+            role: AiMessageRole::Assistant,
+            content: session.to_string(),
+            created_at: "2026-04-28T00:00:02Z".to_string(),
+            reasoning_content: None,
+            command_cards: Vec::new(),
+        };
+
+        upsert_message(&mut history, message("s1"));
+        upsert_message(&mut history, message("s2"));
+
+        assert_eq!(history.messages.len(), 2);
+    }
+
+    #[test]
+    fn dedupe_messages_keeps_only_the_last_projection_of_each_id() {
+        let mut history = AiHistoryFile::default();
+        for (index, content) in ["stale", "stale", "current"].iter().enumerate() {
+            history.messages.push(AiMessage {
+                id: "assistant-1".to_string(),
+                session_id: "session-1".to_string(),
+                role: AiMessageRole::Assistant,
+                content: (*content).to_string(),
+                created_at: format!("2026-04-28T00:00:0{index}Z"),
+                reasoning_content: None,
+                command_cards: Vec::new(),
+            });
+        }
+        history.messages.push(AiMessage {
+            id: "user-1".to_string(),
+            session_id: "session-1".to_string(),
+            role: AiMessageRole::User,
+            content: "prompt".to_string(),
+            created_at: "2026-04-28T00:00:00Z".to_string(),
+            reasoning_content: None,
+            command_cards: Vec::new(),
+        });
+
+        let deduped = dedupe_messages(history.messages);
+        let assistant: Vec<_> = deduped
+            .iter()
+            .filter(|message| message.id == "assistant-1")
+            .collect();
+        assert_eq!(assistant.len(), 1);
+        assert_eq!(assistant[0].content, "current");
+        // Order is preserved: the surviving projection stays where the id last
+        // appeared, and later messages keep their relative order.
+        assert_eq!(deduped.len(), 2);
+        assert_eq!(deduped[0].id, "assistant-1");
+        assert_eq!(deduped[1].id, "user-1");
+    }
 
     #[test]
     fn old_history_without_reasoning_defaults_cleanly() {
