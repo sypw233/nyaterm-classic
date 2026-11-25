@@ -3,11 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SshKey } from "@/types/global";
 import { KeyManagementTab } from "./KeyManagementTab";
 
-const { invokeMock, toastSuccessMock, writeClipboardTextMock } = vi.hoisted(() => ({
-  invokeMock: vi.fn(),
-  toastSuccessMock: vi.fn(),
-  writeClipboardTextMock: vi.fn(),
-}));
+const { invokeMock, toastSuccessMock, writeClipboardTextMock, unlockFooterProps } = vi.hoisted(
+  () => ({
+    invokeMock: vi.fn(),
+    toastSuccessMock: vi.fn(),
+    writeClipboardTextMock: vi.fn(),
+    unlockFooterProps: [] as Array<{ unlockRequestNonce?: number; unlocked?: boolean }>,
+  }),
+);
 
 vi.mock("@/lib/invoke", () => ({ invoke: invokeMock }));
 vi.mock("@/lib/clipboard", () => ({ writeClipboardText: writeClipboardTextMock }));
@@ -17,7 +20,12 @@ vi.mock("react-i18next", () => ({
 vi.mock("sonner", () => ({
   toast: { success: toastSuccessMock, error: vi.fn() },
 }));
-vi.mock("./SecretUnlockFooter", () => ({ SecretUnlockFooter: () => null }));
+vi.mock("./SecretUnlockFooter", () => ({
+  SecretUnlockFooter: (props: { unlockRequestNonce?: number; unlocked?: boolean }) => {
+    unlockFooterProps.push(props);
+    return null;
+  },
+}));
 vi.mock("@/components/dialog/security-auth/KeyDeleteDialog", () => ({ KeyDeleteDialog: () => null }));
 vi.mock("@/components/dialog/security-auth/KeyEditorDialog", () => ({ KeyEditorDialog: () => null }));
 vi.mock("@/components/dialog/security-auth/PrivateKeyViewDialog", () => ({
@@ -34,6 +42,7 @@ const publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITest production";
 
 describe("KeyManagementTab", () => {
   beforeEach(() => {
+    unlockFooterProps.length = 0;
     invokeMock.mockReset();
     writeClipboardTextMock.mockReset();
     toastSuccessMock.mockReset();
@@ -64,5 +73,20 @@ describe("KeyManagementTab", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "settings.viewPrivateKey" }));
     expect(invokeMock).not.toHaveBeenCalledWith("get_ssh_key_private_key", { id: key.id });
+  });
+
+  it("asks for the master password before editing an existing key", async () => {
+    render(<KeyManagementTab />);
+
+    await screen.findByText(key.name);
+    fireEvent.click(screen.getByRole("button", { name: "common.edit" }));
+
+    // Locked editing must request unlock instead of opening the editor; the
+    // footer's nonce is how the panel asks for the master password.
+    await waitFor(() => {
+      const last = unlockFooterProps[unlockFooterProps.length - 1];
+      expect(last?.unlocked).toBe(false);
+      expect(last?.unlockRequestNonce ?? 0).toBeGreaterThan(0);
+    });
   });
 });

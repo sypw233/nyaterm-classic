@@ -147,6 +147,13 @@ export function KeyManagementTab({
   }, []);
 
   const handleEdit = async (key: SshKey) => {
+    // Editing an existing key can expose or replace secret material, so it must
+    // go through the same master-password unlock as viewing the private key.
+    // A new key has no stored secret to protect and opens directly.
+    if (!secretsUnlocked) {
+      runUnlockedAction(() => handleEdit(key));
+      return;
+    }
     const requestId = ++editRequestRef.current;
     setEditingId(key.id);
     setEditName(key.name);
