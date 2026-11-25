@@ -670,4 +670,19 @@ mod tests {
         assert_eq!(encoded["root"]["first"]["pane_kind"], "terminal");
         assert_eq!(encoded["root"]["second"]["pane_kind"], "remote-desktop");
     }
+
+    #[test]
+    fn ui_language_round_trips_an_unlisted_language() {
+        // Saving settings must not rewrite a language it does not recognise:
+        // a newer build may ship one this binary has never heard of, and
+        // resetting it to English would silently drop the user's choice.
+        let config: UiConfig = serde_json::from_value(serde_json::json!({
+            "language": "pt-BR"
+        }))
+        .expect("ui config");
+
+        assert_eq!(config.language.as_deref(), Some("pt-BR"));
+        let encoded = serde_json::to_value(&config).expect("serialize ui config");
+        assert_eq!(encoded["language"], "pt-BR");
+    }
 }
