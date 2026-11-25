@@ -4,7 +4,9 @@ All notable changes to this project will be documented in this file.
 
 This changelog is inferred from release bump commits in git history (for example `chore: bump version to vX.Y.Z`) and grouped by Conventional Commit type.
 
-## [Unreleased]
+## [1.3.12] - 2026-11-25
+
+A release improving the automatic-update experience. Not a 2.x sync.
 
 ### Added
 
@@ -12,6 +14,14 @@ This changelog is inferred from release bump commits in git history (for example
   downloads and installs updates silently at startup, then asks the user to
   restart. The update dialog now shows background-download and cancel buttons
   while downloading, and an "installed, restart to apply" view once finished.
+
+### Fixed
+
+- **updater:** The "Download in background" button now closes the dialog so the
+  download truly runs in the background instead of keeping the foreground
+  progress view open. Dismissing an in-progress download also treats it as a
+  background download. In both cases a persistent "restart to update" prompt is
+  shown when the download finishes, with a one-click restart action.
 
 ## [1.3.11] - 2026-11-25
 

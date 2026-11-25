@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { MdCheckCircle, MdError, MdRestartAlt } from "react-icons/md";
+import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
@@ -178,6 +179,23 @@ export default function UpdateDialog({
   const [currentVersion, setCurrentVersion] = useState("");
   const onUpdateFoundRef = useRef(onUpdateFound);
   onUpdateFoundRef.current = onUpdateFound;
+  const handleRelaunchRef = useRef<() => void>(() => {});
+  // Armed when the user asks for a background download. The toast is shown by
+  // the status-watcher effect once the shared store reaches `ready`.
+  const notifyWhenReadyRef = useRef(false);
+
+  useEffect(() => {
+    if (!notifyWhenReadyRef.current) return;
+    if (status !== "ready") return;
+    notifyWhenReadyRef.current = false;
+    toast(t("updater.downloadedRestart"), {
+      duration: Number.POSITIVE_INFINITY,
+      action: {
+        label: t("updater.restartNow"),
+        onClick: () => void handleRelaunchRef.current(),
+      },
+    });
+  }, [status, t]);
 
   useEffect(() => {
     if (!open || !runtimeInfoLoaded || runtimeInfo.packageManager) return;
@@ -195,8 +213,9 @@ export default function UpdateDialog({
     }
   }, [open, runtimeInfo.packageManager, runtimeInfo.portable, runtimeInfoLoaded]);
 
-  const handleUpdate = useCallback(async () => {
+  const handleUpdate = useCallback(async (background = false) => {
     if (runtimeInfo.packageManager) return;
+    if (background) setBackgroundDownload(true);
     try {
       if (getUpdaterState().status !== "available") {
         await checkForUpdate(runtimeInfo.portable);
@@ -205,6 +224,8 @@ export default function UpdateDialog({
       await downloadUpdate();
     } catch {
       // Errors are reflected in the shared store.
+    } finally {
+      if (background) setBackgroundDownload(false);
     }
   }, [runtimeInfo.packageManager, runtimeInfo.portable]);
 
@@ -221,26 +242,20 @@ export default function UpdateDialog({
       // Errors are reflected in the shared store and shown in the error view.
     }
   }, [runtimeInfo.portable]);
+  handleRelaunchRef.current = () => void handleRelaunch();
 
+  // A background download keeps running in the shared updater store while the
+  // dialog is closed; a foreground download must keep the dialog open to show
+  // progress and block accidental dismissal.
   const [backgroundDownload, setBackgroundDownload] = useState(false);
-  const handleBackgroundDownload = useCallback(async () => {
-    if (runtimeInfo.packageManager) return;
+  const startBackgroundDownload = useCallback(() => {
+    notifyWhenReadyRef.current = true;
     setBackgroundDownload(true);
-    try {
-      if (getUpdaterState().status !== "available") {
-        await checkForUpdate(runtimeInfo.portable);
-      }
-      await downloadUpdate();
-    } catch {
-      // Errors are reflected in the shared store.
-    } finally {
-      setBackgroundDownload(false);
-    }
-  }, [runtimeInfo.packageManager, runtimeInfo.portable]);
+    void handleUpdate(true);
+    onClose();
+  }, [handleUpdate, onClose]);
 
-  const canClose =
-    status !== "downloading" ||
-    backgroundDownload;
+  const canClose = status !== "downloading" || backgroundDownload;
   const percent =
     progress.total > 0
       ? Math.round((progress.downloaded / progress.total) * 100)
@@ -250,7 +265,12 @@ export default function UpdateDialog({
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        if (!v && canClose) onClose();
+        if (!v && canClose) {
+          // Dismissing an in-progress download makes it a background download;
+          // notify the user when it finishes.
+          if (status === "downloading") notifyWhenReadyRef.current = true;
+          onClose();
+        }
       }}
     >
       <DialogContent
@@ -321,7 +341,11 @@ export default function UpdateDialog({
               <Button variant="outline" size="sm" onClick={onClose}>
                 {t("common.cancel")}
               </Button>
-              <Button variant="outline" size="sm" onClick={() => void handleBackgroundDownload()}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={startBackgroundDownload}
+              >
                 {t("updater.downloadInBackground")}
               </Button>
               <Button size="sm" onClick={() => void handleUpdate()}>
@@ -354,6 +378,7 @@ export default function UpdateDialog({
                 variant="outline"
                 size="sm"
                 onClick={() => {
+                  notifyWhenReadyRef.current = true;
                   setBackgroundDownload(true);
                   onClose();
                 }}
