@@ -442,9 +442,19 @@ function PaneNodeView({
         </div>
       ) : node.connectError ? (
         <div
-          className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center text-sm"
+          className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center text-sm outline-none"
           style={{ color: "var(--df-text-dimmed)" }}
           aria-live="polite"
+          // Keyboard users land here after a failed connection; Enter retries
+          // without requiring a precise click. Once the reconnect button itself
+          // has focus, its own handler runs and this one must stay out of the way.
+          tabIndex={showReconnectAction ? 0 : -1}
+          onKeyDown={(event) => {
+            if (!showReconnectAction || isReconnectPending) return;
+            if (event.key !== "Enter" || event.target !== event.currentTarget) return;
+            event.preventDefault();
+            void handleReconnectClick();
+          }}
         >
           {isReconnectPending ? (
             <svg
