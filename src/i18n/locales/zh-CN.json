@@ -2279,6 +2279,8 @@
     "allowOsc52ClipboardWriteDesc": "允许远程应用通过终端输出写入本地剪贴板。",
     "altAsMeta": "将 Option 作为 Meta/Alt 键",
     "altAsMetaDesc": "在 macOS 上，Option+f 等快捷键发送 ESC + 按键，而不是输入 ƒ 等特殊字符。",
+    "alternateScroll": "全屏程序中滚轮发送方向键",
+    "alternateScrollDesc": "当 tmux、screen 等全屏程序处于活动状态时，滚轮会作为上/下方向键发送。关闭后滚轮不再被转换。",
     "apiKey": "API 密钥",
     "appId": "App ID",
     "appKey": "App Key",

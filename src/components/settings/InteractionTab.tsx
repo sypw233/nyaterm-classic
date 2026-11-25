@@ -273,6 +273,16 @@ export function InteractionTab() {
         </SettingRow>
 
         <SettingRow
+          label={t("settings.alternateScroll")}
+          desc={t("settings.alternateScrollDesc")}
+        >
+          <SettingSwitch
+            checked={interaction.alternate_scroll ?? true}
+            onChange={(v) => updateInteraction({ alternate_scroll: v })}
+          />
+        </SettingRow>
+
+        <SettingRow
           label={t("settings.imeCompatibility")}
           desc={t("settings.imeCompatibilityDesc")}
         >
