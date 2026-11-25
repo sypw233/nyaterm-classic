@@ -4,10 +4,22 @@ All notable changes to this project will be documented in this file.
 
 This changelog is inferred from release bump commits in git history (for example `chore: bump version to vX.Y.Z`) and grouped by Conventional Commit type.
 
-## [1.3.9] - 2026-11-24
+## [1.3.9] - 2026-11-25
 
-A small UI polish release for the inline command blocks that AI and MCP
-commands print into the terminal. Not a 2.x sync.
+A release for the MCP loopback HTTP transport and a polish pass on the inline
+command blocks that AI and MCP commands print into the terminal. Not a 2.x sync.
+
+### Added
+
+- **mcp:** External MCP can serve its forwarder over Streamable HTTP on
+  `127.0.0.1` instead of stdio. NyaTerm owns the sidecar while HTTP is enabled,
+  and generated client configs switch to an HTTP URL. The capability token is
+  the first URL path segment (`/<token>/mcp`), reusing the bridge token so only
+  a client with the private discovery document can reach the service.
+- **mcp:** The HTTP URL is stable across restarts. `http_port` (0 = auto-pick)
+  and `http_token` are stored in settings with serde defaults for backward
+  compatibility; auto-generated values are persisted on first enable. Settings
+  offers a fixed-port field and a regenerate action that rotates the token.
 
 ### Changed
 
