@@ -232,7 +232,7 @@ export function TerminalTab() {
           desc={t("settings.serialReconnectSendEnterDesc")}
         >
           <SettingSwitch
-            checked={appSettings.terminal.serial_reconnect_send_enter ?? true}
+            checked={appSettings.terminal.serial_reconnect_send_enter ?? false}
             onChange={(v) =>
               updateAppSettings({
                 terminal: { ...appSettings.terminal, serial_reconnect_send_enter: v },

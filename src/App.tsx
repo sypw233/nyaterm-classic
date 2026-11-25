@@ -1600,9 +1600,13 @@ function App() {
   const wakeSerialAfterReconnect = useCallback(
     (paneType: string, sessionId: string) => {
       if (paneType !== "Serial") return;
+      // The pane must still own this session; a newer reconnect or a closed
+      // tab replaces it, and a stale wake must not type into the new one.
+      const isStillWanted = () => liveSessionsById?.has(sessionId) ?? false;
       void sendSerialReconnectWake(
         sessionId,
         appSettings.terminal.serial_reconnect_send_enter,
+        isStillWanted,
       ).catch((error) => {
         logger.warn({
           domain: "session.lifecycle",
@@ -1613,7 +1617,7 @@ function App() {
         });
       });
     },
-    [appSettings.terminal.serial_reconnect_send_enter],
+    [appSettings.terminal.serial_reconnect_send_enter, liveSessionsById],
   );
 
   const handleConnectionError = useCallback(

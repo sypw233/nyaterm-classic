@@ -71,6 +71,7 @@ import {
 import { TerminalInputBatcher } from "@/lib/terminalInputBatcher";
 import { buildWordCompletionKeystrokes } from "@/lib/wordCompletion";
 import { planSuggestionFill } from "@/lib/suggestionFillPolicy";
+import { cancelSerialReconnectWake } from "@/lib/appSessionFactory";
 import { registerTerminalContextProvider } from "@/lib/terminalContext";
 import {
   isBareShellPrompt,
@@ -2792,6 +2793,9 @@ function XTerminal({
       if (hibernationPhaseRef.current !== "idle") {
         requestWake("input");
       }
+      // A keystroke means the user is talking to the console directly; any
+      // queued reconnect wake would be redundant (or a stray newline).
+      cancelSerialReconnectWake(sessionId);
 
       if (disconnectedRef.current) {
         if (

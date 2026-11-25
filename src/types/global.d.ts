@@ -1505,7 +1505,7 @@ export interface TerminalSettings {
   show_multi_line_paste_dialog: boolean;
   paste_image_as_path: boolean;
   reconnect_restore_cwd: boolean;
-  /** Send one Enter after a serial session reopens; defaults to true. */
+  /** Send one Enter after a serial session reopens; opt-in, defaults to false. */
   serial_reconnect_send_enter?: boolean;
   /** Log per-frame render statistics; off by default because logging costs time. */
   render_stats_enabled?: boolean;

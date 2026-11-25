@@ -401,15 +401,30 @@ export async function sendStartupCommandToSession(
   );
 }
 
+const pendingSerialWakes = new Set<string>();
+
+/** Cancel a pending post-reconnect wake, e.g. when the user starts typing. */
+export function cancelSerialReconnectWake(sessionId: string): void {
+  pendingSerialWakes.delete(sessionId);
+}
+
 export async function sendSerialReconnectWake(
   sessionId: string,
   enabled: boolean | undefined,
+  isStillWanted: () => boolean = () => true,
+  sleep: (ms: number) => Promise<void> = (ms) =>
+    new Promise((resolve) => window.setTimeout(resolve, ms)),
 ): Promise<void> {
-  // Legacy settings predate this option; match the documented default.
-  if (enabled === false) return;
+  // Legacy settings predate this option; it is opt-in.
+  if (enabled !== true) return;
+  pendingSerialWakes.add(sessionId);
   // Give the freshly opened port a moment to settle before waking a console
-  // that only prints its prompt after receiving input.
-  await new Promise((resolve) => window.setTimeout(resolve, 300));
+  // that only prints its prompt after receiving input. If the user typed or
+  // the session changed in the meantime, the wake is stale and is dropped.
+  await sleep(300);
+  const wanted = pendingSerialWakes.has(sessionId) && isStillWanted();
+  pendingSerialWakes.delete(sessionId);
+  if (!wanted) return;
   await sendSessionInput(sessionId, "\r", {
     preview: { kind: "reset" },
     origin: "startup_command",

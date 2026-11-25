@@ -24,9 +24,18 @@ describe("sendSerialReconnectWake", () => {
     invokeMock.mockResolvedValue(undefined);
   });
 
-  it("sends one Enter by default so a serial console prints its prompt", async () => {
+  it("does nothing unless the opt-in wake input is enabled", async () => {
     vi.useFakeTimers();
     const pending = sendSerialReconnectWake("serial-1", undefined);
+    await vi.advanceTimersByTimeAsync(300);
+    await pending;
+
+    expect(invokeMock).not.toHaveBeenCalled();
+  });
+
+  it("sends one Enter when enabled so a serial console prints its prompt", async () => {
+    vi.useFakeTimers();
+    const pending = sendSerialReconnectWake("serial-1", true);
     await vi.advanceTimersByTimeAsync(300);
     await pending;
 
@@ -38,9 +47,15 @@ describe("sendSerialReconnectWake", () => {
     });
   });
 
-  it("sends nothing when the wake input is disabled", async () => {
+  it("drops a stale wake after the user typed during the settle delay", async () => {
     vi.useFakeTimers();
-    const pending = sendSerialReconnectWake("serial-1", false);
+    let stillWanted = true;
+    const pending = sendSerialReconnectWake(
+      "serial-1",
+      true,
+      () => stillWanted,
+    );
+    stillWanted = false;
     await vi.advanceTimersByTimeAsync(300);
     await pending;
 
