@@ -33,6 +33,8 @@ describe("External MCP defaults", () => {
       session_scope: "current_window",
       terminal_display_mode: "inline",
       http_enabled: false,
+      http_port: null,
+      http_token: null,
     });
   });
 

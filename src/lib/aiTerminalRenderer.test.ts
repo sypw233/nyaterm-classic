@@ -72,10 +72,13 @@ describe("AI command terminal rendering", () => {
       truncated: false,
     });
     // Each \r segment must become its own railed line, not one glued line.
-    expect(end).toContain("│   正在加载操作系统信息...");
-    expect(end).toContain("│   正在加载计算机信息...");
-    expect(end).toContain("│   主机名: NWVM-051021");
-    expect(end).not.toMatch(/正在加载操作系统信息\.\.\.正在加载计算机信息/);
+    // Strip ANSI sequences (the rail and text are colourised) before checking
+    // the visible layout.
+    const visible = end.replace(/\x1b\[[0-9;]*m/gu, "");
+    expect(visible).toContain("│   正在加载操作系统信息...");
+    expect(visible).toContain("│   正在加载计算机信息...");
+    expect(visible).toContain("│   主机名: NWVM-051021");
+    expect(visible).not.toMatch(/正在加载操作系统信息\.\.\.正在加载计算机信息/);
 
     const wide = "x".repeat(180);
     const wrapped = renderAiCommandEnd({
@@ -85,7 +88,8 @@ describe("AI command terminal rendering", () => {
       durationMs: 10,
       truncated: false,
     });
-    expect(wrapped).toContain(`│   ${"x".repeat(100)}`);
-    expect(wrapped).toContain(`│   ${"x".repeat(80)}`);
+    const visibleWrapped = wrapped.replace(/\x1b\[[0-9;]*m/gu, "");
+    expect(visibleWrapped).toContain(`│   ${"x".repeat(100)}`);
+    expect(visibleWrapped).toContain(`│   ${"x".repeat(80)}`);
   });
 });
