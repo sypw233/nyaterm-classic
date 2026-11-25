@@ -4,6 +4,45 @@ All notable changes to this project will be documented in this file.
 
 This changelog is inferred from release bump commits in git history (for example `chore: bump version to vX.Y.Z`) and grouped by Conventional Commit type.
 
+## [1.3.10] - 2026-11-25
+
+A release syncing the latest 2.x capabilities into this Tauri/React codebase.
+Each was reimplemented here rather than copied, so the implementation differs
+while the behaviour matches. It also hardens credential handling and fixes a
+test-environment issue exposed by the newer toolchain.
+
+### Added
+
+- **credentials:** *(from 2.x `f26e8a976`)* Password prompts now offer only credentials whose own prompt pattern matches. An unmatched prompt offers nothing instead of listing the whole vault, closing a way for remote output to enumerate saved accounts.
+- **credentials:** *(from 2.x `af724014d`)* OTP entries carry an optional prompt pattern and can be suggested when a terminal prompt matches. The code itself is never stored in the suggestion; it is generated at selection time through the sensitive input path.
+- **desktop:** *(from 2.x `08d70101a`)* The UI theme can follow the system light/dark appearance, either manually or by picking separate light and dark themes. The OS preference is device-local and never synchronized.
+- **terminal:** *(from 2.x `969899b92`)* Quick commands can be sent in segments, by line or by character with a configurable interval, for interactive wizards that read one answer at a time. Delivery is bounded and cancellable.
+- **terminal:** *(from 2.x `485213a48`)* Keyword highlight rules can be scoped to a session, overlaying global rules by id without affecting other sessions.
+- **terminal:** *(from 2.x `092527f5c`)* A setting controls whether the mouse wheel sends arrow keys while a full-screen program such as tmux or screen is active.
+- **terminal:** *(from 2.x `1c0861c18`)* Kitty graphics are enabled in the terminal image addon, so programs that draw inline images (yazi previews, opencode) no longer garble the terminal with raw escape sequences.
+- **terminal:** *(from 2.x `7eb4b139d`)* AI chat messages show a local timestamp and a copy action, and fenced code blocks get their own copy button.
+- **desktop:** *(from 2.x `17565c46a`)* Pressing Tab in the file browser path input completes the last segment against the parent directory's subdirectories.
+- **desktop:** *(from 2.x `18614c4ed`)* Connection types in the new-connection editor can be hidden and reordered.
+- **settings:** *(from 2.x `5573a834e`)* An opt-in setting opens a newly created connection as soon as it is saved. Editing an existing connection is unaffected.
+- **terminal:** *(from 2.x `daedb5856`)* A failed connection pane can be retried by pressing Enter.
+- **serial:** *(from 2.x `c41a8be79`)* A successfully reopened serial session can send one Enter to wake a console that prints its prompt only after input. The wake is opt-in and cancelled if the user types first.
+
+### Changed
+
+- **terminal:** *(from 2.x `dbae079ce`)* Command block starts are inferred from wrapped terminal rows with bounded caches, so multi-row commands register their true start and stale boundaries are revoked when the buffer changes.
+- **terminal:** *(from 2.x `77e64b2f2`)* Command suggestions stay available while input is synchronized; fills become append-only and unsafe rewrites are refused instead of corrupting peer sessions.
+- **terminal:** *(from 2.x `4a6f4d827`, `076c29e0c`)* Credential-prompt detection and input protection no longer depend on a non-empty vault, so manually typed passwords stay protected even with no saved credentials.
+
+### Fixed
+
+- **security:** *(from 2.x `f62f904f1`)* Editing an existing SSH key now requires the master-password unlock that viewing a private key already required.
+- **ai:** *(from 2.x `07b7dfae8`, `005088a97`)* Persisted assistant projections are deduplicated by id, so agent runs that re-persist an evolving message no longer render it multiple times. Copy controls remain keyboard accessible.
+- **mcp:** `tools/list` results include `ttlMs` and `cacheScope` as required by the current protocol revision, fixing strict clients that rejected the response.
+- **quick-commands:** *(from 2.x `ebe293a41`)* Character-mode segmented sends preserve a literal LF instead of translating it to CRLF.
+- **config:** *(from 2.x `dff61c118`)* Saving settings no longer rewrites a UI language the binary does not recognise, so a locale shipped by a newer build is not silently reset to English.
+- **files:** *(from 2.x `d05715ec3`)* Text opens re-check the byte count on the data actually read, so an under-reported size or a file that grows between stat and read cannot bypass the limit.
+- **test:** Provide a `PointerEvent` polyfill in the Vitest setup; jsdom in this toolchain omitted it, which broke Radix menus, drag handlers and pointer mapping tests.
+
 ## [1.3.9] - 2026-11-25
 
 A release for the MCP loopback HTTP transport and a polish pass on the inline
