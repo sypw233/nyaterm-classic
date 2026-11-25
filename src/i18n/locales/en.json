@@ -2347,6 +2347,8 @@
     "confirmOnClose": "Confirm on close",
     "confirmOnCloseDesc": "Confirm before closing with active sessions.",
     "connectionSecurity": "Security",
+    "connectionTypeOrder": "Connection types",
+    "connectionTypeOrderDesc": "Choose which connection types appear in the editor and their order.",
     "continueEditing": "Continue editing",
     "copyGithubGistUserCode": "Copy device code",
     "copyOnSelect": "Copy on Select",

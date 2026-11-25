@@ -2348,6 +2348,8 @@
     "confirmOnClose": "Подтвердить при закрытии",
     "confirmOnCloseDesc": "Подтвердите перед закрытием активных сеансов.",
     "connectionSecurity": "Безопасность",
+    "connectionTypeOrder": "Типы подключений",
+    "connectionTypeOrderDesc": "Выберите, какие типы подключений показывать в редакторе и в каком порядке.",
     "continueEditing": "Продолжить редактирование",
     "copyGithubGistUserCode": "Скопировать код устройства",
     "copyOnSelect": "Копировать при выборе",

@@ -2344,6 +2344,8 @@
     "confirmOnClose": "关闭时确认",
     "confirmOnCloseDesc": "在有活动会话时关闭应用程序时显示确认对话框。",
     "connectionSecurity": "连接安全",
+    "connectionTypeOrder": "连接类型",
+    "connectionTypeOrderDesc": "选择编辑器显示哪些连接类型以及它们的顺序。",
     "continueEditing": "继续编辑",
     "copyGithubGistUserCode": "复制机器码",
     "copyOnSelect": "选中即复制",

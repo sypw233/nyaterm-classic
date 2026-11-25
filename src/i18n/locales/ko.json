@@ -2344,6 +2344,8 @@
     "confirmOnClose": "닫을 때 확인",
     "confirmOnCloseDesc": "활성 세션이 있을 때 닫기 전에 확인합니다.",
     "connectionSecurity": "보안",
+    "connectionTypeOrder": "연결 유형",
+    "connectionTypeOrderDesc": "편집기에 표시할 연결 유형과 순서를 선택하세요.",
     "continueEditing": "계속 편집",
     "copyGithubGistUserCode": "장치 코드 복사",
     "copyOnSelect": "선택 시 복사",

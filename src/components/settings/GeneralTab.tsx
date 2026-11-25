@@ -6,6 +6,12 @@ import { useConfigTransfer } from "@/hooks/useConfigTransfer";
 import { AVAILABLE_LANGUAGES } from "@/i18n";
 import { runtime, supports } from "@/lib/backend/runtime";
 import { HEADER_STATUS_MODES, normalizeHeaderStatusMode } from "@/lib/headerStatus";
+import {
+  DEFAULT_CONNECTION_TYPE_ORDER,
+  moveConnectionType,
+  resolveConnectionTypeLayout,
+  setConnectionTypeVisible,
+} from "@/lib/connectionTypeLayout";
 import { resolveKeys } from "@/lib/shortcutRegistry";
 import {
   SettingFieldGrid,
@@ -132,6 +138,87 @@ export function GeneralTab() {
             }
           />
         </SettingRow>
+
+        <div className="space-y-2">
+          <div>
+            <p className="text-sm font-medium">{t("settings.connectionTypeOrder")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("settings.connectionTypeOrderDesc")}
+            </p>
+          </div>
+          <div className="w-full space-y-1">
+            {resolveConnectionTypeLayout(
+              appSettings.general.connection_type_layout,
+              DEFAULT_CONNECTION_TYPE_ORDER,
+            ).map((entry) => (
+              <div key={entry.id} className="flex items-center gap-2 text-xs">
+                <SettingSwitch
+                  checked={entry.visible}
+                  onChange={(v) =>
+                    updateAppSettings({
+                      general: {
+                        ...appSettings.general,
+                        connection_type_layout: setConnectionTypeVisible(
+                          appSettings.general.connection_type_layout,
+                          entry.id,
+                          v,
+                          DEFAULT_CONNECTION_TYPE_ORDER,
+                        ),
+                      },
+                    })
+                  }
+                />
+                <span className="min-w-0 flex-1 capitalize">{entry.id}</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-[0.6875rem]"
+                  onClick={() =>
+                    updateAppSettings({
+                      general: {
+                        ...appSettings.general,
+                        connection_type_layout: moveConnectionType(
+                          appSettings.general.connection_type_layout,
+                          entry.id,
+                          resolveConnectionTypeLayout(
+                            appSettings.general.connection_type_layout,
+                            DEFAULT_CONNECTION_TYPE_ORDER,
+                          ).findIndex((item) => item.id === entry.id) - 1,
+                          DEFAULT_CONNECTION_TYPE_ORDER,
+                        ),
+                      },
+                    })
+                  }
+                >
+                  ↑
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-[0.6875rem]"
+                  onClick={() =>
+                    updateAppSettings({
+                      general: {
+                        ...appSettings.general,
+                        connection_type_layout: moveConnectionType(
+                          appSettings.general.connection_type_layout,
+                          entry.id,
+                          resolveConnectionTypeLayout(
+                            appSettings.general.connection_type_layout,
+                            DEFAULT_CONNECTION_TYPE_ORDER,
+                          ).findIndex((item) => item.id === entry.id) + 1,
+                          DEFAULT_CONNECTION_TYPE_ORDER,
+                        ),
+                      },
+                    })
+                  }
+                >
+                  ↓
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <SettingRow
           label={t("settings.backgroundAutoDownload")}

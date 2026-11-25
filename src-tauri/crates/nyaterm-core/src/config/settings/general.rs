@@ -21,6 +21,11 @@ pub struct GeneralSettings {
     /// existing connection is unaffected. Opt-in.
     #[serde(default)]
     pub open_new_connection_after_save: bool,
+    /// New-connection editor tab order and visibility. Missing entries keep
+    /// their built-in position and stay visible, so old documents (and
+    /// transports added later) are never hidden by a stale layout.
+    #[serde(default)]
+    pub connection_type_layout: Option<serde_json::Value>,
     #[serde(default = "default_rdp_client_mode")]
     pub rdp_client_mode: String,
     #[serde(default = "default_true")]
@@ -45,6 +50,7 @@ impl Default for GeneralSettings {
             boss_key: None,
             confirm_on_close: true,
             open_new_connection_after_save: false,
+            connection_type_layout: None,
             rdp_client_mode: default_rdp_client_mode(),
             easter_eggs_enabled: true,
             freeze_demo_ms: default_freeze_demo_ms(),

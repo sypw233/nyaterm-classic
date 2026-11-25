@@ -1289,6 +1289,8 @@ export interface GeneralSettings {
   confirm_on_close: boolean;
   /** Start a newly saved connection immediately; opt-in. */
   open_new_connection_after_save?: boolean;
+  /** New-connection editor tab order and visibility. */
+  connection_type_layout?: import("@/lib/connectionTypeLayout").ConnectionTypeLayout | null;
   /** Legacy fallback for saved connections without an explicit client preference. */
   rdp_client_mode: RdpClientMode;
   /** Master switch for easter eggs. When false, no easter egg is shown. */

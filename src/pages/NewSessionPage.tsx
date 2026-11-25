@@ -48,6 +48,7 @@ import { pickBrowserImage } from "@/lib/backend/browserArtifacts";
 import { open as openDialog } from "@/lib/backend/platform/dialog";
 import { getCurrentWindow } from "@/lib/backend/platform/window";
 import { runtime, supports } from "@/lib/backend/runtime";
+import { visibleConnectionTypeIds } from "@/lib/connectionTypeLayout";
 import { getErrorMessage } from "@/lib/errors";
 import { invoke } from "@/lib/invoke";
 import { logger } from "@/lib/logger";
@@ -203,7 +204,25 @@ function normalizeConnectionTags(tags: string[]): string[] {
 export default function NewSessionPage() {
   const { t } = useTranslation();
   const { appSettings } = useApp();
-  const sessionTypeTabs = SESSION_TYPE_TABS.filter(({ capability }) => supports(capability));
+  // Honour the user's connection-type order/visibility, then drop types the
+  // current runtime does not support. Unknown stored ids are ignored by the
+  // resolver, and types it does not mention stay at their built-in position.
+  const orderedTypeIds =
+    typeof window !== "undefined" && appSettings.general.connection_type_layout
+      ? visibleConnectionTypeIds(
+          appSettings.general.connection_type_layout,
+          SESSION_TYPE_TABS.map((tab) => tab.value),
+        )
+      : SESSION_TYPE_TABS.map((tab) => tab.value);
+  const orderedTabs = orderedTypeIds
+    .map((id) => SESSION_TYPE_TABS.find((tab) => tab.value === id))
+    .filter((tab): tab is (typeof SESSION_TYPE_TABS)[number] => !!tab)
+    .filter(({ capability }) => supports(capability));
+  // Never leave the editor with no protocol at all.
+  const sessionTypeTabs =
+    orderedTabs.length > 0
+      ? orderedTabs
+      : SESSION_TYPE_TABS.filter(({ capability }) => supports(capability)).slice(0, 1);
   const params = new URLSearchParams(window.location.search);
   const editId = params.get("edit") ?? undefined;
   const autoConnect = params.get("autoConnect") === "1";
