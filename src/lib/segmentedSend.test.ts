@@ -46,6 +46,14 @@ describe("planSegmentedUnits", () => {
       "two",
     ]);
   });
+
+  it("preserves a literal LF in character sends instead of translating it", () => {
+    // Raw character delivery must send the bytes the user typed. Translating
+    // LF to CRLF here would submit early or corrupt binary-ish payloads.
+    const units = planSegmentedUnits("a\nb", { mode: "character" });
+    expect(units).toEqual(["a", "\n", "b"]);
+    expect(units.some((unit) => unit.includes("\r"))).toBe(false);
+  });
 });
 
 describe("segmentDelays", () => {
