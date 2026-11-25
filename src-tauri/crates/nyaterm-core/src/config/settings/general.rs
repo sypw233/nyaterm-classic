@@ -17,6 +17,10 @@ pub struct GeneralSettings {
     pub boss_key: Option<String>,
     #[serde(default = "default_true")]
     pub confirm_on_close: bool,
+    /// Start a newly created connection as soon as it is saved. Editing an
+    /// existing connection is unaffected. Opt-in.
+    #[serde(default)]
+    pub open_new_connection_after_save: bool,
     #[serde(default = "default_rdp_client_mode")]
     pub rdp_client_mode: String,
     #[serde(default = "default_true")]
@@ -40,6 +44,7 @@ impl Default for GeneralSettings {
             minimize_to_tray: false,
             boss_key: None,
             confirm_on_close: true,
+            open_new_connection_after_save: false,
             rdp_client_mode: default_rdp_client_mode(),
             easter_eggs_enabled: true,
             freeze_demo_ms: default_freeze_demo_ms(),
@@ -66,5 +71,6 @@ mod tests {
         assert_eq!(settings.rdp_client_mode, "builtin");
         assert!(settings.easter_eggs_enabled);
         assert_eq!(settings.freeze_demo_ms, 3000);
+        assert!(!settings.open_new_connection_after_save);
     }
 }

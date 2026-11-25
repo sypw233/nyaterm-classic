@@ -2663,6 +2663,8 @@
     "openLogs": "打开日志目录",
     "openLogsDesc": "在系统文件管理器中打开本地日志目录。",
     "openLogsFailed": "打开日志目录失败",
+    "openNewConnectionAfterSave": "保存后打开新连接",
+    "openNewConnectionAfterSaveDesc": "新建连接保存后立即启动。编辑已有连接不受影响。",
     "openSecuritySettings": "打开安全设置",
     "openSshUserCertificate": "OpenSSH 用户证书",
     "optionalField": "可选",

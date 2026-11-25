@@ -76,6 +76,10 @@ pub struct TerminalSettings {
     pub keyword_highlights: Vec<KeywordHighlightRule>,
     #[serde(default = "default_false")]
     pub action_links_enabled: bool,
+    /// Insert action-link command targets into the terminal input line instead
+    /// of submitting them. Open/copy/paste actions are unaffected.
+    #[serde(default = "default_false")]
+    pub action_links_insert_commands: bool,
     #[serde(default)]
     pub action_links_matchers: ActionLinksMatcherSettings,
     #[serde(default = "default_false")]
@@ -218,6 +222,7 @@ impl Default for TerminalSettings {
             keyword_highlight_builtin_rules: BTreeMap::new(),
             keyword_highlights: Vec::new(),
             action_links_enabled: false,
+            action_links_insert_commands: false,
             action_links_matchers: ActionLinksMatcherSettings::default(),
             show_workspace_padding: false,
             show_line_numbers: false,
@@ -255,6 +260,18 @@ mod tests {
 
         assert_eq!(settings.keep_alive_mode, "compatible");
         assert_eq!(settings.keep_alive_interval, 60);
+    }
+
+    #[test]
+    fn missing_action_links_insert_commands_defaults_to_false() {
+        let settings: TerminalSettings = serde_json::from_value(serde_json::json!({
+            "scrollback_lines": 5000,
+            "keep_alive_interval": 60
+        }))
+        .expect("legacy terminal settings deserialize");
+
+        assert!(!settings.action_links_insert_commands);
+        assert!(!TerminalSettings::default().action_links_insert_commands);
     }
 
     #[test]

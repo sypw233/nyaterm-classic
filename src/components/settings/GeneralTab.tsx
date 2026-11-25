@@ -120,6 +120,20 @@ export function GeneralTab() {
         </SettingRow>
 
         <SettingRow
+          label={t("settings.openNewConnectionAfterSave")}
+          desc={t("settings.openNewConnectionAfterSaveDesc")}
+        >
+          <SettingSwitch
+            checked={appSettings.general.open_new_connection_after_save ?? false}
+            onChange={(v) =>
+              updateAppSettings({
+                general: { ...appSettings.general, open_new_connection_after_save: v },
+              })
+            }
+          />
+        </SettingRow>
+
+        <SettingRow
           label={t("settings.backgroundAutoDownload")}
           desc={t("settings.backgroundAutoDownloadDesc")}
         >

@@ -1287,6 +1287,8 @@ export interface GeneralSettings {
   minimize_to_tray: boolean;
   boss_key: string | null;
   confirm_on_close: boolean;
+  /** Start a newly saved connection immediately; opt-in. */
+  open_new_connection_after_save?: boolean;
   /** Legacy fallback for saved connections without an explicit client preference. */
   rdp_client_mode: RdpClientMode;
   /** Master switch for easter eggs. When false, no easter egg is shown. */
@@ -1499,6 +1501,8 @@ export interface TerminalSettings {
   keyword_highlight_builtin_rules: KeywordHighlightBuiltinRuleSettings;
   keyword_highlights: KeywordHighlightRule[];
   action_links_enabled: boolean;
+  /** Insert action-link commands into the input line instead of submitting. */
+  action_links_insert_commands?: boolean;
   action_links_matchers: ActionLinksMatcherSettings;
   show_workspace_padding: boolean;
   show_line_numbers: boolean;
@@ -2074,6 +2078,7 @@ export interface ConnectionOverrides {
   /** Replaces the global rule set wholesale when present. */
   keyword_highlights?: KeywordHighlightRule[];
   action_links_enabled?: boolean;
+  action_links_insert_commands?: boolean;
   action_links_matchers?: ActionLinksMatcherSettings;
   show_line_numbers?: boolean;
   show_timestamps?: boolean;

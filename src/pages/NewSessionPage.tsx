@@ -1374,7 +1374,11 @@ export default function NewSessionPage() {
         }
       }
       await emit("session-saved");
-      if (autoConnect && (initialData?.id || savedId)) {
+      // A newly created connection may open immediately when the preference is
+      // on. Editing an existing connection keeps the explicit-connect path.
+      const startAfterSave =
+        autoConnect || (!initialData?.id && appSettings.general.open_new_connection_after_save);
+      if (startAfterSave && (initialData?.id || savedId)) {
         await emit("session-connect-after-edit", {
           connectionId: initialData?.id || savedId,
           targetLeafId,

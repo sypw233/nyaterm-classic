@@ -2666,6 +2666,8 @@
     "openLogs": "Open Log Folder",
     "openLogsDesc": "Open the local log folder in your system file manager.",
     "openLogsFailed": "Failed to open log folder",
+    "openNewConnectionAfterSave": "Open new connections after saving",
+    "openNewConnectionAfterSaveDesc": "Start a newly created connection as soon as it is saved. Editing an existing connection is unaffected.",
     "openSecuritySettings": "Open Security",
     "openSshUserCertificate": "OpenSSH user certificate",
     "optionalField": "Optional",

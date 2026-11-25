@@ -2663,6 +2663,8 @@
     "openLogs": "開啟日誌目錄",
     "openLogsDesc": "在系統檔案管理器中開啟本機日誌目錄。",
     "openLogsFailed": "開啟日誌目錄失敗",
+    "openNewConnectionAfterSave": "儲存後開啟新連線",
+    "openNewConnectionAfterSaveDesc": "新建連線儲存後立即啟動。編輯既有連線不受影響。",
     "openSecuritySettings": "開啟安全設定",
     "openSshUserCertificate": "OpenSSH 使用者憑證",
     "optionalField": "可選",
