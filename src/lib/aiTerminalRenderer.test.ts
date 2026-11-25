@@ -11,6 +11,8 @@ describe("AI command terminal rendering", () => {
     expect(start).toContain("AI #1");
     expect(start).toContain("INPUT");
     expect(start).toContain("$ echo ok");
+    // Must start on a fresh line so the frame never lands on the prompt.
+    expect(start.startsWith("\r\n")).toBe(true);
   });
 
   it("labels external MCP commands with their step", () => {

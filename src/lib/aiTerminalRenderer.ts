@@ -66,6 +66,8 @@ export function renderAiCommandStart(
   const title = `${source} #${step}`;
 
   return [
+    // Ensure the frame never starts on an unterminated prompt line.
+    "",
     `${DIM}${ACCENT}┌─ ${title} ${rule(title)}${RESET}`,
     `${rail} ${LABEL}INPUT${RESET}`,
     `${rail}   ${BOLD}$ ${command}${RESET}`,
