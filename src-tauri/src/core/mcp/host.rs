@@ -742,7 +742,10 @@ impl McpManager {
     fn stop_http_child(&self) {
         if let Ok(mut child) = self.http_child.lock() {
             if let Some(child) = child.as_mut() {
-                let _ = child.kill();
+                // start_kill is non-blocking, so it is safe from sync shutdown
+                // hooks; try_wait reaps the child when it has already exited.
+                let _ = child.start_kill();
+                let _ = child.try_wait();
             }
             *child = None;
         }
@@ -753,7 +756,8 @@ impl McpManager {
     fn start_http_child(&self, port: u16) -> AppResult<()> {
         self.stop_http_child();
         let sidecar = self.sidecar_path()?;
-        let child = Command::new(sidecar)
+        let mut command = Command::new(sidecar);
+        command
             .arg("--http")
             .arg("--port")
             .arg(port.to_string())
@@ -761,8 +765,12 @@ impl McpManager {
                 "NYATERM_MCP_DISCOVERY",
                 DiscoveryStore::new(&self.config_dir).file_path(),
             )
-            .kill_on_drop(true)
-            .spawn()?;
+            .kill_on_drop(true);
+        // The MCP forwarder is a console binary. On Windows, spawning it
+        // without CREATE_NO_WINDOW pops up a console window that stays for the
+        // lifetime of the sidecar. Hide it, like the other owned helpers.
+        crate::utils::process::hide_window(&mut command);
+        let child = command.spawn()?;
         *self.http_child.lock().unwrap() = Some(child);
         self.http_port.store(port, Ordering::SeqCst);
         Ok(())
