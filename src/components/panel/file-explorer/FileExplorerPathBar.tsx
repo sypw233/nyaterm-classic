@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { FileEntry } from "@/types/global";
+import { completePathFragment } from "@/lib/pathCompletion";
 import {
   type BreadcrumbSegment,
   buildBreadcrumbSegments,
@@ -341,6 +342,31 @@ export function FileExplorerPathBar({
               onEditingPathChange(false);
             } else if (event.key === "Escape") {
               onEditingPathChange(false);
+            } else if (event.key === "Tab") {
+              // Complete the last segment against the parent directory's
+              // subdirectories. Only directories are offered: completing to a
+              // file would leave a path the browser cannot navigate into.
+              event.preventDefault();
+              const raw = pathInputText;
+              const separator = raw.includes("\\") && !raw.includes("/") ? "\\" : "/";
+              const lastSeparator = raw.lastIndexOf(separator);
+              const parentPath =
+                lastSeparator <= 0 ? raw.slice(0, Math.max(0, lastSeparator + 1)) : raw.slice(0, lastSeparator);
+              void Promise.resolve(
+                onListChildDirectories(parentPath || separator),
+              )
+                .then((children) => {
+                  const completion = completePathFragment(
+                    raw,
+                    children.map((child) => ({ name: child.name, isDirectory: true })),
+                  );
+                  if (completion.value !== raw) {
+                    onPathInputTextChange(completion.value);
+                  }
+                })
+                .catch(() => {
+                  // Completion is auxiliary; a failed listing leaves input as typed.
+                });
             }
           }}
         />
