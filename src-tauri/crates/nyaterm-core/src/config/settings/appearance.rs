@@ -8,6 +8,15 @@ use serde::{Deserialize, Serialize};
 pub struct AppearanceSettings {
     #[serde(default = "default_app_theme")]
     pub theme: String,
+    /// Theme resolution mode: "manual" uses `theme`, "system" picks between
+    /// `light_theme` and `dark_theme` from the OS appearance. Unknown values
+    /// are preserved during unrelated edits and behave as manual.
+    #[serde(default = "default_theme_mode")]
+    pub theme_mode: String,
+    #[serde(default = "default_light_theme")]
+    pub light_theme: String,
+    #[serde(default = "default_dark_theme")]
+    pub dark_theme: String,
     #[serde(default)]
     pub custom_themes: Vec<ThemeConfig>,
     #[serde(default = "default_font")]
@@ -126,6 +135,15 @@ pub struct TerminalColorsConfig {
 fn default_app_theme() -> String {
     "github-dark".to_string()
 }
+fn default_theme_mode() -> String {
+    "manual".to_string()
+}
+fn default_light_theme() -> String {
+    "github-light".to_string()
+}
+fn default_dark_theme() -> String {
+    "github-dark".to_string()
+}
 fn default_font() -> String {
     DEFAULT_TERMINAL_FONT_FAMILY.to_string()
 }
@@ -167,6 +185,9 @@ impl Default for AppearanceSettings {
     fn default() -> Self {
         Self {
             theme: default_app_theme(),
+            theme_mode: default_theme_mode(),
+            light_theme: default_light_theme(),
+            dark_theme: default_dark_theme(),
             custom_themes: Vec::new(),
             font_family: default_font(),
             ui_font_family: default_ui_font(),
@@ -242,6 +263,15 @@ impl AppearanceSettings {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn legacy_appearance_keeps_manual_theme_mode() {
+        let settings: AppearanceSettings = serde_json::from_value(serde_json::json!({})).unwrap();
+
+        assert_eq!(settings.theme_mode, "manual");
+        assert_eq!(settings.light_theme, "github-light");
+        assert_eq!(settings.dark_theme, "github-dark");
+    }
 
     #[test]
     fn deserialized_default_keeps_acrylic_material_disabled() {

@@ -15,6 +15,10 @@ import {
   type ThemeColors,
 } from "@/lib/themes";
 import { useApp } from "./AppContext";
+import {
+  resolveEffectiveThemeId,
+  systemAppearanceFromMatchMedia,
+} from "@/lib/systemTheme";
 
 interface ThemeContextType {
   theme: Theme;
@@ -34,6 +38,33 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export const THEME_CACHE_KEY = "df-theme-id";
 export const THEME_SNAPSHOT_CACHE_KEY = "df-theme-snapshot";
+
+const DARK_SCHEME_QUERY = "(prefers-color-scheme: dark)";
+
+/** Track the OS light/dark preference without persisting it. */
+function useSystemAppearance() {
+  const [appearance, setAppearance] = useState(() =>
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? systemAppearanceFromMatchMedia(window.matchMedia(DARK_SCHEME_QUERY).matches)
+      : ("dark" as const),
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia(DARK_SCHEME_QUERY);
+    const update = () => setAppearance(systemAppearanceFromMatchMedia(media.matches));
+    update();
+    // Safari <14 only supports the legacy listener API.
+    if (typeof media.addEventListener === "function") {
+      media.addEventListener("change", update);
+      return () => media.removeEventListener("change", update);
+    }
+    media.addListener(update);
+    return () => media.removeListener(update);
+  }, []);
+
+  return appearance;
+}
 
 /** Inject all theme colors as CSS custom properties on :root */
 export function applyThemeToDOM(colors: ThemeColors) {
@@ -79,11 +110,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const availableThemes = useMemo(() => getAvailableThemes(customThemes), [customThemes]);
   const initialId = appSettings.appearance.theme || DEFAULT_THEME_ID;
   const [themeName, setThemeName] = useState(initialId);
+  const systemAppearance = useSystemAppearance();
+
+  // In system mode the OS preference picks the active theme; the saved ids are
+  // left untouched so switching back to manual restores the user's choice.
+  const effectiveThemeId = useMemo(
+    () => resolveEffectiveThemeId(appSettings.appearance, systemAppearance),
+    [appSettings.appearance, systemAppearance],
+  );
 
   const initialTerminalId = appSettings.appearance.terminal_theme || null;
   const [terminalThemeName, setTerminalThemeName] = useState<string | null>(initialTerminalId);
 
-  const current = resolveTheme(themeName, customThemes);
+  // Manual mode uses local `themeName` for instant feedback; system mode
+  // follows the resolved OS preference regardless of the local selection.
+  const isSystemMode = appSettings.appearance.theme_mode === "system";
+  const current = resolveTheme(isSystemMode ? effectiveThemeId : themeName, customThemes);
 
   const resolvedTerminalTheme = useMemo(() => {
     if (terminalThemeName && availableThemes.some((theme) => theme.id === terminalThemeName)) {
@@ -150,10 +192,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     [appSettings.appearance, availableThemes, updateAppSettings],
   );
 
+  const activeThemeId = isSystemMode ? effectiveThemeId : themeName;
   const contextValue = useMemo(
     () => ({
       theme: current,
-      themeName,
+      themeName: activeThemeId,
       setTheme,
       terminalTheme: resolvedTerminalTheme,
       terminalThemeName,
@@ -162,7 +205,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }),
     [
       current,
-      themeName,
+      activeThemeId,
       setTheme,
       resolvedTerminalTheme,
       terminalThemeName,

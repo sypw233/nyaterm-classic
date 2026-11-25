@@ -951,17 +951,57 @@ export function AppearanceTab() {
     <div className="space-y-5">
       <SettingSection contentClassName="space-y-5">
         <SettingSelect
-          label={t("settings.theme")}
-          desc={t("settings.themeDesc")}
-          value={appearance.theme || "github-dark"}
-          onValueChange={(v) => updateAppearance({ theme: v })}
+          label={t("settings.themeMode")}
+          desc={t("settings.themeModeDesc")}
+          value={appearance.theme_mode === "system" ? "system" : "manual"}
+          onValueChange={(v) => updateAppearance({ theme_mode: v })}
         >
-          {themeNames.map((tm) => (
-            <SelectItem key={tm.id} value={tm.id}>
-              {tm.name}
-            </SelectItem>
-          ))}
+          <SelectItem value="manual">{t("settings.themeModeManual")}</SelectItem>
+          <SelectItem value="system">{t("settings.themeModeSystem")}</SelectItem>
         </SettingSelect>
+
+        {appearance.theme_mode === "system" ? (
+          <>
+            <SettingSelect
+              label={t("settings.systemLightTheme")}
+              desc={t("settings.systemLightThemeDesc")}
+              value={appearance.light_theme || "github-light"}
+              onValueChange={(v) => updateAppearance({ light_theme: v })}
+            >
+              {themeNames.map((tm) => (
+                <SelectItem key={tm.id} value={tm.id}>
+                  {tm.name}
+                </SelectItem>
+              ))}
+            </SettingSelect>
+
+            <SettingSelect
+              label={t("settings.systemDarkTheme")}
+              desc={t("settings.systemDarkThemeDesc")}
+              value={appearance.dark_theme || "github-dark"}
+              onValueChange={(v) => updateAppearance({ dark_theme: v })}
+            >
+              {themeNames.map((tm) => (
+                <SelectItem key={tm.id} value={tm.id}>
+                  {tm.name}
+                </SelectItem>
+              ))}
+            </SettingSelect>
+          </>
+        ) : (
+          <SettingSelect
+            label={t("settings.theme")}
+            desc={t("settings.themeDesc")}
+            value={appearance.theme || "github-dark"}
+            onValueChange={(v) => updateAppearance({ theme: v })}
+          >
+            {themeNames.map((tm) => (
+              <SelectItem key={tm.id} value={tm.id}>
+                {tm.name}
+              </SelectItem>
+            ))}
+          </SettingSelect>
+        )}
 
         <SettingSelect
           label={t("settings.terminalTheme")}

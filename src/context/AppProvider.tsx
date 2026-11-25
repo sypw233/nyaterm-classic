@@ -103,6 +103,9 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
   },
   appearance: {
     theme: "github-dark",
+    theme_mode: "manual",
+    light_theme: "github-light",
+    dark_theme: "github-dark",
     custom_themes: [],
     font_family: DEFAULT_TERMINAL_FONT_FAMILY,
     ui_font_family: getDefaultUiFontFamily(),

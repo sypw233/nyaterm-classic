@@ -1358,6 +1358,10 @@ export interface CustomThemeSettings {
 
 export interface AppearanceSettings {
   theme: string;
+  /** "manual" uses `theme`; "system" resolves light/dark from OS appearance. */
+  theme_mode: string;
+  light_theme: string;
+  dark_theme: string;
   custom_themes: CustomThemeSettings[];
   font_family: string;
   ui_font_family: string;

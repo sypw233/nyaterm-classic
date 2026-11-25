@@ -14,6 +14,9 @@ const themeColors = resolveTheme("github-dark").colors;
 function appearance(overrides: Partial<AppearanceSettings> = {}): AppearanceSettings {
   return {
     theme: "github-dark",
+    theme_mode: "manual",
+    light_theme: "github-light",
+    dark_theme: "github-dark",
     custom_themes: [],
     font_family: "JetBrains Mono",
     ui_font_family: "Inter",

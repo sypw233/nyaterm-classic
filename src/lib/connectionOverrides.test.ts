@@ -13,6 +13,9 @@ import {
 function globalSettings(): ResolvedTerminalSettings {
   const appearance = {
     theme: "github-dark",
+    theme_mode: "manual",
+    light_theme: "github-light",
+    dark_theme: "github-dark",
     custom_themes: [],
     font_family: "Global Mono",
     ui_font_family: "UI Sans",
