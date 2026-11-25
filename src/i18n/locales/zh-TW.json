@@ -3358,6 +3358,7 @@
     "showHiddenSessions": "顯示被隱藏的工作階段",
     "showMultiLinePasteDialog": "多行貼上提示",
     "showMultiLinePasteDialogDesc": "貼上多行文字時顯示處理視窗，可選擇直接貼上、逐行傳送或取消。",
+    "suggestionReplacementDisabled": "輸入同步時無法使用建議替換。",
     "tabDockMerge": "拖曳以合併",
     "tabDockSplitBottom": "向下拆分",
     "tabDockSplitLeft": "向左拆分",

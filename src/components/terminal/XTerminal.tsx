@@ -70,6 +70,7 @@ import {
 } from "@/lib/sessionInput";
 import { TerminalInputBatcher } from "@/lib/terminalInputBatcher";
 import { buildWordCompletionKeystrokes } from "@/lib/wordCompletion";
+import { planSuggestionFill } from "@/lib/suggestionFillPolicy";
 import { registerTerminalContextProvider } from "@/lib/terminalContext";
 import {
   isBareShellPrompt,
@@ -994,8 +995,16 @@ function XTerminal({
       if (appLockedRef.current) return;
       const trackedState = inputStateRef.current;
       const replaceCurrentLine = trackedState.lineRewriteRequired;
+      const peers = syncPeerSessionIdsRef.current ?? [];
+      const mayFanOut = peers.length > 0;
       let input: string;
       if (wordEdit) {
+        // A token rewrite is still a rewrite: other synchronized sessions may
+        // hold a different line, so refuse it rather than corrupt them.
+        if (mayFanOut) {
+          toast.info(t("terminal.suggestionReplacementDisabled"));
+          return;
+        }
         // Only the token under the caret is replaced, so the rest of the line
         // survives.
         input = buildWordCompletionKeystrokes(
@@ -1004,15 +1013,26 @@ function XTerminal({
           command,
         );
       } else if (replaceCurrentLine) {
+        if (mayFanOut) {
+          toast.info(t("terminal.suggestionReplacementDisabled"));
+          return;
+        }
         input = `\u0005\u0015${command}`;
-      } else if (trackedState.cursor === trackedState.value.length) {
-        // Caret at the end: backspace the tracked input and type the command.
-        input = `${"\x7f".repeat(trackedState.value.length)}${command}`;
       } else {
-        // Caret in the middle. Backspacing would leave the tail behind, so
-        // rewrite the line the same way word completion does: clear it, type
-        // the replacement, then put the caret back at the end.
-        input = `\u0005\u0015${command}`;
+        // Whole-line fill. While input is synchronized, only an append at the
+        // end of the line is safe; anything else would rewrite text that peers
+        // may not share.
+        const plan = planSuggestionFill({
+          line: trackedState.value,
+          cursor: trackedState.cursor,
+          suggestion: command,
+          mayFanOut,
+        });
+        if (plan.policy === "reject") {
+          toast.info(t("terminal.suggestionReplacementDisabled"));
+          return;
+        }
+        input = plan.data;
       }
       const data = buildTerminalCommandInput(input, execute);
       const options: SendSessionInputOptions = {
@@ -1021,7 +1041,6 @@ function XTerminal({
           : { kind: "replace", value: command },
         registerSubmission: execute ? command : null,
       };
-      const peers = syncPeerSessionIdsRef.current ?? [];
       const sendInput =
         peers.length > 0
           ? sendSessionInputWithSync(sessionId, data, peers, options)
@@ -1031,7 +1050,7 @@ function XTerminal({
         commandSuggestionSuppressedRef.current = true;
       }
     },
-    [sessionId],
+    [sessionId, t],
   );
 
   // Command history & fuzzy search UI

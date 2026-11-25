@@ -3362,6 +3362,7 @@
     "showHiddenSessions": "Показать скрытые сеансы",
     "showMultiLinePasteDialog": "Подсказка для многострочной вставки",
     "showMultiLinePasteDialogDesc": "Показывать окно обработки при вставке многострочного текста с опциями прямой вставки, отправки построчно или отмены.",
+    "suggestionReplacementDisabled": "Замена подсказки отключена при синхронизированном вводе.",
     "tabDockMerge": "Перетащите сюда, чтобы объединить",
     "tabDockSplitBottom": "Разделить снизу",
     "tabDockSplitLeft": "Разделить слева",

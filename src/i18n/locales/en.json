@@ -3361,6 +3361,7 @@
     "showHiddenSessions": "Show Hidden Sessions",
     "showMultiLinePasteDialog": "Multi-line paste prompt",
     "showMultiLinePasteDialogDesc": "Show a processing window when pasting multi-line text, with options to paste directly, send line by line, or cancel.",
+    "suggestionReplacementDisabled": "Suggestion replacement is disabled while input is synchronized.",
     "tabDockMerge": "Drop to merge",
     "tabDockSplitBottom": "Split Bottom",
     "tabDockSplitLeft": "Split Left",

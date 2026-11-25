@@ -3358,6 +3358,7 @@
     "showHiddenSessions": "显示被隐藏的会话",
     "showMultiLinePasteDialog": "多行粘贴提示",
     "showMultiLinePasteDialogDesc": "粘贴多行文本时显示处理窗口，可选择直接粘贴、按行发送或取消。",
+    "suggestionReplacementDisabled": "输入同步时无法使用建议替换。",
     "tabDockMerge": "拖动以合并",
     "tabDockSplitBottom": "向下拆分",
     "tabDockSplitLeft": "向左拆分",

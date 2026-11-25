@@ -3358,6 +3358,7 @@
     "showHiddenSessions": "숨겨진 세션 표시",
     "showMultiLinePasteDialog": "여러 줄 붙여넣기 확인",
     "showMultiLinePasteDialogDesc": "여러 줄 텍스트를 붙여넣을 때 처리 창을 표시하며, 바로 붙여넣기, 한 줄씩 전송, 취소 옵션을 제공합니다.",
+    "suggestionReplacementDisabled": "입력이 동기화되는 동안에는 제안 바꾸기가 비활성화됩니다.",
     "tabDockMerge": "놓으면 병합",
     "tabDockSplitBottom": "아래로 분할",
     "tabDockSplitLeft": "왼쪽으로 분할",
