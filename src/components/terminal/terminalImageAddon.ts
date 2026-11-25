@@ -6,7 +6,7 @@ export const TERMINAL_IMAGE_ADDON_OPTIONS = {
   enableSizeReports: false,
   sixelSupport: true,
   iipSupport: true,
-  kittySupport: false,
+  kittySupport: true,
   storageLimit: 32,
   pixelLimit: 8_388_608,
   showPlaceholder: true,

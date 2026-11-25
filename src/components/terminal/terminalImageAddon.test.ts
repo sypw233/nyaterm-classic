@@ -62,6 +62,15 @@ describe("installTerminalImageAddon", () => {
     expect(mocks.warn).not.toHaveBeenCalled();
   });
 
+  it("enables the Kitty graphics protocol alongside Sixel and iTerm2", () => {
+    // Kitty graphics is what programs such as yazi and opencode use for inline
+    // images. Leaving it off made those programs fall back to raw escape
+    // sequences that garbled the terminal, so it must stay enabled.
+    expect(TERMINAL_IMAGE_ADDON_OPTIONS.kittySupport).toBe(true);
+    expect(TERMINAL_IMAGE_ADDON_OPTIONS.sixelSupport).toBe(true);
+    expect(TERMINAL_IMAGE_ADDON_OPTIONS.iipSupport).toBe(true);
+  });
+
   it("does not register the image addon twice for the same terminal", () => {
     const loadAddon = vi.fn();
     const terminal = createTerminal(loadAddon);
