@@ -1559,6 +1559,9 @@ export interface ExternalMcpSettings {
   permission_mode: AIPermissionMode;
   session_scope: ExternalMcpSessionScope;
   terminal_display_mode: "inline" | "silent";
+  http_enabled: boolean;
+  http_port?: number | null;
+  http_token?: string | null;
 }
 export type AIReasoningEffort =
   | "auto"
@@ -1727,6 +1730,9 @@ export interface McpRuntimeStatus {
   connectionCount: number;
   port?: number | null;
   generation?: string | null;
+  http: boolean;
+  httpPort?: number | null;
+  httpUrl?: string | null;
 }
 
 export interface McpApprovalRequest {

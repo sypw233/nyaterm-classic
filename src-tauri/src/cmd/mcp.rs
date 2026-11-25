@@ -112,6 +112,27 @@ pub async fn respond_mcp_session_open(
 }
 
 #[tauri::command]
+pub async fn rotate_external_mcp_http_token(
+    app: tauri::AppHandle,
+    manager: tauri::State<'_, Arc<McpManager>>,
+    owner_window_label: String,
+) -> AppResult<McpRuntimeStatus> {
+    validate_owner_window(&app, &owner_window_label)?;
+    manager.rotate_http_token()?;
+    // Re-apply settings so the new token is used for the discovery document
+    // and the HTTP sidecar URL.
+    let settings = crate::config::load_app_settings(&app)?.ai.external_mcp;
+    if settings.enabled {
+        manager
+            .inner()
+            .configure_external(settings, &owner_window_label)
+            .await?;
+    }
+    let _ = app.emit("settings-changed", ());
+    Ok(manager.status().await)
+}
+
+#[tauri::command]
 pub fn get_external_mcp_client_configs(
     manager: tauri::State<'_, Arc<McpManager>>,
 ) -> AppResult<McpClientConfigs> {

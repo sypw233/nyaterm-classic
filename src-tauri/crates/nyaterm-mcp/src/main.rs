@@ -1,4 +1,5 @@
 mod bridge;
+mod transport;
 
 use std::sync::Arc;
 
@@ -128,10 +129,15 @@ fn tool_def<T: JsonSchema>(definition: &McpToolDefinition) -> Tool {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<String> = std::env::args().collect();
+    let mode = transport::mode_from_args_and_env(&args)?;
+
     // A discovery-sourced endpoint is re-read on every reconnect, so a
     // restarted NyaTerm heals the next bridge connection without restarting
     // this forwarder. Explicit environment endpoints stay fixed.
-    let server = match bridge::resolve_endpoint_source()? {
+    let source = bridge::resolve_endpoint_source()?;
+    let token = source.endpoint().token().to_string();
+    let server = match source {
         bridge::EndpointSource::Fixed(endpoint) => NyaTermMcp::new(endpoint),
         bridge::EndpointSource::Discovery { endpoint, path } => {
             let mut server = NyaTermMcp::new(endpoint);
@@ -139,8 +145,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             server
         }
     };
-    let server = server.serve(rmcp::transport::stdio()).await?;
-    server.waiting().await?;
+
+    match mode {
+        transport::Mode::Stdio => {
+            let server = server.serve(rmcp::transport::stdio()).await?;
+            server.waiting().await?;
+        }
+        transport::Mode::Http { port } => {
+            transport::serve_http(server, token, port).await?;
+        }
+    }
     Ok(())
 }
 

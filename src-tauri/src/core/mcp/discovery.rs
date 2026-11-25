@@ -16,6 +16,11 @@ impl DiscoveryStore {
         Self { directory, file }
     }
 
+    /// Owned path to the discovery document.
+    pub fn file_path(&self) -> PathBuf {
+        self.file.clone()
+    }
+
     pub fn remove(&self) -> AppResult<()> {
         match std::fs::remove_file(&self.file) {
             Ok(()) => {}

@@ -249,6 +249,7 @@ interface ClaudeCodeCliStatus {
 
 interface McpClientConfigs {
   sidecarPath: string;
+  httpUrl: string | null;
   codex: unknown;
   claudeCode: unknown;
   cursor: unknown;
@@ -587,6 +588,7 @@ export function AiAgentsTab() {
     permission_mode: "confirm",
     session_scope: "current_window",
     terminal_display_mode: "inline",
+    http_enabled: false,
   };
   const [mcpStatus, setMcpStatus] = useState<McpRuntimeStatus | null>(null);
   const [cliStatus, setCliStatus] = useState<CodexCliStatus | null>(null);
@@ -679,6 +681,35 @@ export function AiAgentsTab() {
     },
     [t],
   );
+
+  const copyHttpUrl = useCallback(async () => {
+    try {
+      const configs = await invoke<McpClientConfigs>(
+        "get_external_mcp_client_configs",
+      );
+      if (!configs.httpUrl) {
+        toast.error(t("ai.externalMcpHttpDisabled"));
+        return;
+      }
+      await writeClipboardText(configs.httpUrl);
+      toast.success(t("ai.externalMcpHttpUrlCopied"));
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+  }, [t]);
+
+  const rotateHttpToken = useCallback(async () => {
+    try {
+      const status = await invoke<McpRuntimeStatus>(
+        "rotate_external_mcp_http_token",
+        { ownerWindowLabel: getOwnerMainWindowLabel() },
+      );
+      setMcpStatus(status);
+      toast.success(t("ai.externalMcpHttpTokenRotated"));
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+  }, [t]);
 
   const detect = useCallback(
     async (options?: { silent?: boolean }) => {
@@ -1136,6 +1167,53 @@ export function AiAgentsTab() {
         {mcpStatus?.error ? (
           <div className="text-xs text-destructive">{mcpStatus.error}</div>
         ) : null}
+        <SettingRow
+          label={t("ai.externalMcpHttp")}
+          desc={t("ai.externalMcpHttpDesc")}
+        >
+          <div className="flex items-center gap-2">
+            {mcpStatus?.http ? (
+              <Badge variant="default">
+                {t("ai.externalMcpHttpPort", {
+                  port: mcpStatus.httpPort ?? "-",
+                })}
+              </Badge>
+            ) : null}
+            <SettingSwitch
+              checked={externalMcp.http_enabled}
+              onChange={(http_enabled) =>
+                updateExternalMcp({ http_enabled })
+              }
+            />
+          </div>
+        </SettingRow>
+        {externalMcp.http_enabled ? (
+          <div className="space-y-3 rounded-md border border-border/60 p-3">
+            <SettingNumberInput
+              label={t("ai.externalMcpHttpFixedPort")}
+              desc={t("ai.externalMcpHttpFixedPortDesc")}
+              min={0}
+              max={65535}
+              step={1}
+              value={externalMcp.http_port ?? 0}
+              onChange={(value) =>
+                updateExternalMcp({ http_port: value > 0 ? value : null })
+              }
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void rotateHttpToken()}
+              >
+                {t("ai.externalMcpHttpRotateToken")}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                {t("ai.externalMcpHttpTokenHint")}
+              </span>
+            </div>
+          </div>
+        ) : null}
         <SettingFieldGrid>
           <AiPermissionSelect
             value={externalMcp.permission_mode}
@@ -1211,6 +1289,21 @@ export function AiAgentsTab() {
               </Button>
             </div>
           ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!externalMcp.http_enabled}
+            onClick={() => void copyHttpUrl()}
+          >
+            {t("ai.externalMcpHttpCopyUrl")}
+          </Button>
+          {externalMcp.http_enabled && mcpStatus?.httpUrl ? (
+            <code className="break-all text-xs text-muted-foreground">
+              {mcpStatus.httpUrl}
+            </code>
+          ) : null}
         </div>
       </SettingSection>
     </div>

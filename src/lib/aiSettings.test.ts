@@ -32,6 +32,7 @@ describe("External MCP defaults", () => {
       permission_mode: "confirm",
       session_scope: "current_window",
       terminal_display_mode: "inline",
+      http_enabled: false,
     });
   });
 

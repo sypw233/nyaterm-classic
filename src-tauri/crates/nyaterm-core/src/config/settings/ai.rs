@@ -126,6 +126,19 @@ pub struct ExternalMcpSettings {
     pub session_scope: ExternalMcpSessionScope,
     #[serde(default)]
     pub terminal_display_mode: McpTerminalDisplayMode,
+    /// Serve the sidecar over Streamable HTTP on loopback TCP instead of stdio.
+    /// NyaTerm launches and owns the HTTP sidecar process while enabled.
+    #[serde(default)]
+    pub http_enabled: bool,
+    /// Fixed loopback HTTP port. `None` (or 0) auto-picks a free port once and
+    /// then persists it, so clients can keep a stable URL across restarts.
+    #[serde(default)]
+    pub http_port: Option<u16>,
+    /// Capability token embedded in the HTTP URL path. Persisted after the
+    /// first generation so the URL stays valid across restarts; clear it to
+    /// rotate. Never printed in logs.
+    #[serde(default)]
+    pub http_token: Option<String>,
 }
 
 impl Default for ExternalMcpSettings {
@@ -135,6 +148,9 @@ impl Default for ExternalMcpSettings {
             permission_mode: AiPermissionMode::Confirm,
             session_scope: ExternalMcpSessionScope::CurrentWindow,
             terminal_display_mode: McpTerminalDisplayMode::default(),
+            http_enabled: false,
+            http_port: None,
+            http_token: None,
         }
     }
 }

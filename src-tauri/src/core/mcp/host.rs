@@ -19,6 +19,7 @@ use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::process::{Child, Command};
 use tokio::sync::{Mutex, RwLock, oneshot};
 use tokio_util::sync::CancellationToken;
 
@@ -53,12 +54,20 @@ pub struct McpRuntimeStatus {
     pub connection_count: usize,
     pub port: Option<u16>,
     pub generation: Option<String>,
+    /// Whether the HTTP transport sidecar is running.
+    pub http: bool,
+    /// Loopback HTTP port, present while the HTTP transport is running.
+    pub http_port: Option<u16>,
+    /// Base HTTP URL shown in settings (token path omitted).
+    pub http_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct McpClientConfigs {
     pub sidecar_path: String,
+    /// Full HTTP URL without the token path, shown in the settings UI.
+    pub http_url: Option<String>,
     pub codex: Value,
     pub claude_code: Value,
     pub cursor: Value,
@@ -371,6 +380,10 @@ pub struct McpManager {
     external_connections: AtomicUsize,
     pending_session_opens: Mutex<HashMap<String, PendingSessionOpen>>,
     last_error: StdMutex<Option<String>>,
+    /// The HTTP-mode sidecar process owned by NyaTerm while HTTP is enabled.
+    http_child: StdMutex<Option<Child>>,
+    /// Loopback port the HTTP sidecar listens on (0 when HTTP is disabled).
+    http_port: AtomicU16,
 }
 
 impl McpManager {
@@ -417,6 +430,8 @@ impl McpManager {
             external_connections: AtomicUsize::new(0),
             pending_session_opens: Mutex::new(HashMap::new()),
             last_error: StdMutex::new(None),
+            http_child: StdMutex::new(None),
+            http_port: AtomicU16::new(0),
         })
     }
 
@@ -490,7 +505,13 @@ impl McpManager {
             ExternalMcpSessionScope::AllSessions => McpScope::AllSessions,
         });
         let generation = uuid::Uuid::new_v4().to_string();
-        let token = random_token();
+        // Reuse a persisted HTTP token so the client URL stays valid across
+        // restarts; only generate one the first time HTTP mode is enabled.
+        let token = settings
+            .http_token
+            .clone()
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or_else(random_token);
         let cancellation = CancellationToken::new();
         let credential = Arc::new(Credential {
             token: token.clone(),
@@ -525,7 +546,7 @@ impl McpManager {
             pid: std::process::id(),
             host: "127.0.0.1".into(),
             port: self.port.load(Ordering::SeqCst),
-            token,
+            token: token.clone(),
             generation: generation.clone(),
             permission_mode: permission_mode_name(&settings.permission_mode).into(),
         };
@@ -534,12 +555,56 @@ impl McpManager {
             self.set_error(Some(error.to_string()));
             return Err(error);
         }
+        if settings.http_enabled {
+            // A configured port is used as-is; otherwise pick a free one and
+            // persist it so the client URL remains stable across restarts.
+            let port = match settings.http_port.filter(|port| *port != 0) {
+                Some(port) => port,
+                None => match Self::free_http_port() {
+                    Ok(port) => port,
+                    Err(error) => {
+                        self.disable_external(false).await?;
+                        self.set_error(Some(error.to_string()));
+                        return Err(AppError::Config(error.to_string()));
+                    }
+                },
+            };
+            if let Err(error) = self.start_http_child(port) {
+                self.disable_external(false).await?;
+                self.set_error(Some(format!("Failed to start HTTP MCP sidecar: {error}")));
+                return Err(error);
+            }
+            // Persist auto-generated values so future runs reuse the same
+            // port/token; a user-configured value is already in settings.
+            if settings.http_port.filter(|value| *value != 0).is_none()
+                || settings
+                    .http_token
+                    .as_deref()
+                    .filter(|value| !value.trim().is_empty())
+                    .is_none()
+            {
+                let token_for_settings = token.clone();
+                if let Err(error) = crate::storage::update_settings_doc(
+                    crate::storage::SettingsDocKey::AppSettings,
+                    move |stored: &mut crate::config::AppSettings| {
+                        stored.ai.external_mcp.http_port = Some(port);
+                        stored.ai.external_mcp.http_token = Some(token_for_settings);
+                        Ok(())
+                    },
+                ) {
+                    tracing::warn!(?error, "Failed to persist fixed MCP HTTP settings");
+                }
+            }
+        } else {
+            self.stop_http_child();
+        }
         self.set_error(None);
         self.emit_status();
         Ok(self.status().await)
     }
 
     pub async fn disable_external(&self, persist_disabled: bool) -> AppResult<()> {
+        self.stop_http_child();
         if let Some(previous) = self.external.lock().await.take() {
             previous.cancellation.cancel();
             self.credentials.write().await.remove(&previous.generation);
@@ -591,6 +656,7 @@ impl McpManager {
 
     pub fn shutdown_cleanup(&self) {
         self.shutdown.cancel();
+        self.stop_http_child();
         if let Ok(mut external) = self.external.try_lock() {
             if let Some(state) = external.take() {
                 state.cancellation.cancel();
@@ -618,6 +684,7 @@ impl McpManager {
             0
         };
         let port = self.port.load(Ordering::SeqCst);
+        let http_port = self.http_port.load(Ordering::SeqCst);
         McpRuntimeStatus {
             enabled: metadata.is_some(),
             running: metadata.is_some() && port != 0,
@@ -627,19 +694,100 @@ impl McpManager {
             connection_count: self.external_connections.load(Ordering::SeqCst),
             port: (port != 0).then_some(port),
             generation: metadata.map(|state| state.1),
+            http: http_port != 0,
+            http_port: (http_port != 0).then_some(http_port),
+            http_url: (http_port != 0)
+                .then(|| format!("http://127.0.0.1:{http_port}/<token>/mcp")),
         }
     }
 
     pub fn client_configs(&self) -> AppResult<McpClientConfigs> {
         let sidecar = self.sidecar_path()?;
         let path = sidecar.to_string_lossy().to_string();
-        let server = json!({ "command": path, "args": [] });
-        Ok(McpClientConfigs {
-            sidecar_path: sidecar.to_string_lossy().to_string(),
-            codex: json!({ "mcp_servers": { "nyaterm": server.clone() } }),
-            claude_code: json!({ "mcpServers": { "nyaterm": server.clone() } }),
-            cursor: json!({ "mcpServers": { "nyaterm": server } }),
-        })
+        let http_port = self.http_port.load(Ordering::SeqCst);
+        if http_port != 0 {
+            // HTTP mode: point clients at the loopback Streamable HTTP endpoint.
+            // The token path segment doubles as the capability credential.
+            let token = self.discovery_token()?;
+            let url = format!("http://127.0.0.1:{http_port}/{token}/mcp");
+            let server = json!({ "type": "http", "url": url.clone() });
+            Ok(McpClientConfigs {
+                sidecar_path: path,
+                http_url: Some(url),
+                codex: json!({ "mcp_servers": { "nyaterm": server.clone() } }),
+                claude_code: json!({ "mcpServers": { "nyaterm": server.clone() } }),
+                cursor: json!({ "mcpServers": { "nyaterm": server } }),
+            })
+        } else {
+            let server = json!({ "command": path, "args": [] });
+            Ok(McpClientConfigs {
+                sidecar_path: path,
+                http_url: None,
+                codex: json!({ "mcp_servers": { "nyaterm": server.clone() } }),
+                claude_code: json!({ "mcpServers": { "nyaterm": server.clone() } }),
+                cursor: json!({ "mcpServers": { "nyaterm": server } }),
+            })
+        }
+    }
+
+    /// Pick a free loopback port for the HTTP sidecar.
+    fn free_http_port() -> AppResult<u16> {
+        let listener = std::net::TcpListener::bind(("127.0.0.1", 0))?;
+        let port = listener.local_addr()?.port();
+        drop(listener);
+        Ok(port)
+    }
+
+    /// Terminate the HTTP sidecar process if one is running.
+    fn stop_http_child(&self) {
+        if let Ok(mut child) = self.http_child.lock() {
+            if let Some(child) = child.as_mut() {
+                let _ = child.kill();
+            }
+            *child = None;
+        }
+        self.http_port.store(0, Ordering::SeqCst);
+    }
+
+    /// Launch the sidecar in HTTP mode with the current bridge credentials.
+    fn start_http_child(&self, port: u16) -> AppResult<()> {
+        self.stop_http_child();
+        let sidecar = self.sidecar_path()?;
+        let child = Command::new(sidecar)
+            .arg("--http")
+            .arg("--port")
+            .arg(port.to_string())
+            .env(
+                "NYATERM_MCP_DISCOVERY",
+                DiscoveryStore::new(&self.config_dir).file_path(),
+            )
+            .kill_on_drop(true)
+            .spawn()?;
+        *self.http_child.lock().unwrap() = Some(child);
+        self.http_port.store(port, Ordering::SeqCst);
+        Ok(())
+    }
+
+    /// Read the current bridge token from the discovery document.
+    fn discovery_token(&self) -> AppResult<String> {
+        let path = DiscoveryStore::new(&self.config_dir).file_path();
+        let bytes = std::fs::read(&path)?;
+        let document: DiscoveryDocument = serde_json::from_slice(&bytes)?;
+        Ok(document.token)
+    }
+
+    /// Generate a fresh HTTP URL token and persist it. Returns the new token.
+    pub fn rotate_http_token(&self) -> AppResult<String> {
+        let token = random_token();
+        let stored_token = token.clone();
+        crate::storage::update_settings_doc(
+            crate::storage::SettingsDocKey::AppSettings,
+            move |stored: &mut crate::config::AppSettings| {
+                stored.ai.external_mcp.http_token = Some(stored_token);
+                Ok(())
+            },
+        )?;
+        Ok(token)
     }
 
     fn connection_summaries(&self) -> AppResult<Vec<McpConnectionSummary>> {

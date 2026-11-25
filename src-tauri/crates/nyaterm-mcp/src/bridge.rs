@@ -29,6 +29,11 @@ impl BridgeEndpoint {
             generation: "test-generation".into(),
         }
     }
+
+    /// The bridge token, reused as the HTTP URL capability.
+    pub fn token(&self) -> &str {
+        &self.token
+    }
 }
 
 struct Connection {
@@ -291,6 +296,15 @@ pub enum EndpointSource {
         endpoint: BridgeEndpoint,
         path: std::path::PathBuf,
     },
+}
+
+impl EndpointSource {
+    #[allow(dead_code)]
+    pub fn endpoint(&self) -> &BridgeEndpoint {
+        match self {
+            Self::Fixed(endpoint) | Self::Discovery { endpoint, .. } => endpoint,
+        }
+    }
 }
 
 /// Resolve the startup endpoint and whether it should be refreshed.

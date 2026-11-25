@@ -224,6 +224,7 @@ pub fn run() {
             cmd::mcp::report_mcp_active_session,
             cmd::mcp::respond_mcp_session_open,
             cmd::mcp::get_external_mcp_client_configs,
+            cmd::mcp::rotate_external_mcp_http_token,
             cmd::ai::detect_claude_code_cli,
             cmd::ai::get_claude_code_account_status,
             cmd::ai::respond_agent_step,

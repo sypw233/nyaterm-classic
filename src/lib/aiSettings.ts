@@ -743,6 +743,9 @@ export const DEFAULT_AI_SETTINGS: AISettings = {
     permission_mode: "confirm",
     session_scope: "current_window",
     terminal_display_mode: "inline",
+    http_enabled: false,
+    http_port: null,
+    http_token: null,
   },
 };
 
