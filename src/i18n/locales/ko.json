@@ -2279,8 +2279,6 @@
     "allowOsc52ClipboardWriteDesc": "원격 앱의 터미널 출력이 로컬 클립보드에 쓸 수 있도록 허용합니다.",
     "altAsMeta": "Option 키를 Meta/Alt로 사용",
     "altAsMetaDesc": "macOS에서 Option+f 같은 단축키를 위해 ƒ 같은 특수 문자를 입력하는 대신 ESC + 키를 전송합니다.",
-    "alternateScroll": "전체 화면 프로그램에서 마우스 휠을 방향 키로 전송",
-    "alternateScrollDesc": "tmux나 screen 같은 전체 화면 프로그램이 활성화된 동안 휠을 위/아래로 전달합니다. 끄면 휠을 그대로 둡니다.",
     "apiKey": "API 키",
     "appId": "App ID",
     "appKey": "App Key",

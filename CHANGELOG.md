@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 This changelog is inferred from release bump commits in git history (for example `chore: bump version to vX.Y.Z`) and grouped by Conventional Commit type.
 
+## [Unreleased]
+
+### Fixed
+
+- **terminal:** Restore mouse-wheel scrolling in full-screen programs (TUI).
+  The wheel-to-arrow setting added in v1.3.10 used an xterm.js custom wheel
+  handler whose return value was reversed: it consumed every wheel event in
+  the alternate screen, so scrolling stopped working in any full-screen
+  terminal program. The handler and the setting are removed; wheel behaviour
+  is back to xterm.js's default.
+
 ## [1.3.10] - 2026-11-25
 
 A release syncing the latest 2.x capabilities into this Tauri/React codebase.

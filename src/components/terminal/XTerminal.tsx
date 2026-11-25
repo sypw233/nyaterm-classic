@@ -310,10 +310,6 @@ function XTerminal({
   // Read from event handlers that must not be re-created when settings change.
   const commandSuggestionWordCompletionRef = useRef(commandSuggestionWordCompletion);
   commandSuggestionWordCompletionRef.current = commandSuggestionWordCompletion;
-  // Alternate-screen wheel routing is read from an xterm event handler that is
-  // registered once, so mirror the setting into a ref.
-  const alternateScrollEnabledRef = useRef(interaction.alternate_scroll ?? true);
-  alternateScrollEnabledRef.current = interaction.alternate_scroll ?? true;
   const commandSuggestionCaretMidlineRef = useRef(commandSuggestionCaretMidline);
   commandSuggestionCaretMidlineRef.current = commandSuggestionCaretMidline;
   // Read by the output handler, which must not be rebuilt when settings change.
@@ -1199,14 +1195,6 @@ function XTerminal({
     });
 
     const fitAddon = new FitAddon();
-    // When the alternate-scroll setting is off, a wheel event in the alternate
-    // screen must not be translated into arrow keys. xterm.js would otherwise
-    // turn it into Up/Down and scroll the full-screen program's history.
-    // Returning true consumes the event; false lets xterm handle it as usual.
-    terminal.attachCustomWheelEventHandler(() => {
-      if (alternateScrollEnabledRef.current) return false;
-      return terminal.buffer.active.type === "alternate";
-    });
     const {
       oscLinkHandler,
       webLinksAddon,

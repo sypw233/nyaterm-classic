@@ -2024,8 +2024,6 @@ export interface InteractionSettings {
   word_separators: string;
   alt_as_meta: boolean;
   mouse_events_require_alt: boolean;
-  /** Let the wheel send arrow keys in the alternate screen; off disables it. */
-  alternate_scroll?: boolean;
   /** Allow Alt+right-click to force the NyaTerm menu while the application uses the mouse. */
   terminal_right_click_alt_forces_local: boolean;
   ime_compatibility: boolean;

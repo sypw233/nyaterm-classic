@@ -25,10 +25,6 @@ pub struct InteractionSettings {
     pub word_separators: String,
     pub alt_as_meta: bool,
     pub mouse_events_require_alt: bool,
-    /// Let the mouse wheel send arrow keys while an alternate-screen program
-    /// is active (tmux/screen without mouse mode). Disabling it stops the
-    /// wheel from scrolling the program's history.
-    pub alternate_scroll: bool,
     pub ime_compatibility: bool,
     pub default_encoding: String,
     pub tab_double_click_action: String,
@@ -53,7 +49,6 @@ struct InteractionSettingsWire {
     word_separators: Option<String>,
     alt_as_meta: Option<bool>,
     mouse_events_require_alt: Option<bool>,
-    alternate_scroll: Option<bool>,
     ime_compatibility: Option<bool>,
     mac_ime_compatibility: Option<bool>,
     default_encoding: Option<String>,
@@ -136,7 +131,6 @@ impl Default for InteractionSettings {
             word_separators: default_word_separators(),
             alt_as_meta: false,
             mouse_events_require_alt: false,
-            alternate_scroll: true,
             ime_compatibility: false,
             default_encoding: default_encoding(),
             tab_double_click_action: default_tab_double_click_action(),
@@ -190,7 +184,6 @@ impl<'de> Deserialize<'de> for InteractionSettings {
             mouse_events_require_alt: wire
                 .mouse_events_require_alt
                 .unwrap_or(defaults.mouse_events_require_alt),
-            alternate_scroll: wire.alternate_scroll.unwrap_or(defaults.alternate_scroll),
             ime_compatibility: wire
                 .ime_compatibility
                 .or(wire.mac_ime_compatibility)
@@ -269,9 +262,6 @@ mod tests {
         assert!(settings.command_suggestion_word_completion);
         assert!(settings.command_suggestion_caret_midline);
         assert!(settings.ai_error_detection_enabled);
-        // Wheel-to-arrow-key conversion in the alternate screen stays on for
-        // existing users.
-        assert!(settings.alternate_scroll);
     }
 
     #[test]
