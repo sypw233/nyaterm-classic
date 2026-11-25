@@ -15,9 +15,8 @@ type MarkdownNodeProps = {
  * A fenced code block with a copy action.
  *
  * The copy button reads the rendered block's text so it copies exactly what
- * the user sees, regardless of how react-markdown wrapped the children. The
- * button stays out of the Tab order: code blocks repeat per message, so
- * trapping focus on each one would make keyboard navigation unusable.
+ * the user sees, regardless of how react-markdown wrapped the children. It
+ * stays keyboard reachable: copy controls must work without a mouse.
  */
 function CodeBlock({ children }: { children?: ReactNode }) {
   const { t } = useTranslation();
@@ -32,7 +31,6 @@ function CodeBlock({ children }: { children?: ReactNode }) {
     <div className="group relative my-2">
       <button
         type="button"
-        tabIndex={-1}
         aria-label={t("ai.copy")}
         className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded border border-border/60 bg-background/85 px-1.5 py-0.5 text-[0.625rem] text-muted-foreground opacity-0 transition hover:text-foreground group-hover:opacity-100 focus:opacity-100"
         onClick={copy}

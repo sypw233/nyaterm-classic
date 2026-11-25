@@ -1893,8 +1893,7 @@ function AIAssistantPanel({ activePane, activeConnection, intent }: AIAssistantP
                           ) : null}
                           <button
                             type="button"
-                            tabIndex={-1}
-                            className="inline-flex items-center gap-1 rounded px-1 py-0.5 transition hover:text-foreground"
+                            className="inline-flex items-center gap-1 rounded px-1 py-0.5 transition hover:text-foreground focus-visible:ring-1 focus-visible:ring-primary"
                             aria-label={t("ai.copy")}
                             onClick={() => {
                               void writeClipboardText(message.content).then(() =>
