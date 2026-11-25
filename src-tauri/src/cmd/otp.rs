@@ -109,6 +109,7 @@ pub fn import_otp_from_qr(path: String) -> AppResult<OtpEntry> {
             digits: totp.digits(),
             period: totp.period(),
             counter: 0,
+            prompt_regex: None,
             has_secret: false,
         })
     } else if uri.starts_with("otpauth://hotp/") {
@@ -124,6 +125,7 @@ pub fn import_otp_from_qr(path: String) -> AppResult<OtpEntry> {
             digits: hotp.digits(),
             period: 30,
             counter: hotp.counter(),
+            prompt_regex: None,
             has_secret: false,
         })
     } else {

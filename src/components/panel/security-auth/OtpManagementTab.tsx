@@ -180,6 +180,7 @@ export function OtpManagementTab({ activeSessionId = null, onCountChange }: OtpM
           issuer: editEntry.issuer.trim(),
           otp_type: editEntry.otp_type ?? "totp",
           period: editEntry.period ?? 30,
+          prompt_regex: editEntry.prompt_regex?.trim() || undefined,
           secret: editEntry.secret || undefined,
           username: editEntry.username?.trim() ?? "",
         },

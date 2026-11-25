@@ -771,6 +771,8 @@ export interface OtpEntry {
   period: number;
   /** Counter value (HOTP only). */
   counter: number;
+  /** Optional regex matched against a terminal prompt to offer this code. */
+  prompt_regex?: string | null;
   /** True when encrypted secret data exists in local storage. */
   has_secret?: boolean;
 }

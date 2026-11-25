@@ -168,6 +168,23 @@ export function OtpEditorDialog({
                     />
                   </div>
                 )}
+
+                <div>
+                  <Label className="text-[0.6875rem] text-muted-foreground">
+                    {t("otpManager.promptRegex")}
+                  </Label>
+                  <Input
+                    className="mt-1 h-8 text-xs"
+                    placeholder={t("otpManager.promptRegexPlaceholder")}
+                    value={entry.prompt_regex ?? ""}
+                    onChange={(event) =>
+                      onChange({ prompt_regex: event.target.value || undefined })
+                    }
+                  />
+                  <p className="mt-1 text-[0.6875rem] text-muted-foreground">
+                    {t("otpManager.promptRegexDesc")}
+                  </p>
+                </div>
               </CollapsibleContent>
             </Collapsible>
           </div>
