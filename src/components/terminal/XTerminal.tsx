@@ -106,6 +106,10 @@ import {
   nextFallbackInteractiveState,
   shouldRecordFallbackCommand,
 } from "./commandNavigation";
+import {
+  inferBlockStartLine,
+  type BlockStartRow,
+} from "@/lib/commandBlockInference";
 import CredentialSuggestions from "./CredentialSuggestions";
 import { installRemoteColorOscGuard } from "./remoteColorOscGuard";
 import SyncActionOverlay from "./SyncActionOverlay";
@@ -2991,15 +2995,24 @@ function XTerminal({
       ) {
         const buffer = terminal.buffer.active;
         const cursorLine = buffer.baseY + buffer.cursorY;
-        let startLine = cursorLine;
-        while (
-          startLine > 0 &&
-          cursorLine - startLine < MAX_WRAPPED_LINE_LOOKBACK_ROWS &&
-          buffer.getLine(startLine)?.isWrapped
-        )
-          startLine--;
-        if (!buffer.getLine(startLine)?.isWrapped) {
-          const marker = terminal.registerMarker(startLine - cursorLine);
+        const rows: BlockStartRow[] = [];
+        for (
+          let line = cursorLine;
+          line >= 0 && cursorLine - line < MAX_WRAPPED_LINE_LOOKBACK_ROWS;
+          line -= 1
+        ) {
+          const bufferLine = buffer.getLine(line);
+          if (!bufferLine) break;
+          rows.push({
+            line,
+            isWrapped: bufferLine.isWrapped,
+            text: bufferLine.translateToString(true),
+          });
+          if (!bufferLine.isWrapped) break;
+        }
+        const inference = inferBlockStartLine(rows, cursorLine);
+        if (inference) {
+          const marker = terminal.registerMarker(inference.startLine - cursorLine);
           if (marker) commandNavigation.add(marker);
         }
       }
