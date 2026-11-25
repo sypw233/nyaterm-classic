@@ -25,6 +25,8 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import {
+  autoDownloadAndInstall,
+  cancelDownload,
   checkForUpdate,
   downloadUpdate,
   getUpdaterState,
@@ -70,6 +72,42 @@ describe("updater background flow", () => {
     await downloadUpdate();
     await installUpdate();
     expect(mocks.updateInstall).toHaveBeenCalledOnce();
+    expect(getUpdaterState().status).toBe("installed");
+  });
+
+  it("reports an installed update after automatic download and install", async () => {
+    const installed = await (async () => {
+      await checkForUpdate(false);
+      return autoDownloadAndInstall();
+    })();
+
+    expect(installed).toBe(true);
+    expect(mocks.updateDownload).toHaveBeenCalledOnce();
+    expect(mocks.updateInstall).toHaveBeenCalledOnce();
+    expect(getUpdaterState().status).toBe("installed");
+  });
+
+  it("cancels an in-flight download and cannot install afterwards", async () => {
+    let finishDownload!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      finishDownload = resolve;
+    });
+    mocks.updateDownload.mockReturnValueOnce(pending);
+
+    await checkForUpdate(false);
+    const downloading = downloadUpdate();
+    await Promise.resolve();
+    expect(getUpdaterState().status).toBe("downloading");
+
+    cancelDownload();
+    expect(getUpdaterState().status).toBe("available");
+    expect(mocks.close).toHaveBeenCalled();
+
+    // Completing the underlying request after cancel must not flip to ready.
+    finishDownload();
+    await downloading;
+    expect(getUpdaterState().status).toBe("available");
+    await expect(installUpdate()).rejects.toThrow();
   });
 
   it("notifies subscribers on state changes", async () => {
@@ -94,6 +132,24 @@ describe("updater background flow", () => {
     mocks.check.mockRejectedValueOnce(new Error("offline"));
     await expect(checkForUpdate(false)).rejects.toThrow("offline");
     expect(getUpdaterState().status).toBe("error");
+  });
+
+  it("does not reapply a portable update that was already installed", async () => {
+    mocks.invoke.mockResolvedValueOnce({ version: "9.9.9" });
+    await checkForUpdate(true);
+    await autoDownloadAndInstall();
+    expect(getUpdaterState().status).toBe("installed");
+    const applyCalls = mocks.invoke.mock.calls.filter(
+      ([command]) => command === "apply_portable_update",
+    ).length;
+
+    const { relaunchApp } = await import("./updater");
+    await relaunchApp(true);
+
+    const afterCalls = mocks.invoke.mock.calls.filter(
+      ([command]) => command === "apply_portable_update",
+    ).length;
+    expect(afterCalls).toBe(applyCalls);
   });
 
   it("uses the portable commands for portable builds", async () => {

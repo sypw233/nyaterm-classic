@@ -28,6 +28,7 @@ import {
   downloadUpdate,
   installUpdate,
   relaunchApp,
+  cancelDownload,
   subscribeUpdater,
   getUpdaterState,
   type UpdateInfo,
@@ -344,7 +345,32 @@ export default function UpdateDialog({
               <p className="text-xs text-center text-muted-foreground">
                 {percent}%
               </p>
+              <p className="text-xs text-center text-muted-foreground">
+                {t("updater.downloadInBackgroundHint")}
+              </p>
             </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setBackgroundDownload(true);
+                  onClose();
+                }}
+              >
+                {t("updater.downloadInBackground")}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  cancelDownload();
+                  setBackgroundDownload(false);
+                }}
+              >
+                {t("updater.cancelDownload")}
+              </Button>
+            </DialogFooter>
           </>
         )}
 
@@ -355,6 +381,27 @@ export default function UpdateDialog({
               <DialogTitle>{t("updater.readyToRestart")}</DialogTitle>
               <DialogDescription className="sr-only">
                 {t("updater.readyToRestart")}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="pt-2">
+              <Button variant="outline" size="sm" onClick={onClose}>
+                {t("updater.restartLater")}
+              </Button>
+              <Button size="sm" onClick={handleRelaunch}>
+                <MdRestartAlt className="mr-1.5" />
+                {t("updater.restartNow")}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+
+        {status === "installed" && (
+          <>
+            <DialogHeader className="items-center pt-2">
+              <MdCheckCircle className="text-4xl text-green-500 mb-2" />
+              <DialogTitle>{t("updater.autoUpdateInstalled")}</DialogTitle>
+              <DialogDescription className="sr-only">
+                {t("updater.autoUpdateInstalled")}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="pt-2">

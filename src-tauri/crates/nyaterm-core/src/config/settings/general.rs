@@ -32,8 +32,9 @@ pub struct GeneralSettings {
     pub easter_eggs_enabled: bool,
     #[serde(default = "default_freeze_demo_ms")]
     pub freeze_demo_ms: u32,
-    /// Download updates in the background and prompt to restart when ready.
-    #[serde(default)]
+    /// Check, download and install updates automatically, then prompt to
+    /// restart. On by default so users stay up to date without extra steps.
+    #[serde(default = "default_true")]
     pub background_auto_download: bool,
 }
 
@@ -54,7 +55,7 @@ impl Default for GeneralSettings {
             rdp_client_mode: default_rdp_client_mode(),
             easter_eggs_enabled: true,
             freeze_demo_ms: default_freeze_demo_ms(),
-            background_auto_download: false,
+            background_auto_download: true,
         }
     }
 }
@@ -78,5 +79,7 @@ mod tests {
         assert!(settings.easter_eggs_enabled);
         assert_eq!(settings.freeze_demo_ms, 3000);
         assert!(!settings.open_new_connection_after_save);
+        // Updates are kept automatic for legacy settings too.
+        assert!(settings.background_auto_download);
     }
 }

@@ -11,6 +11,7 @@ export type UpdateStatus =
   | "available"
   | "downloading"
   | "ready"
+  | "installed"
   | "error";
 
 export interface UpdateProgress {
@@ -272,6 +273,43 @@ export async function downloadUpdate(
   }
 }
 
+/**
+ * Logically cancel an in-flight download.
+ *
+ * The Tauri updater plugin has no abort API, so the HTTP request cannot be
+ * stopped here. We invalidate the generation, close the `Update` resource and
+ * return to `available`, so the UI stops showing progress and the discarded
+ * bytes can never be installed by a later confirm.
+ */
+export function cancelDownload(): void {
+  if (state.status !== "downloading") return;
+  state.generation += 1;
+  state.status = "available";
+  state.progress = { downloaded: 0, total: 0 };
+  state.error = "";
+  const previous = state.update;
+  state.update = null;
+  if (previous) void previous.close().catch(() => {});
+  logger.info({
+    domain: "updater.flow",
+    event: "update.download_cancelled",
+    message: "Update download cancelled by the user",
+  });
+  notify();
+}
+
+/**
+ * Download and install an available update without user interaction.
+ * Used by the automatic-update flow; the user is only asked to restart.
+ */
+export async function autoDownloadAndInstall(): Promise<boolean> {
+  if (getUpdaterState().status !== "available") return false;
+  await downloadUpdate();
+  if (getUpdaterState().status !== "ready") return false;
+  await installUpdate();
+  return getUpdaterState().status === "installed";
+}
+
 /** Install a previously downloaded update. Only call after user confirmation. */
 export async function installUpdate(): Promise<void> {
   if (state.status !== "ready") throw new Error("No downloaded update to install");
@@ -287,7 +325,9 @@ export async function installUpdate(): Promise<void> {
       await update.install();
     }
     if (generation === state.generation) {
-      state.status = "ready";
+      // The update is applied; only a restart remains. Track that explicitly
+      // so the UI can show an "installed, restart to finish" prompt.
+      state.status = "installed";
       notify();
     }
   } catch (error) {
@@ -314,7 +354,12 @@ export async function relaunchApp(portable = state.portable): Promise<void> {
     message: "Relaunching app after update",
   });
   if (portable) {
-    await invoke<void>("apply_portable_update");
+    // An automatic update may already have applied the staged portable update;
+    // calling apply twice fails because the staged slot has been consumed. The
+    // new executable is on disk either way, so only a manual restart remains.
+    if (getUpdaterState().status !== "installed") {
+      await invoke<void>("apply_portable_update");
+    }
   } else {
     await relaunch();
   }

@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 This changelog is inferred from release bump commits in git history (for example `chore: bump version to vX.Y.Z`) and grouped by Conventional Commit type.
 
+## [Unreleased]
+
+### Added
+
+- **updater:** Automatic updates are enabled by default: NyaTerm checks,
+  downloads and installs updates silently at startup, then asks the user to
+  restart. The update dialog now shows background-download and cancel buttons
+  while downloading, and an "installed, restart to apply" view once finished.
+
 ## [1.3.11] - 2026-11-25
 
 A patch release restoring mouse-wheel scrolling in full-screen terminal

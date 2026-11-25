@@ -50,7 +50,7 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
     rdp_client_mode: "builtin",
     easter_eggs_enabled: true,
     freeze_demo_ms: 3000,
-    background_auto_download: false,
+    background_auto_download: true,
   },
   appearance: {
     theme: "github-dark",

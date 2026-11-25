@@ -132,7 +132,7 @@ import {
   carryOverSessionCwd,
   isTerminalDirectoryPath,
 } from "./lib/terminalSessionCwd";
-import { checkForUpdate, downloadUpdate, type UpdateInfo } from "./lib/updater";
+import { checkForUpdate, autoDownloadAndInstall, type UpdateInfo } from "./lib/updater";
 import {
   eventTargetsCurrentWindow,
   getOwnerMainWindowLabel,
@@ -341,8 +341,8 @@ function App() {
     () => setIsLocked(true),
   );
 
-  // Background update check on startup. When background auto-download is on,
-  // download silently and prompt to restart once it is ready.
+  // Automatic update flow on startup: check, download and install silently,
+  // then ask the user to restart. The restart is always an explicit choice.
   useEffect(() => {
     if (!runtimeInfoLoaded || runtimeInfo.packageManager) return;
 
@@ -355,9 +355,9 @@ function App() {
           setHelpDotVisible(true);
           if (!appSettings.general.background_auto_download) return;
           try {
-            await downloadUpdate();
-            if (cancelled) return;
-            toast(t("updater.backgroundReady", { version: info.version }), {
+            const installed = await autoDownloadAndInstall();
+            if (cancelled || !installed) return;
+            toast(t("updater.autoUpdateInstalled"), {
               duration: Number.POSITIVE_INFINITY,
               action: {
                 label: t("updater.restartNow"),
