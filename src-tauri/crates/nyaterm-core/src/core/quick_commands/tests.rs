@@ -388,6 +388,7 @@ Button_2_Action=whoami
                 icon_tag: None,
                 pinned: false,
                 execution_mode: "execute".to_string(),
+                segmented_send: None,
                 source: Some("manual".to_string()),
                 risk_level: None,
                 updated_at: Some(10),

@@ -142,7 +142,11 @@ interface AppLayoutProps {
     onQuickCmdResize: (delta: number) => void;
     onSerialSendResize: (delta: number) => void;
     onClearAfterSendChange: (enabled: boolean) => void;
-    onCommandSend: (command: string, execute?: boolean) => void;
+    onCommandSend: (
+      command: string,
+      execute?: boolean,
+      segmented?: import("@/types/global").QuickCommandSegmentedSend,
+    ) => void;
     onSendToAllSessions: (command: string, execute?: boolean) => void;
   };
   dialogs: {

@@ -111,8 +111,8 @@ import {
   buildTerminalCommandInput,
   clearSessionCommandHistory,
   sendSessionInput,
-  sendSessionInputWithSync,
 } from "./lib/sessionInput";
+import { sendQuickCommand } from "./lib/quickCommandSend";
 import { buildSmartSplitLayout, type SmartSplitMode } from "./lib/smartSplit";
 import { getSessionInputPeerIds, purgeSessionFromGroups } from "./lib/syncInputGroups";
 import {
@@ -1516,7 +1516,11 @@ function App() {
   );
 
   const handleHistoryCommand = useCallback(
-    (command: string, execute: boolean = true) => {
+    (
+      command: string,
+      execute: boolean = true,
+      segmented?: import("@/types/global").QuickCommandSegmentedSend,
+    ) => {
       if (
         activePane?.paneKind !== "terminal" ||
         !hasLiveSession(activePane) ||
@@ -1526,7 +1530,6 @@ function App() {
       }
 
       const { sessionId } = activePane;
-      const data = buildTerminalCommandInput(command, execute);
       const options = {
         preview: execute
           ? ({ kind: "reset" } as const)
@@ -1545,12 +1548,13 @@ function App() {
         });
       }
       const peerSessionIds = getQuickCommandPeerSessionIds(sessionId);
-      const sendInput =
-        peerSessionIds.length > 0
-          ? sendSessionInputWithSync(sessionId, data, peerSessionIds, options)
-          : sendSessionInput(sessionId, data, options);
-
-      void sendInput.catch(() => {});
+      void sendQuickCommand(
+        { sessionId, peerSessionIds },
+        command,
+        execute,
+        segmented,
+        options,
+      ).catch(() => {});
       import("@/lib/backend/api").then(({ emit }) => {
         emit(`focus-terminal-${sessionId}`);
       });

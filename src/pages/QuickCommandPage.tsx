@@ -80,9 +80,17 @@ export default function QuickCommandPage() {
     initialData?.icon_tag,
   );
   const [pinned, setPinned] = useState(initialData?.pinned || false);
-  const [executionMode, setExecutionMode] = useState<"execute" | "append">(
-    (initialData?.execution_mode as "execute" | "append") || "execute",
+  const [executionMode, setExecutionMode] = useState<"execute" | "append" | "segmented">(
+    (initialData?.execution_mode as "execute" | "append" | "segmented") || "execute",
   );
+  const [segmentedMode, setSegmentedMode] = useState<"line" | "character">(
+    initialData?.segmented_send?.mode === "character" ? "character" : "line",
+  );
+  const [segmentedInterval, setSegmentedInterval] = useState(() => {
+    const ms = initialData?.segmented_send?.interval_ms;
+    if (typeof ms === "number") return String(ms / 1000);
+    return initialData?.segmented_send?.mode === "character" ? "0.02" : "1";
+  });
   const [errors, setErrors] = useState<{
     label?: string;
     category?: string;
@@ -223,6 +231,16 @@ export default function QuickCommandPage() {
       icon_tag: iconTag,
       pinned,
       execution_mode: executionMode,
+      segmented_send:
+        executionMode === "segmented"
+          ? {
+              mode: segmentedMode,
+              interval_ms: Math.max(
+                0,
+                Math.min(60_000, Math.round(Number(segmentedInterval) * 1000) || 0),
+              ),
+            }
+          : undefined,
       updated_at: now,
       created_at: initialData?.created_at ?? now,
       use_count: initialData?.use_count,
@@ -560,24 +578,70 @@ export default function QuickCommandPage() {
           <Tabs
             value={executionMode}
             onValueChange={(val) =>
-              setExecutionMode(val as "execute" | "append")
+              setExecutionMode(val as "execute" | "append" | "segmented")
             }
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-2 h-8">
+            <TabsList className="grid w-full grid-cols-3 h-8">
               <TabsTrigger value="execute" className="text-xs">
                 {t("quickCommands.executeImmediately")}
               </TabsTrigger>
               <TabsTrigger value="append" className="text-xs">
                 {t("quickCommands.appendOnly")}
               </TabsTrigger>
+              <TabsTrigger value="segmented" className="text-xs">
+                {t("quickCommands.segmentedSend")}
+              </TabsTrigger>
             </TabsList>
           </Tabs>
-          <p className="text-[0.6875rem] text-muted-foreground pl-1 mt-1">
-            {executionMode === "execute"
-              ? t("quickCommands.executeHint")
-              : t("quickCommands.appendHint")}
-          </p>
+          {executionMode === "segmented" ? (
+            <div className="flex flex-wrap items-end gap-2 pl-1 pt-1">
+              <div className="space-y-1">
+                <Label className="text-[0.6875rem] text-muted-foreground">
+                  {t("quickCommands.segmentedMode")}
+                </Label>
+                <Tabs
+                  value={segmentedMode}
+                  onValueChange={(val) => {
+                    const mode = val as "line" | "character";
+                    setSegmentedMode(mode);
+                    setSegmentedInterval(mode === "character" ? "0.02" : "1");
+                  }}
+                >
+                  <TabsList className="h-7">
+                    <TabsTrigger value="line" className="text-xs">
+                      {t("quickCommands.segmentedLine")}
+                    </TabsTrigger>
+                    <TabsTrigger value="character" className="text-xs">
+                      {t("quickCommands.segmentedCharacter")}
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[0.6875rem] text-muted-foreground">
+                  {t("quickCommands.segmentedInterval")}
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={segmentedInterval}
+                  onChange={(event) => setSegmentedInterval(event.target.value)}
+                  className="h-7 w-24 text-xs"
+                />
+              </div>
+              <p className="w-full text-[0.6875rem] text-muted-foreground">
+                {t("quickCommands.segmentedHint")}
+              </p>
+            </div>
+          ) : (
+            <p className="text-[0.6875rem] text-muted-foreground pl-1 mt-1">
+              {executionMode === "execute"
+                ? t("quickCommands.executeHint")
+                : t("quickCommands.appendHint")}
+            </p>
+          )}
         </div>
 
         {/* Script / Command */}

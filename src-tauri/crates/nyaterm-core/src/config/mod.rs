@@ -84,7 +84,8 @@ pub use proxy::{
 };
 #[allow(unused_imports)]
 pub use quick_command::{
-    QuickCommand, QuickCommandCategory, QuickCommandsConfig, load_quick_commands,
+    QuickCommand, QuickCommandCategory, QuickCommandSegmentedSend,
+    QuickCommandSegmentedSendMode, QuickCommandsConfig, load_quick_commands,
     save_quick_commands,
 };
 #[allow(unused_imports)]

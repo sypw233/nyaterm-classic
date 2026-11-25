@@ -117,6 +117,7 @@ import type {
   QuickCommand,
   QuickCommandCategory,
   QuickCommandImportResult,
+  QuickCommandSegmentedSend,
   QuickCommandSortMode,
   QuickCommandsConfig,
   QuickCommandViewMode,
@@ -129,8 +130,16 @@ import VariablePromptDialog, {
 import { QUICK_ICONS } from "../icons";
 
 interface QuickCommandsProps {
-  onSend: (command: string, execute?: boolean) => void;
-  onSendToAll?: (command: string, execute?: boolean) => void;
+  onSend: (
+    command: string,
+    execute?: boolean,
+    segmented?: QuickCommandSegmentedSend,
+  ) => void;
+  onSendToAll?: (
+    command: string,
+    execute?: boolean,
+    segmented?: QuickCommandSegmentedSend,
+  ) => void;
   sendDisabled?: boolean;
 }
 
@@ -523,7 +532,7 @@ function QuickCommands({ onSend, onSendToAll, sendDisabled = false }: QuickComma
         setPromptCmd(cmd);
         setPromptVars(vars);
       } else {
-        onSend(cmd.command, cmd.execution_mode !== "append");
+        onSend(cmd.command, cmd.execution_mode !== "append", cmd.segmented_send);
       }
     },
     [incrementUseCount, onSend, sendDisabled],
@@ -539,7 +548,7 @@ function QuickCommands({ onSend, onSendToAll, sendDisabled = false }: QuickComma
         setPromptVars(vars);
         setPromptSendToAll(true);
       } else {
-        onSendToAll(cmd.command, cmd.execution_mode !== "append");
+        onSendToAll(cmd.command, cmd.execution_mode !== "append", cmd.segmented_send);
       }
     },
     [incrementUseCount, onSendToAll, sendDisabled],
@@ -550,9 +559,9 @@ function QuickCommands({ onSend, onSendToAll, sendDisabled = false }: QuickComma
       if (sendDisabled) return;
       if (promptCmd) {
         if (promptSendToAll && onSendToAll) {
-          onSendToAll(resolvedCommand, promptCmd.execution_mode !== "append");
+          onSendToAll(resolvedCommand, promptCmd.execution_mode !== "append", promptCmd.segmented_send);
         } else {
-          onSend(resolvedCommand, promptCmd.execution_mode !== "append");
+          onSend(resolvedCommand, promptCmd.execution_mode !== "append", promptCmd.segmented_send);
         }
         setPromptCmd(null);
         setPromptSendToAll(false);

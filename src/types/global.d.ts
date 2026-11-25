@@ -1220,6 +1220,10 @@ export interface QuickCommandCategory {
   sort_order?: number;
 }
 
+export interface QuickCommandSegmentedSend {
+  mode?: "line" | "character";
+  interval_ms?: number;
+}
 export interface QuickCommand {
   id: string;
   label: string;
@@ -1230,6 +1234,7 @@ export interface QuickCommand {
   icon_tag?: string;
   pinned?: boolean;
   execution_mode?: string;
+  segmented_send?: QuickCommandSegmentedSend;
   source?: "manual" | "ai";
   risk_level?: RiskLevel;
   updated_at?: number;

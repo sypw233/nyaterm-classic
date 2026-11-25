@@ -338,6 +338,7 @@ mod tests {
             icon_tag: None,
             pinned: false,
             execution_mode: "execute".to_string(),
+                segmented_send: None,
             source: None,
             risk_level: None,
             updated_at: None,

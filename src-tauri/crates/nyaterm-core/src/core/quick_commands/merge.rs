@@ -129,6 +129,7 @@ fn merge_import(
             icon_tag: trim_optional(command.icon_tag),
             pinned: command.pinned,
             execution_mode,
+            segmented_send: None,
             source,
             risk_level,
             updated_at: Some(now),
