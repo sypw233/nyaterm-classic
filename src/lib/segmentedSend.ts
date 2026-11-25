@@ -17,6 +17,13 @@ export interface SegmentedSendSettings {
 export const SEGMENTED_SEND_MAX_INTERVAL_MS = 60_000;
 export const SEGMENTED_SEND_LINE_INTERVAL_MS = 1_000;
 export const SEGMENTED_SEND_CHARACTER_INTERVAL_MS = 20;
+/**
+ * Upper bound on units in one segmented delivery. A multi-megabyte command in
+ * character mode would otherwise queue tens of thousands of writes and turn a
+ * typo into a long, unstoppable drip; the caller is told the plan is too large
+ * instead.
+ */
+export const SEGMENTED_SEND_MAX_UNITS = 10_000;
 
 export function defaultIntervalForMode(mode: SegmentedSendMode): number {
   return mode === "character"

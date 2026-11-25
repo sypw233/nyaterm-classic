@@ -18,6 +18,7 @@ vi.mock("@/lib/sessionInput", async () => {
 });
 
 import { sendQuickCommand } from "./quickCommandSend";
+import { SEGMENTED_SEND_MAX_UNITS } from "./segmentedSend";
 
 const target = { sessionId: "s1", peerSessionIds: [] };
 const options: SendSessionInputOptions = { preview: null };
@@ -33,16 +34,11 @@ describe("sendQuickCommand", () => {
   it("delivers each line with a delay and preserves line terminators", async () => {
     sendSessionInputMock.mockReset();
     const sleeps: number[] = [];
-    await sendQuickCommand(
-      target,
-      "yes\nno\n",
-      true,
-      { mode: "line", interval_ms: 25 },
-      options,
-      async (ms) => {
+    await sendQuickCommand(target, "yes\nno\n", true, { mode: "line", interval_ms: 25 }, options, {
+      sleep: async (ms) => {
         sleeps.push(ms);
       },
-    );
+    });
 
     expect(sendSessionInputMock.mock.calls.map((call) => call[1])).toEqual([
       "yes\n",
@@ -54,22 +50,41 @@ describe("sendQuickCommand", () => {
   it("delivers each character separately in character mode", async () => {
     sendSessionInputMock.mockReset();
     const sleeps: number[] = [];
-    await sendQuickCommand(
-      target,
-      "ab",
-      true,
-      { mode: "character", interval_ms: 10 },
-      options,
-      async (ms) => {
+    await sendQuickCommand(target, "ab", true, { mode: "character", interval_ms: 10 }, options, {
+      sleep: async (ms) => {
         sleeps.push(ms);
       },
-    );
+    });
 
     expect(sendSessionInputMock.mock.calls.map((call) => call[1])).toEqual([
       "a",
       "b",
     ]);
     expect(sleeps).toEqual([10]);
+  });
+
+  it("stops before the next unit when the send is cancelled", async () => {
+    sendSessionInputMock.mockReset();
+    let delivered = 0;
+    sendSessionInputMock.mockImplementation(async () => {
+      delivered += 1;
+    });
+    await sendQuickCommand(target, "abc", true, { mode: "character", interval_ms: 1 }, options, {
+      isCancelled: () => delivered >= 1,
+      sleep: async () => {},
+    });
+    // First unit is delivered, then cancellation is observed before unit two.
+    expect(sendSessionInputMock).toHaveBeenCalledTimes(1);
+    expect(sendSessionInputMock).toHaveBeenCalledWith("s1", "a", expect.anything());
+  });
+
+  it("refuses an oversized segmented plan", async () => {
+    sendSessionInputMock.mockReset();
+    const huge = "a".repeat(SEGMENTED_SEND_MAX_UNITS + 1);
+    await expect(
+      sendQuickCommand(target, huge, true, { mode: "character", interval_ms: 1 }, options),
+    ).rejects.toThrow(/limit/);
+    expect(sendSessionInputMock).not.toHaveBeenCalled();
   });
 
   it("uses the synced delivery path when peer sessions are present", async () => {

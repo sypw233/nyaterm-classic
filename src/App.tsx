@@ -1554,6 +1554,10 @@ function App() {
         execute,
         segmented,
         options,
+        {
+          // Stop the segment drip if the session goes away mid-send.
+          isCancelled: () => !(liveSessionsById?.has(sessionId) ?? false),
+        },
       ).catch(() => {});
       import("@/lib/backend/api").then(({ emit }) => {
         emit(`focus-terminal-${sessionId}`);
