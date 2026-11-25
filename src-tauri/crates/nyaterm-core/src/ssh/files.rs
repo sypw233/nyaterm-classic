@@ -521,8 +521,8 @@ mod tests {
     use super::{
         FileProperties, RemoteBinaryFile, RemotePathRef, TextFileOpenResult,
         TextFileUnsupportedReason, classify_text_file, content_hash, decode_raw_path_token,
-        permissions_string_to_octal_mode, raw_path_token, sanitize_download_file_name_for_platform,
-        scp_finalize_replace_command,
+        ensure_text_bytes, permissions_string_to_octal_mode, raw_path_token,
+        sanitize_download_file_name_for_platform, scp_finalize_replace_command,
     };
 
     #[test]
@@ -740,5 +740,20 @@ mod tests {
             mtime: 0,
             atime: 0,
         }
+    }
+
+    #[test]
+    fn ensure_text_bytes_rejects_a_read_larger_than_the_limit() {
+        // A stat can under-report size (or the file can grow between stat and
+        // read), so the byte count is re-checked on the data actually read.
+        let bytes = vec![b'a'; 32];
+        assert!(ensure_text_bytes(&bytes, 32).is_ok());
+        assert!(ensure_text_bytes(&bytes, 31).is_err());
+    }
+
+    #[test]
+    fn ensure_text_bytes_rejects_binary_data() {
+        assert!(ensure_text_bytes(b"plain text", 1024).is_ok());
+        assert!(ensure_text_bytes(b"has\0nul", 1024).is_err());
     }
 }
