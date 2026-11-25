@@ -6,7 +6,6 @@ import {
   compilePromptRegex,
   extractCredentialPromptText,
   findMatchingCredentials,
-  findPasswordOnlyFallbackCredentials,
   getCredentialPromptPattern,
   isDefaultPasswordPrompt,
   stripTerminalControlSequences,
@@ -359,16 +358,11 @@ export function useCredentialAutofill(
           return;
         }
 
-        if (isDefaultPasswordPrompt(promptText)) {
-          const fallbackMatches = findPasswordOnlyFallbackCredentials(credentials);
-          if (fallbackMatches.length > 0) {
-            if (!rememberPrompt("password", promptText, now)) return;
-
-            showPanel("password", fallbackMatches, promptText);
-            return;
-          }
-        }
-
+        // Suggestions come only from credentials whose own prompt pattern
+        // matches. Prompt text is remote-controlled output, so falling back to
+        // every enabled credential would turn any printed "Password:" into a
+        // way to enumerate the vault and could type an unrelated account's
+        // password into the requesting process.
         const usernameMatches = findMatchingCredentials(credentials, "username", promptText);
         if (usernameMatches.length === 0) return;
         if (!rememberPrompt("username", promptText, now)) return;

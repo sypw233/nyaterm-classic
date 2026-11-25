@@ -96,6 +96,105 @@ describe("useCredentialAutofill prompt detection gate", () => {
     });
   });
 
+  it("does not enumerate the vault when a password prompt matches no credential", async () => {
+    // A remote process can print an arbitrary "Password:" line. Without a
+    // matching prompt pattern, no saved credential may be offered: listing all
+    // of them would leak the vault and risk typing an unrelated account's
+    // password into the requesting process.
+    mocks.invoke.mockImplementation((command: string) => {
+      if (command === "get_saved_credentials") {
+        return Promise.resolve([
+          {
+            ...credential,
+            id: "cred-1",
+            name: "Passphrase Account",
+            username: "alice",
+            password_prompt_regex: "Enter passphrase:",
+          },
+          {
+            ...credential,
+            id: "cred-2",
+            name: "Other Account",
+            username: "bob",
+            password_prompt_regex: "Enter PIN:",
+          },
+        ]);
+      }
+      return Promise.resolve(null);
+    });
+
+    const hookRefs = refs();
+    const { result } = renderHook(() =>
+      useCredentialAutofill(
+        hookRefs.terminalRef,
+        hookRefs.sessionIdRef,
+        hookRefs.activeRef,
+        hookRefs.visibleRef,
+        hookRefs.performanceModeRef,
+        () => true,
+      ),
+    );
+
+    act(() => {
+      // A plain "Password:" is a default password prompt, but neither
+      // credential has a pattern matching it. Before the fix the fallback
+      // listed both; now no picker must appear.
+      result.current.feedOutput("Password:");
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(result.current.panelState).toBeNull();
+  });
+
+  it("suggests every credential whose pattern matches the password prompt", async () => {
+    mocks.invoke.mockImplementation((command: string) => {
+      if (command === "get_saved_credentials") {
+        return Promise.resolve([
+          credential,
+          {
+            ...credential,
+            id: "cred-2",
+            name: "Second Account",
+            username: "bob",
+            password_prompt_regex: "^Password:$",
+          },
+          {
+            ...credential,
+            id: "cred-3",
+            name: "Unrelated",
+            username: "carol",
+            password_prompt_regex: "Enter passphrase:",
+          },
+        ]);
+      }
+      return Promise.resolve(null);
+    });
+
+    const hookRefs = refs();
+    const { result } = renderHook(() =>
+      useCredentialAutofill(
+        hookRefs.terminalRef,
+        hookRefs.sessionIdRef,
+        hookRefs.activeRef,
+        hookRefs.visibleRef,
+        hookRefs.performanceModeRef,
+        () => true,
+      ),
+    );
+
+    act(() => {
+      result.current.feedOutput("Password:");
+    });
+
+    await waitFor(() => {
+      expect(result.current.panelState?.kind).toBe("password");
+      expect(result.current.panelState?.matches.map((item) => item.id)).toEqual([
+        "cred-1",
+        "cred-2",
+      ]);
+    });
+  });
+
   it("throttles prompt scans but still detects a prompt arriving during a burst", async () => {
     const hookRefs = refs();
     const { result } = renderHook(() =>

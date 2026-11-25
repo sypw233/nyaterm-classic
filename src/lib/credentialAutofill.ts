@@ -103,12 +103,6 @@ export function findMatchingCredentials(
   return credentials.filter((credential) => credentialMatchesPrompt(credential, kind, output));
 }
 
-export function findPasswordOnlyFallbackCredentials(
-  credentials: SavedCredential[],
-): SavedCredential[] {
-  return credentials.filter((credential) => credential.enabled);
-}
-
 export function validatePromptRegex(pattern: string): boolean {
   const trimmed = pattern.trim();
   return Boolean(trimmed && compilePromptRegex(trimmed));
