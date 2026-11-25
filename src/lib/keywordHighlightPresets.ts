@@ -1,5 +1,7 @@
 // ── Resolved rule (single color already chosen for the current theme) ───────
 
+import type { KeywordHighlightRule } from "@/types/global";
+
 /** Rule shape passed to the highlighting engine after dark/light resolution. */
 export interface ResolvedHighlightRule {
   id: string;
@@ -374,8 +376,7 @@ export const DARK_PALETTE: readonly string[] = [
 ];
 
 /** 12 colors that stand out on light terminal backgrounds. */
-export const LIGHT_PALETTE: readonly string[] = [
-  // row 1 – semantic tones
+export const LIGHT_PALETTE: readonly string[] = [  // row 1 – semantic tones
   "#cf222e",
   "#9a6700",
   "#116329",
@@ -390,3 +391,34 @@ export const LIGHT_PALETTE: readonly string[] = [
   "#6f42c1",
   "#cb4b16",
 ];
+
+/**
+ * Overlay session-scoped rules on the resolved global rules by id.
+ *
+ * A session rule sharing an id with a global rule replaces it in place, so a
+ * per-session tweak wins without changing other sessions. New session-only
+ * ids are appended. Global order is otherwise preserved, and an empty session
+ * list returns the global rules unchanged. Rules are presentation-only.
+ */
+export function overlaySessionHighlightRules(
+  global: readonly ResolvedHighlightRule[],
+  sessionRules: readonly KeywordHighlightRule[],
+  isDark: boolean,
+): ResolvedHighlightRule[] {
+  if (sessionRules.length === 0) return [...global];
+
+  const out = [...global];
+  for (const rule of sessionRules) {
+    const resolved: ResolvedHighlightRule = {
+      id: rule.id,
+      name: rule.name,
+      patterns: rule.patterns,
+      color: isDark ? rule.color_dark : rule.color_light,
+      enabled: rule.enabled,
+    };
+    const index = out.findIndex((existing) => existing.id === resolved.id);
+    if (index >= 0) out[index] = resolved;
+    else out.push(resolved);
+  }
+  return out;
+}
