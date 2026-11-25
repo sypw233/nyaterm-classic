@@ -1,11 +1,54 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { MdContentCopy } from "react-icons/md";
+import { toast } from "sonner";
+import { writeClipboardText } from "@/lib/clipboard";
 
 type MarkdownNodeProps = {
   children?: ReactNode;
   href?: string;
 };
+
+/**
+ * A fenced code block with a copy action.
+ *
+ * The copy button reads the rendered block's text so it copies exactly what
+ * the user sees, regardless of how react-markdown wrapped the children. The
+ * button stays out of the Tab order: code blocks repeat per message, so
+ * trapping focus on each one would make keyboard navigation unusable.
+ */
+function CodeBlock({ children }: { children?: ReactNode }) {
+  const { t } = useTranslation();
+  const preRef = useRef<HTMLPreElement>(null);
+
+  const copy = () => {
+    const text = preRef.current?.textContent ?? "";
+    void writeClipboardText(text).then(() => toast.success(t("common.copied")));
+  };
+
+  return (
+    <div className="group relative my-2">
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label={t("ai.copy")}
+        className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded border border-border/60 bg-background/85 px-1.5 py-0.5 text-[0.625rem] text-muted-foreground opacity-0 transition hover:text-foreground group-hover:opacity-100 focus:opacity-100"
+        onClick={copy}
+      >
+        <MdContentCopy className="text-[0.75rem]" />
+        {t("ai.copy")}
+      </button>
+      <pre
+        ref={preRef}
+        className="terminal-scroll max-h-64 overflow-auto rounded-md border border-border/60 bg-muted/30 p-3 font-mono text-[0.6875rem] leading-5"
+      >
+        {children}
+      </pre>
+    </div>
+  );
+}
 
 export function MarkdownContent({ content }: { content: string }) {
   return (
@@ -38,11 +81,7 @@ export function MarkdownContent({ content }: { content: string }) {
               {children}
             </blockquote>
           ),
-          pre: ({ children }: MarkdownNodeProps) => (
-            <pre className="terminal-scroll my-2 max-h-64 overflow-auto rounded-md border border-border/60 bg-muted/30 p-3 font-mono text-[0.6875rem] leading-5">
-              {children}
-            </pre>
-          ),
+          pre: ({ children }: MarkdownNodeProps) => <CodeBlock>{children}</CodeBlock>,
           code: ({ children }: MarkdownNodeProps) => (
             <code className="rounded bg-muted/40 px-1 py-0.5 font-mono text-[0.6875rem]">
               {children}

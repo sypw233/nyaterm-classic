@@ -30,6 +30,8 @@ import {
 } from "react-icons/md";
 import { toast } from "sonner";
 import { AIAssistantDialogs } from "@/components/dialog/ai/AIAssistantDialogs";
+import { writeClipboardText } from "@/lib/clipboard";
+import { formatAiMessageTime } from "@/lib/aiMessageTime";
 import PanelHeader from "@/components/layout/PanelHeader";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1885,6 +1887,25 @@ function AIAssistantPanel({ activePane, activeConnection, intent }: AIAssistantP
                         ) : (
                           <div className="whitespace-pre-wrap break-words">{message.content}</div>
                         )}
+                        <div className="mt-2 flex items-center justify-end gap-2 text-[0.625rem] text-muted-foreground">
+                          {formatAiMessageTime(message.createdAt) ? (
+                            <span>{formatAiMessageTime(message.createdAt)}</span>
+                          ) : null}
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            className="inline-flex items-center gap-1 rounded px-1 py-0.5 transition hover:text-foreground"
+                            aria-label={t("ai.copy")}
+                            onClick={() => {
+                              void writeClipboardText(message.content).then(() =>
+                                toast.success(t("common.copied")),
+                              );
+                            }}
+                          >
+                            <MdContentCopy className="text-[0.75rem]" />
+                            {t("ai.copy")}
+                          </button>
+                        </div>
                         {message.commandCards?.length ? (
                           <div className="mt-3 space-y-2">
                             {message.commandCards.map((card) => (
