@@ -60,6 +60,7 @@ const SWALLOWED_SHORTCUT_IDS = [
   "terminal.showCommandSuggestions",
   "terminal.recording.toggle",
   "special.lockScreen",
+  "special.freezeDemo",
 ] as const;
 
 interface MutableRef<T> {
@@ -189,6 +190,16 @@ export function installXTerminalKeyboardController({
     }
 
     const kb = terminalAppSettingsRef.current.keybindings;
+
+    // Global shortcuts the terminal must never consume. Check these before any
+    // input/selection handling: xterm stops event propagation for keys it owns,
+    // which would prevent the document-level global hotkey handler from firing.
+    for (const sid of SWALLOWED_SHORTCUT_IDS) {
+      if (matchesKeyEvent(resolveShortcutKeys(sid, kb), e)) {
+        e.preventDefault();
+        return false;
+      }
+    }
 
     if (
       matchesKeyEvent(
@@ -660,12 +671,6 @@ export function installXTerminalKeyboardController({
       }
     }
 
-    for (const sid of SWALLOWED_SHORTCUT_IDS) {
-      if (matchesKeyEvent(resolveShortcutKeys(sid, kb), e)) {
-        e.preventDefault();
-        return false;
-      }
-    }
     for (let tabNumber = 1; tabNumber <= 9; tabNumber += 1) {
       if (
         matchesKeyEvent(

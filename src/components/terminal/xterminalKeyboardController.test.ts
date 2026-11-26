@@ -826,6 +826,27 @@ describe("installXTerminalKeyboardController IME Backspace routing", () => {
     }
   });
 
+  it("reserves the freeze-demo shortcut so the terminal does not consume it", () => {
+    // The freeze demo is unbound by default; once the user assigns a binding,
+    // the terminal must let the event bubble to the global hotkey handler.
+    // Otherwise xterm stops propagation and the app never freezes. Cover both
+    // a modifier-heavy combo and a plain Ctrl+letter, which used to be eaten by
+    // the terminal's control-character handling.
+    for (const [binding, key, code, altKey] of [
+      ["ctrl+alt+f", "f", "KeyF", true],
+      ["ctrl+g", "g", "KeyG", false],
+    ] as const) {
+      const harness = createHarness("application", "SSH", {
+        "special.freezeDemo": binding,
+      });
+      const event = shortcutEvent(key, code, { altKey });
+      expect(harness.keyHandler(event)).toBe(false);
+      expect(event.defaultPrevented).toBe(true);
+      expect(harness.sendRawInput).not.toHaveBeenCalled();
+      expect(harness.terminal.input).not.toHaveBeenCalled();
+    }
+  });
+
   it("copies a selection for plain Cmd+C on macOS", () => {
     const harness = createHarness("application", "SSH", {}, { isMacOS: true });
     vi.mocked(harness.terminal.hasSelection).mockReturnValue(true);
