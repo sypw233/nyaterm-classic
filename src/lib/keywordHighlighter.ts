@@ -805,7 +805,18 @@ export class KeywordHighlighter implements IDisposable {
       if (!line) continue;
 
       const maxCols = Math.min(line.length, this.term.cols);
-      const text = line.translateToString(currentY === endY, 0, maxCols);
+      // Trim trailing whitespace on EVERY row, not just the group's last row.
+      // The old `currentY === endY` decision tied text extraction to the
+      // logical-line bounds, which are recomputed each refresh and can differ
+      // between the full, budget and suppression paths. A soft-wrapped row can
+      // carry trailing NUL padding (e.g. when a wide char did not fit and
+      // xterm cleared the leftover cells), so with `trimRight=false` those
+      // padding spaces became part of the logical text on some refreshes but
+      // not others. A keyword match at the row boundary then mapped to a
+      // different row/column and its decoration was destroyed and recreated,
+      // making the last character appear to jump between rows. Full wrapped
+      // rows have no trailing whitespace, so trimming is a no-op for them.
+      const text = line.translateToString(true, 0, maxCols);
       const startIndex = logicalLength;
       logicalLength += text.length;
 

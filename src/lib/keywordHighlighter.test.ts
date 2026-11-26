@@ -502,6 +502,39 @@ describe("KeywordHighlighter", () => {
     highlighter.dispose();
   });
 
+  it("extracts wrapped row text independently of the logical-line boundary", () => {
+    // A soft-wrapped row may carry trailing NUL padding that xterm renders as
+    // spaces. Whether the following row is currently counted as part of the
+    // same logical group changes while output streams in. Trimming must not
+    // depend on that transient boundary: a match sitting at the wrap column
+    // would otherwise map to a different row/column between refreshes, and its
+    // decoration would be destroyed and recreated (visible flicker).
+    const lines = Array.from({ length: 240 }, () => createLine(""));
+    lines[100] = createLine("ERR");
+    lines[101] = createLine("OR", { wrapped: true });
+    // Put the rows on the live screen so they are rescanned on every write;
+    // immutable scrollback rows would be served from the match cache instead.
+    const harness = createHarness({ lines, baseY: 100, viewportY: 100, rows: 2, cols: 3 });
+    const highlighter = new KeywordHighlighter(harness.terminal);
+    highlighter.setRules([rule()], true, true);
+    flushWriteRefresh();
+
+    // Both rows are scanned with the same trim decision. Row 100 is not the
+    // group end, yet its text must be trimmed exactly like the final row.
+    expect(lines[100].translateSpy).toHaveBeenCalledWith(true, 0, 3);
+    expect(lines[101].translateSpy).toHaveBeenCalledWith(true, 0, 3);
+
+    // Flipping the wrap grouping must not change how either row's text is read.
+    (lines[101] as { isWrapped: boolean }).isWrapped = false;
+    lines[100].translateSpy.mockClear();
+    lines[101].translateSpy.mockClear();
+    harness.write();
+    flushWriteRefresh();
+    expect(lines[100].translateSpy).toHaveBeenCalledWith(true, 0, 3);
+    expect(lines[101].translateSpy).toHaveBeenCalledWith(true, 0, 3);
+    highlighter.dispose();
+  });
+
   it("caches complete wrapped logical lines and restores both physical rows", () => {
     const lines = Array.from({ length: 240 }, () => createLine(""));
     lines[100] = createLine("ERR");
