@@ -1,4 +1,5 @@
 import type { AiCaptureEvent } from "@/types/global";
+import { normalizeTerminalOutput } from "./terminalRowNormalizer";
 
 const RESET = "\x1b[0m";
 const BOLD = "\x1b[1m";
@@ -23,16 +24,20 @@ function sanitizeCommandForTerminal(command: string): string {
 /**
  * Normalize one captured output line for display inside the │ rail.
  *
- * Windows tools such as `systeminfo` write progress with bare `\r` (no `\n`),
- * so a naive `split("\n")` leaves dozens of updates glued into one enormous
- * line that overruns the box. Split on `\r` as well, then drop empty progress
- * fragments. Long lines are wrapped so the closing box stays aligned.
+ * Windows tools such as Get-ComputerInfo redraw progress in place with bare
+ * `\r` (no `\n`). Splitting on `\r` would show every intermediate fragment;
+ * `normalizeTerminalOutput` instead emulates a terminal row so only the final
+ * rendering is kept. Long lines are wrapped so the closing box stays aligned.
+ *
+ * Internal capture markers can leak into the output when ConPTY wraps or
+ * splits them; strip those before display.
  */
 function normalizeOutputLines(output: string): string[] {
-  const segments = output.split(/\r\n|\r|\n/u);
   const result: string[] = [];
-  for (const segment of segments) {
+  for (const segment of normalizeTerminalOutput(output)) {
     const clean = segment
+      .replace(/__NT_[SE]_[A-Za-z0-9_-]+__[A-Za-z0-9]*/gu, "")
+      .replace(/__DF_CMD_(?:START|END)_[A-Za-z0-9_-]+(?:_-?\d+)?__[A-Za-z0-9]*/gu, "")
       .replace(/\x1b/gu, "^[")
       .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/gu, "")
       .trimEnd();

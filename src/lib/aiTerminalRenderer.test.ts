@@ -53,6 +53,27 @@ describe("AI command terminal rendering", () => {
     expect(end).toContain("700ms");
   });
 
+  it("collapses PowerShell progress fragments from Get-ComputerInfo", () => {
+    const output =
+      "List of devices attached\rfo\x1b[Kfo\rGet-ComputerIn\rfo\r正在加载处理器信息\r__NT_S_366ec1935c31__\r\n" +
+      "List of devices attached\r正在加载网络适配器信息\rGet-ComputerInfo\r__NT_S_366ec1935c31__\r\n" +
+      "List of devices attached\rCsName                  : NWVM-051021\r\n" +
+      "OsName                  : Microsoft Windows 10 企业版";
+    const end = renderAiCommandEnd({
+      type: "commandEnd",
+      output,
+      exitCode: 0,
+      durationMs: 2718,
+      truncated: false,
+    });
+    const visible = end.replace(/\x1b\[[0-9;]*m/gu, "");
+    // Progress and marker fragments must not appear as scattered rail lines.
+    expect(visible).not.toContain("正在加载处理器信息");
+    expect(visible).not.toContain("正在加载网络适配器信息");
+    expect(visible).not.toContain("__NT_S_");
+    expect(visible).toContain("CsName");
+  });
+
   it("shows a placeholder when there is no output", () => {
     const end = renderAiCommandEnd({
       type: "commandEnd",
@@ -64,7 +85,7 @@ describe("AI command terminal rendering", () => {
     expect(end).toContain("(no output)");
   });
 
-  it("splits bare carriage-return progress and wraps long lines", () => {
+  it("collapses bare carriage-return progress to its final rendered state", () => {
     const progress = "正在加载操作系统信息...\r正在加载计算机信息...\r主机名: NWVM-051021";
     const end = renderAiCommandEnd({
       type: "commandEnd",
@@ -73,14 +94,12 @@ describe("AI command terminal rendering", () => {
       durationMs: 2718,
       truncated: false,
     });
-    // Each \r segment must become its own railed line, not one glued line.
-    // Strip ANSI sequences (the rail and text are colourised) before checking
-    // the visible layout.
     const visible = end.replace(/\x1b\[[0-9;]*m/gu, "");
-    expect(visible).toContain("│   正在加载操作系统信息...");
-    expect(visible).toContain("│   正在加载计算机信息...");
+    // A real terminal overwrites the row on each bare \r, so only the last
+    // rendering must remain visible, not scattered progress fragments.
     expect(visible).toContain("│   主机名: NWVM-051021");
-    expect(visible).not.toMatch(/正在加载操作系统信息\.\.\.正在加载计算机信息/);
+    expect(visible).not.toContain("正在加载操作系统信息");
+    expect(visible).not.toContain("正在加载计算机信息");
 
     const wide = "x".repeat(180);
     const wrapped = renderAiCommandEnd({
