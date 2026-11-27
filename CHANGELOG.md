@@ -4,13 +4,29 @@ All notable changes to this project will be documented in this file.
 
 This changelog is inferred from release bump commits in git history (for example `chore: bump version to vX.Y.Z`) and grouped by Conventional Commit type.
 
-## [Unreleased]
+## [1.3.13] - 2026-11-27
+
+A maintenance release fixing several rendering and shortcut issues. Not a 2.x sync.
 
 ### Fixed
 
+- **ai:** Collapse bare carriage-return progress in inline MCP/AI command
+  results. Windows tools such as Get-ComputerInfo redrew progress in place, so
+  the renderer showed every intermediate fragment scattered across the output
+  and leaked capture markers when ConPTY wrapped them. Output is now normalized
+  with a single-row terminal model that keeps only the final rendering, and
+  leaked capture markers are stripped.
+- **shortcuts:** Let the freeze-demo shortcut reach the global handler. When a
+  terminal had focus, xterm consumed the keypress and stopped propagation, so
+  assigning a key had no effect. The shortcut is now reserved for the app ahead
+  of terminal input handling, for any binding form.
+- **terminal:** Stabilize keyword highlights at soft-wrap boundaries. A keyword
+  at the wrap column could flicker between two rows because text extraction
+  depended on transient logical-line grouping. Every wrapped row is now read
+  with a consistent trim decision.
 - **terminal:** Prevent semi-transparent image ghosts in full-screen programs.
   The image addon repainted image tiles from stale per-cell metadata left behind
-  after text writes, partial erases and colour resets, so a cleared image could
+  after text writes, partial erases and color resets, so a cleared image could
   linger like a background layer that text covered but could not remove. Patch
   the addon to skip tiles whose `HAS_EXTENDED` flag is no longer set.
 
