@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 This changelog is inferred from release bump commits in git history (for example `chore: bump version to vX.Y.Z`) and grouped by Conventional Commit type.
 
+## [Unreleased]
+
+### Fixed
+
+- **terminal:** Prevent semi-transparent image ghosts in full-screen programs.
+  The image addon repainted image tiles from stale per-cell metadata left behind
+  after text writes, partial erases and colour resets, so a cleared image could
+  linger like a background layer that text covered but could not remove. Patch
+  the addon to skip tiles whose `HAS_EXTENDED` flag is no longer set.
+
 ## [1.3.12] - 2026-11-25
 
 A release improving the automatic-update experience. Not a 2.x sync.
